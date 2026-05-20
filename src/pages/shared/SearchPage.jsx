@@ -187,7 +187,7 @@ const SearchPage = () => {
                   onClick={() => setFiltersOpen((prev) => !prev)}
                   aria-expanded={filtersOpen}
                 >
-                  {filtersOpen ? 'Hide' : 'Show'}
+                  {filtersOpen ? 'Hide filters' : 'Show filters'}
                 </Button>
               </div>
 

@@ -17,12 +17,12 @@ export const Button = ({
   size = 'md',
   ...props
 }) => (
-    <Component
-      className={clsx(
-        'inline-flex min-w-0 max-w-full touch-manipulation items-center justify-center gap-1.5 rounded-xl text-center font-semibold leading-tight transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]/15 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60',
-        size === 'sm' && 'min-h-10 px-3 py-2 text-[13px]',
-        size === 'md' && 'min-h-11 px-3.5 py-2.5 text-[13px]',
-        size === 'lg' && 'min-h-12 px-4 py-2.5 text-sm sm:min-h-11',
+  <Component
+    className={clsx(
+      'inline-flex min-w-0 max-w-full touch-manipulation items-center justify-center gap-1.5 whitespace-normal break-words rounded-xl text-center font-semibold leading-tight transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]/15 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 [&>svg]:flex-none',
+      size === 'sm' && 'min-h-10 px-3 py-2 text-[13px]',
+      size === 'md' && 'min-h-11 px-3.5 py-2.5 text-[13px]',
+      size === 'lg' && 'min-h-12 px-4 py-2.5 text-sm sm:min-h-11',
       variants[variant],
       className
     )}

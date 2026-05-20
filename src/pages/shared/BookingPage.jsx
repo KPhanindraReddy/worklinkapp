@@ -779,9 +779,9 @@ const BookingPage = () => {
                             <Clock3 size={15} />
                             {getBookingTime(booking)}
                           </span>
-                          <span className="inline-flex items-center gap-2">
-                            <MapPin size={15} />
-                            {booking.location}
+                          <span className="inline-flex min-w-0 items-start gap-2 break-words">
+                            <MapPin size={15} className="mt-0.5 flex-none" />
+                            <span className="min-w-0">{booking.location}</span>
                           </span>
                         </div>
                         {booking.status === 'accepted' && booking.startOtp ? (
@@ -859,7 +859,7 @@ const BookingPage = () => {
                     bookings.map((booking) => (
                       <div key={booking.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                         <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div>
+                          <div className="min-w-0">
                             <h3 className="font-semibold text-slate-950">{booking.serviceType}</h3>
                             <p className="break-words text-sm font-medium text-slate-600">
                               {booking.labourName} - {booking.location}

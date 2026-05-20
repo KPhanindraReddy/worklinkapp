@@ -268,7 +268,7 @@ const RecentServicesPage = () => {
                         <Button
                           type="button"
                           size="sm"
-                          className="mt-3"
+                          className="mt-3 w-full sm:w-auto"
                           disabled={submittingReviewId === booking.id}
                           onClick={() => handleSubmitReview(booking)}
                         >

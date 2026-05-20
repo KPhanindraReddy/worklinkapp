@@ -245,13 +245,13 @@ export const QuickBookingDialog = ({
       <div
         role="dialog"
         aria-modal="true"
-        className="max-h-[calc(100dvh-0.75rem)] w-full max-w-4xl overflow-y-auto overscroll-contain rounded-t-[24px] border border-slate-200 bg-white p-4 shadow-2xl sm:max-h-[92vh] sm:rounded-[32px] sm:p-5 md:p-6"
+        className="mobile-safe-bottom max-h-[calc(100dvh-0.75rem)] w-full max-w-4xl overflow-y-auto overscroll-contain rounded-t-[24px] border border-slate-200 bg-white p-4 shadow-2xl sm:max-h-[92vh] sm:rounded-[32px] sm:p-5 md:p-6"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="sticky top-0 z-10 -mx-4 -mt-4 flex items-start justify-between gap-4 border-b border-slate-100 bg-white px-4 py-4 sm:static sm:m-0 sm:border-b-0 sm:p-0">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-[0.28em] text-brand-700">Quick booking</p>
-            <h2 className="mt-2 text-xl font-semibold text-slate-950 sm:text-2xl">Book {labour.fullName}</h2>
+            <h2 className="mt-2 break-words text-xl font-semibold text-slate-950 sm:text-2xl">Book {labour.fullName}</h2>
             <p className="mt-2 text-sm text-slate-600">
               Send instantly or schedule a time, then wait for the labour response.
             </p>
@@ -309,7 +309,7 @@ export const QuickBookingDialog = ({
               <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-5 text-sm text-slate-700">
                 Sign in as a client to send a booking request directly from this profile.
                 <div className="mt-4">
-                  <Button as={Link} to="/auth?role=client&mode=signup" onClick={onClose}>
+                  <Button as={Link} to="/auth?role=client&mode=signup" className="w-full sm:w-auto" onClick={onClose}>
                     Create client account
                   </Button>
                 </div>
@@ -320,7 +320,7 @@ export const QuickBookingDialog = ({
               <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-5 text-sm text-slate-700">
                 This quick booking flow is only for client accounts.
                 <div className="mt-4">
-                  <Button as={Link} to="/settings" variant="outline" onClick={onClose}>
+                  <Button as={Link} to="/settings" variant="outline" className="w-full sm:w-auto" onClick={onClose}>
                     Open profile
                   </Button>
                 </div>

@@ -211,18 +211,18 @@ const AdminDashboardPage = () => {
       <section className="section-space">
         <div className="page-shell">
           <div className="space-y-6">
-            <Card className="overflow-hidden rounded-[36px]">
-              <div className="flex flex-wrap items-start justify-between gap-4 p-8">
+            <Card className="overflow-hidden rounded-[28px] sm:rounded-[36px]">
+              <div className="flex flex-wrap items-start justify-between gap-4 p-4 sm:p-6 md:p-8">
                 <div>
                   <div className="flex flex-wrap gap-2">
                     <Badge tone="blue">Admin</Badge>
                     <Badge tone="slate">Operations</Badge>
                   </div>
-                  <h1 className="mt-4 font-display text-3xl font-bold text-slate-950 md:text-4xl">
+                  <h1 className="mt-4 break-words font-display text-2xl font-bold text-slate-950 sm:text-3xl md:text-4xl">
                     Marketplace overview
                   </h1>
                 </div>
-                <Button as={Link} to="/settings" size="sm">
+                <Button as={Link} to="/settings" size="sm" className="w-full sm:w-auto">
                   <UserRound size={16} />
                   Open admin profile
                 </Button>
@@ -255,11 +255,11 @@ const AdminDashboardPage = () => {
                           </div>
                           <VerificationBadge verified={labour.verified} />
                         </div>
-                        <div className="mt-4 flex flex-wrap gap-3">
-                          <Button size="sm" onClick={() => handleVerify(labour.id)}>
+                        <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap sm:gap-3">
+                          <Button size="sm" className="w-full sm:w-auto" onClick={() => handleVerify(labour.id)}>
                             Approve ID
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => handleBan(labour.id, 'labour')}>
+                          <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => handleBan(labour.id, 'labour')}>
                             Ban user
                           </Button>
                         </div>
@@ -286,9 +286,9 @@ const AdminDashboardPage = () => {
                     overview.categories.map((category) => (
                       <div
                         key={category.id}
-                        className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-800/50"
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-800/50"
                       >
-                        <div>
+                        <div className="min-w-0">
                           <p className="font-medium text-slate-950 dark:text-white">{category.name}</p>
                           <p className="text-sm text-slate-500 dark:text-slate-400">
                             {category.openRequests} open requests
@@ -353,33 +353,34 @@ const AdminDashboardPage = () => {
                               {labour.category || 'No category'} - {labour.availability || 'Status not set'}
                             </p>
                             <div className="mt-3 grid gap-2 text-sm text-slate-500 dark:text-slate-400">
-                              <p className="inline-flex items-center gap-2">
-                                <Phone size={14} />
-                                {labour.phoneNumber || 'Phone not added'}
+                              <p className="inline-flex min-w-0 items-start gap-2 break-words">
+                                <Phone size={14} className="mt-0.5 flex-none" />
+                                <span className="min-w-0 break-all">{labour.phoneNumber || 'Phone not added'}</span>
                               </p>
-                              <p className="inline-flex items-center gap-2">
-                                <Mail size={14} />
-                                {labour.email || 'Email not added'}
+                              <p className="inline-flex min-w-0 items-start gap-2 break-words">
+                                <Mail size={14} className="mt-0.5 flex-none" />
+                                <span className="min-w-0 break-all">{labour.email || 'Email not added'}</span>
                               </p>
-                              <p className="inline-flex items-center gap-2">
-                                <MapPin size={14} />
-                                {getLocationLabel(labour, { preferCurrent: true })}
+                              <p className="inline-flex min-w-0 items-start gap-2 break-words">
+                                <MapPin size={14} className="mt-0.5 flex-none" />
+                                <span className="min-w-0">{getLocationLabel(labour, { preferCurrent: true })}</span>
                               </p>
                             </div>
                           </div>
                         </div>
-                        <div className="mt-4 flex flex-wrap gap-3">
+                        <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap sm:gap-3">
                           {!labour.verified ? (
-                            <Button size="sm" onClick={() => handleVerify(labour.id)}>
+                            <Button size="sm" className="w-full sm:w-auto" onClick={() => handleVerify(labour.id)}>
                               Approve ID
                             </Button>
                           ) : null}
-                          <Button as={Link} to={`/labour/${labour.id}`} size="sm" variant="outline">
+                          <Button as={Link} to={`/labour/${labour.id}`} size="sm" variant="outline" className="w-full sm:w-auto">
                             Open profile
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
+                            className="w-full sm:w-auto"
                             onClick={() => handleBan(labour.id, 'labour')}
                           >
                             Ban user
@@ -394,7 +395,7 @@ const AdminDashboardPage = () => {
                   )}
                 </div>
 
-                <div className="mt-5 flex items-center justify-between gap-3">
+                <div className="mt-5 grid gap-3 sm:flex sm:items-center sm:justify-between">
                   <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
                     Paginated for scale
                   </p>
@@ -403,6 +404,7 @@ const AdminDashboardPage = () => {
                       type="button"
                       size="sm"
                       variant="outline"
+                      className="w-full sm:w-auto"
                       onClick={() => loadDirectory('labour')}
                       disabled={labourDirectory.loading}
                     >
@@ -457,25 +459,26 @@ const AdminDashboardPage = () => {
                               </Badge>
                             </div>
                             <div className="mt-3 grid gap-2 text-sm text-slate-500 dark:text-slate-400">
-                              <p className="inline-flex items-center gap-2">
-                                <Phone size={14} />
-                                {client.phoneNumber || 'Phone not added'}
+                              <p className="inline-flex min-w-0 items-start gap-2 break-words">
+                                <Phone size={14} className="mt-0.5 flex-none" />
+                                <span className="min-w-0 break-all">{client.phoneNumber || 'Phone not added'}</span>
                               </p>
-                              <p className="inline-flex items-center gap-2">
-                                <Mail size={14} />
-                                {client.email || 'Email not added'}
+                              <p className="inline-flex min-w-0 items-start gap-2 break-words">
+                                <Mail size={14} className="mt-0.5 flex-none" />
+                                <span className="min-w-0 break-all">{client.email || 'Email not added'}</span>
                               </p>
-                              <p className="inline-flex items-center gap-2">
-                                <MapPin size={14} />
-                                {getLocationLabel(client)}
+                              <p className="inline-flex min-w-0 items-start gap-2 break-words">
+                                <MapPin size={14} className="mt-0.5 flex-none" />
+                                <span className="min-w-0">{getLocationLabel(client)}</span>
                               </p>
                             </div>
                           </div>
                         </div>
-                        <div className="mt-4 flex flex-wrap gap-3">
+                        <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap sm:gap-3">
                           <Button
                             size="sm"
                             variant="outline"
+                            className="w-full sm:w-auto"
                             onClick={() => handleBan(client.id, 'client')}
                           >
                             Ban user
@@ -490,7 +493,7 @@ const AdminDashboardPage = () => {
                   )}
                 </div>
 
-                <div className="mt-5 flex items-center justify-between gap-3">
+                <div className="mt-5 grid gap-3 sm:flex sm:items-center sm:justify-between">
                   <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
                     Paginated for scale
                   </p>
@@ -499,6 +502,7 @@ const AdminDashboardPage = () => {
                       type="button"
                       size="sm"
                       variant="outline"
+                      className="w-full sm:w-auto"
                       onClick={() => loadDirectory('client')}
                       disabled={clientDirectory.loading}
                     >

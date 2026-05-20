@@ -40,7 +40,7 @@ export const HeroSearch = ({
           className="h-12 rounded-[18px] bg-white px-4 text-slate-700 hover:bg-slate-100 sm:h-14 sm:rounded-[22px]"
         >
           <Mic size={18} />
-          <span className="whitespace-nowrap">{isListening ? 'Listening...' : 'Voice'}</span>
+          <span>{isListening ? 'Listening...' : 'Voice'}</span>
         </Button>
         <Button type="submit" className="h-12 rounded-[18px] px-6 text-base sm:h-14 sm:rounded-[22px]">
           <Search size={18} />

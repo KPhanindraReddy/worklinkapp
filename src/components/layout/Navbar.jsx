@@ -10,7 +10,7 @@ import {
   UserRound,
   X
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { Button } from '../common/Button';
 import { useAuth } from '../../context/AuthContext';
@@ -32,7 +32,7 @@ const getProfileInitial = (userProfile, currentUser) =>
 
 const actionButtonClass = (isActive) =>
   clsx(
-    'grid h-10 w-10 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-brand-200 hover:text-brand-700',
+    'grid h-10 w-10 touch-manipulation place-items-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-brand-200 hover:text-brand-700',
     isActive && 'border-brand-200 bg-brand-50 text-brand-700'
   );
 
@@ -115,6 +115,10 @@ export const Navbar = () => {
     setIsOpen(false);
     navigate('/auth', { replace: true });
   };
+
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
 
   const baseLinks = currentUser
     ? [
@@ -319,7 +323,10 @@ export const Navbar = () => {
                 <Link
                   key={link.to}
                   to={link.to}
-                  className={linkClassName({ isActive: matchesRoutePath(pathname, link.matchers) })}
+                  className={clsx(
+                    linkClassName({ isActive: matchesRoutePath(pathname, link.matchers) }),
+                    'w-full justify-start'
+                  )}
                   onClick={() => setIsOpen(false)}
                 >
                   <Icon size={15} />

@@ -8,7 +8,7 @@ const AboutContactPage = () => (
   <AppShell>
     <PageSEO
       title="About & Contact"
-      description="Learn about WorkLink’s marketplace vision, trust model, and contact channels."
+      description="Learn about WorkLink's marketplace vision, trust model, and contact channels."
     />
 
     <section className="section-space">

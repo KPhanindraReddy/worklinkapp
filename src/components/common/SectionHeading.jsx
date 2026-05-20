@@ -5,7 +5,7 @@ export const SectionHeading = ({ eyebrow, title, description, align = 'left' }) 
         {eyebrow}
       </p>
     ) : null}
-    <h2 className="font-display text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">
+    <h2 className="break-words font-display text-2xl font-bold text-slate-950 md:text-3xl">
       {title}
     </h2>
     {description ? (

@@ -56,6 +56,24 @@
     opacity: 1;
   }
 
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  input,
+  select,
+  textarea {
+    max-width: 100%;
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
   input:-webkit-autofill,
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus,
@@ -78,6 +96,13 @@
     @apply mx-auto w-full;
     width: min(1180px, calc(100vw - 2rem));
     max-width: calc(100vw - 2rem);
+  }
+
+  @media (max-width: 639px) {
+    .page-shell {
+      width: min(100%, calc(100vw - 1.25rem));
+      max-width: calc(100vw - 1.25rem);
+    }
   }
 
   @media (min-width: 640px) {
@@ -122,6 +147,10 @@
 
   .app-bottom-dock {
     padding-bottom: calc(0.6rem + env(safe-area-inset-bottom));
+  }
+
+  .mobile-safe-bottom {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
   }
 
   @media (max-width: 639px) {

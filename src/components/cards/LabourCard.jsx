@@ -56,7 +56,7 @@ export const LabourCard = ({ labour, showMatchScore = false, onQuickBook, compac
             </div>
           </Link>
 
-          <div className="grid grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)] items-stretch gap-2 sm:flex sm:items-center sm:justify-end">
+          <div className="grid grid-cols-2 items-stretch gap-2 sm:flex sm:items-center sm:justify-end">
             <Badge
               tone={availabilityTone[labour.availability] ?? 'slate'}
               className="justify-center py-2"
@@ -67,14 +67,14 @@ export const LabourCard = ({ labour, showMatchScore = false, onQuickBook, compac
               <Button
                 type="button"
                 size="sm"
-                className="w-full min-w-0 whitespace-nowrap sm:w-auto sm:min-w-[104px]"
+                className="w-full min-w-0 px-2 sm:w-auto sm:min-w-[104px] sm:px-3"
                 onClick={() => onQuickBook(labour)}
               >
                 <CalendarDays size={14} />
                 Send request
               </Button>
             ) : isClient && !isAvailable ? (
-              <Button type="button" size="sm" variant="outline" className="w-full min-w-0 whitespace-nowrap sm:w-auto sm:min-w-[104px]" disabled>
+              <Button type="button" size="sm" variant="outline" className="w-full min-w-0 px-2 sm:w-auto sm:min-w-[104px] sm:px-3" disabled>
                 {labour.availability}
               </Button>
             ) : (
@@ -83,7 +83,7 @@ export const LabourCard = ({ labour, showMatchScore = false, onQuickBook, compac
                 to={isClient ? `/labour/${labour.id}` : '/auth?role=client&mode=signup'}
                 size="sm"
                 variant="outline"
-                className="w-full min-w-0 whitespace-nowrap sm:w-auto sm:min-w-[104px]"
+                className="w-full min-w-0 px-2 sm:w-auto sm:min-w-[104px] sm:px-3"
               >
                 {isClient ? 'Book now' : 'Book as client'}
               </Button>

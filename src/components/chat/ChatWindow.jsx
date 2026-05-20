@@ -25,11 +25,11 @@ export const ChatWindow = ({ conversation, messages, currentUserId, onSend }) =>
   }
 
   return (
-    <div className="surface-card flex min-h-[calc(100dvh-13rem)] flex-col overflow-hidden xl:min-h-[520px]">
+    <div className="surface-card flex min-h-[calc(100dvh-13rem)] max-w-full flex-col overflow-hidden xl:min-h-[520px]">
       <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-slate-950 dark:text-white">
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-semibold text-slate-950 dark:text-white">
               {conversation.displayName || conversation.participantName}
             </h2>
             <p className="text-[13px] text-slate-500 dark:text-slate-400">
@@ -37,10 +37,22 @@ export const ChatWindow = ({ conversation, messages, currentUserId, onSend }) =>
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex">
-            <Button as="a" href={`tel:${conversation.phoneNumber ?? ''}`} variant="outline" size="sm">
+            <Button
+              as="a"
+              href={conversation.phoneNumber ? `tel:${conversation.phoneNumber}` : undefined}
+              variant="outline"
+              size="sm"
+              className={!conversation.phoneNumber ? 'pointer-events-none opacity-60' : undefined}
+            >
               Call
             </Button>
-            <Button as="a" href={conversation.whatsAppLink ?? '#'} variant="outline" size="sm">
+            <Button
+              as="a"
+              href={conversation.whatsAppLink || undefined}
+              variant="outline"
+              size="sm"
+              className={!conversation.whatsAppLink ? 'pointer-events-none opacity-60' : undefined}
+            >
               WhatsApp
             </Button>
           </div>

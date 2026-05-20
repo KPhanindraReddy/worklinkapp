@@ -211,8 +211,8 @@ const LabourProfilePage = () => {
             <div className="mt-6 space-y-4">
               {(labour.previousWorkHistory ?? []).map((job) => (
                 <div key={`${job.title}-${job.date}`} className="rounded-3xl bg-slate-50 p-5 dark:bg-slate-800/50">
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="font-semibold text-slate-950 dark:text-white">{job.title}</h3>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="min-w-0 break-words font-semibold text-slate-950 dark:text-white">{job.title}</h3>
                     <p className="text-sm font-semibold text-brand-700 dark:text-brand-200">
                       {formatCurrency(job.amountPaid)}
                     </p>
