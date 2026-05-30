@@ -103,9 +103,9 @@ export const BottomDockNav = () => {
   );
 
   return (
-    <div className="app-bottom-dock pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-2.5 lg:hidden">
+    <div className="app-bottom-dock pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center lg:hidden">
       <nav
-        className="pointer-events-auto w-full max-w-[24rem] rounded-[22px] border border-white/80 bg-white/95 p-1 shadow-[0_10px_28px_rgba(15,23,42,0.14)] backdrop-blur-2xl"
+        className="pointer-events-auto w-full border-t border-slate-200 bg-white/95 px-4 py-2 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur-2xl"
         aria-label="Mobile primary navigation"
       >
         <div
@@ -122,24 +122,24 @@ export const BottomDockNav = () => {
                 to={item.to}
                 aria-current={isActive ? 'page' : undefined}
                 className={clsx(
-                  'min-h-[3.6rem] touch-manipulation rounded-[18px] border px-1 py-2 text-center transition duration-200',
+                  'min-h-[4rem] touch-manipulation rounded-none border border-transparent px-1 py-2 text-center transition duration-200',
                   isActive
-                    ? 'border-slate-950 bg-slate-950 shadow-[0_10px_20px_rgba(15,23,42,0.2)]'
-                    : 'border-transparent bg-white text-slate-500 hover:border-slate-200 hover:bg-slate-50'
+                    ? 'bg-white text-brand-900'
+                    : 'bg-white text-slate-300 hover:text-slate-500'
                 )}
               >
                 <span
                   className={clsx(
-                    'mx-auto grid h-7 w-7 place-items-center rounded-lg transition',
-                    isActive ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-500'
+                    'mx-auto grid h-8 w-8 place-items-center rounded-none transition',
+                    isActive ? 'text-brand-900' : 'text-slate-300'
                   )}
                 >
-                  <Icon size={15} />
+                  <Icon size={27} strokeWidth={isActive ? 2.6 : 2.1} />
                 </span>
                 <span
                   className={clsx(
-                    'mt-1 block min-h-[1.55rem] text-[10px] font-semibold leading-tight',
-                    isActive ? 'text-white' : 'text-slate-500'
+                    'mt-1 block min-h-[1.55rem] text-sm font-semibold leading-tight',
+                    isActive ? 'text-brand-900' : 'text-slate-400'
                   )}
                 >
                   {item.label}
