@@ -98,7 +98,7 @@ const getInitials = (value) =>
 const LightPanel = ({ id, className = '', children }) => (
   <section
     id={id}
-    className={`scroll-mt-28 rounded-[22px] border border-slate-200 bg-white p-5 shadow-[0_1px_0_rgba(15,23,42,0.03)] sm:p-6 ${className}`}
+    className={`scroll-mt-28 rounded-[18px] border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.03)] sm:rounded-[20px] sm:p-5 ${className}`}
   >
     {children}
   </section>
@@ -113,15 +113,15 @@ const DashboardMetric = ({ label, value, tone = 'slate' }) => {
   }[tone];
 
   return (
-    <div className="rounded-[18px] border border-slate-200 bg-white p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">{label}</p>
-      <p className={`mt-3 text-4xl font-bold leading-none ${toneClass}`}>{value}</p>
+    <div className="rounded-[18px] border border-slate-200 bg-white p-3.5 sm:p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 sm:text-[11px]">{label}</p>
+      <p className={`mt-2 text-3xl font-bold leading-none sm:mt-2.5 sm:text-3xl ${toneClass}`}>{value}</p>
     </div>
   );
 };
 
 const EmptyDashed = ({ children }) => (
-  <div className="rounded-[18px] border border-dashed border-slate-200 bg-slate-50/70 px-4 py-8 text-center text-base font-medium text-slate-300">
+  <div className="rounded-[18px] border border-dashed border-slate-200 bg-slate-50/70 px-4 py-6 text-center text-sm font-medium text-slate-300 sm:py-8 sm:text-base">
     {children}
   </div>
 );
@@ -592,7 +592,7 @@ const LabourDashboardPage = () => {
       <PageSEO title="Labour Dashboard" description="Manage your labour profile, availability, bookings, work history, and earnings." />
 
       <section className="bg-slate-100/80 pb-5 pt-4 sm:py-6">
-        <div className="page-shell max-w-5xl space-y-5">
+        <div className="page-shell max-w-4xl space-y-3.5 sm:space-y-4">
           {isProfileMissing ? (
             <Card className="border-amber-200 bg-amber-50">
               <h2 className="text-lg font-semibold text-amber-950">Labour profile needs completion</h2>
@@ -605,20 +605,20 @@ const LabourDashboardPage = () => {
             </Card>
           ) : null}
 
-          <LightPanel id="labour-home" className="p-4 sm:p-5">
-            <div className="flex items-center gap-4">
+          <LightPanel id="labour-home" className="p-3.5 sm:p-5">
+            <div className="flex items-center gap-3 sm:gap-4">
               <img
                 src={dashboardProfile.profilePhoto}
                 alt={dashboardProfile.fullName}
-                className="h-20 w-20 flex-none rounded-[22px] object-cover"
+                className="h-16 w-16 flex-none rounded-[18px] object-cover sm:h-[4.5rem] sm:w-[4.5rem] sm:rounded-[20px]"
               />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h1 className="truncate text-2xl font-bold text-slate-950 sm:text-3xl">
+                    <h1 className="truncate text-xl font-bold text-slate-950 sm:text-2xl">
                       {dashboardProfile.fullName}
                     </h1>
-                    <p className="mt-2 truncate text-base font-medium text-slate-500">
+                    <p className="mt-1 truncate text-sm font-medium text-slate-500 sm:mt-2 sm:text-base">
                       Field worker · {dashboardProfile.category}
                     </p>
                   </div>
@@ -626,12 +626,12 @@ const LabourDashboardPage = () => {
                     {updatingAvailability ? 'Updating' : dashboardProfile.availability}
                   </Badge>
                 </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="rounded-full bg-brand-50 px-3 py-1.5 text-sm font-semibold text-brand-700">
+                <div className="mt-3 flex flex-wrap gap-2 sm:mt-4">
+                  <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700 sm:px-3 sm:py-1.5 sm:text-sm">
                     {dashboardProfile.category}
                   </span>
-                  <span className="inline-flex max-w-full items-center gap-2 rounded-full bg-sky-50 px-3 py-1.5 text-sm font-semibold text-sky-700">
-                    <MapPin size={15} className="flex-none text-rose-500" />
+                  <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700 sm:gap-2 sm:px-3 sm:py-1.5 sm:text-sm">
+                    <MapPin size={13} className="flex-none text-rose-500 sm:size-[15px]" />
                     <span className="truncate">{dashboardLocationLabel}</span>
                   </span>
                 </div>
@@ -645,14 +645,14 @@ const LabourDashboardPage = () => {
           </div>
 
           <LightPanel>
-            <h2 className="text-2xl font-bold text-slate-950">Availability</h2>
-            <div className="mt-5">
+            <h2 className="text-xl font-bold text-slate-950 sm:text-[1.35rem]">Availability</h2>
+            <div className="mt-4 sm:mt-5">
               <AvailabilityToggle value={dashboardProfile.availability} onChange={handleAvailabilityChange} />
             </div>
           </LightPanel>
 
           <LightPanel id="labour-requests">
-            <h2 className="text-2xl font-bold text-slate-950">Scheduled clients</h2>
+            <h2 className="text-xl font-bold text-slate-950 sm:text-[1.35rem]">Scheduled clients</h2>
             <div className="mt-5 space-y-3">
               {scheduledClientBookings.length ? (
                 scheduledClientBookings.map((booking) => {
@@ -662,7 +662,7 @@ const LabourDashboardPage = () => {
                     <div key={booking.id} className="rounded-[18px] border border-slate-200 bg-slate-50 p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="truncate text-lg font-bold text-slate-950">{booking.clientName}</p>
+                          <p className="truncate text-base font-bold text-slate-950 sm:text-lg">{booking.clientName}</p>
                           <p className="mt-1 text-sm font-medium text-slate-500">{booking.serviceType}</p>
                           <p className="mt-2 text-sm text-slate-500">{formatDate(booking.appointmentAt)}</p>
                         </div>
@@ -703,43 +703,43 @@ const LabourDashboardPage = () => {
           </LightPanel>
 
           <LightPanel id="labour-earnings">
-            <h2 className="text-2xl font-bold text-slate-950">Financial overview</h2>
+            <h2 className="text-xl font-bold text-slate-950 sm:text-[1.35rem]">Financial overview</h2>
             <div className="mt-5 grid grid-cols-3 gap-2.5 sm:gap-4">
-              <div className="rounded-[18px] border border-slate-200 bg-slate-50 p-3 sm:p-5">
+              <div className="rounded-[18px] border border-slate-200 bg-slate-50 p-3 sm:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Today</p>
-                <p className="mt-4 text-xl font-bold text-emerald-600 sm:text-3xl">{todaySummary}</p>
+                <p className="mt-3 text-lg font-bold text-emerald-600 sm:text-2xl">{todaySummary}</p>
               </div>
-              <div className="rounded-[18px] border border-slate-200 bg-slate-50 p-3 sm:p-5">
+              <div className="rounded-[18px] border border-slate-200 bg-slate-50 p-3 sm:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Paid</p>
-                <p className="mt-4 text-xl font-bold text-slate-950 sm:text-3xl">{paidSummary}</p>
+                <p className="mt-3 text-lg font-bold text-slate-950 sm:text-2xl">{paidSummary}</p>
               </div>
-              <div className="rounded-[18px] border border-slate-200 bg-slate-50 p-3 sm:p-5">
+              <div className="rounded-[18px] border border-slate-200 bg-slate-50 p-3 sm:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Total</p>
-                <p className="mt-4 text-xl font-bold text-slate-950 sm:text-3xl">{totalSummary}</p>
+                <p className="mt-3 text-lg font-bold text-slate-950 sm:text-2xl">{totalSummary}</p>
               </div>
             </div>
           </LightPanel>
 
           <LightPanel>
-            <h2 className="text-2xl font-bold text-slate-950">Active work</h2>
-            <div className="mt-5 divide-y divide-slate-100">
+            <h2 className="text-xl font-bold text-slate-950 sm:text-[1.35rem]">Active work</h2>
+            <div className="mt-4 divide-y divide-slate-100 sm:mt-5">
               {paymentBookings.length || activeWorkBookings.length ? (
                 [...activeWorkBookings, ...paymentBookings]
                   .filter((booking, index, items) => items.findIndex((item) => item.id === booking.id) === index)
                   .slice(0, 6)
                   .map((booking) => (
-                    <div key={booking.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-4 first:pt-0 last:pb-0">
+                    <div key={booking.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-3 first:pt-0 last:pb-0 sm:py-4">
                       <div className="flex min-w-0 items-center gap-3">
-                        <span className="grid h-14 w-14 flex-none place-items-center rounded-2xl bg-brand-50 text-base font-bold text-brand-700">
+                        <span className="grid h-11 w-11 flex-none place-items-center rounded-xl bg-brand-50 text-sm font-bold text-brand-700 sm:h-14 sm:w-14 sm:rounded-2xl sm:text-base">
                           {getInitials(booking.clientName)}
                         </span>
                         <span className="min-w-0">
-                          <span className="block truncate text-xl font-bold text-slate-950">{booking.clientName || 'Client'}</span>
-                          <span className="mt-1 block truncate text-base text-slate-500">{booking.serviceType}</span>
+                          <span className="block truncate text-base font-bold text-slate-950 sm:text-lg">{booking.clientName || 'Client'}</span>
+                          <span className="mt-0.5 block truncate text-sm text-slate-500 sm:mt-1 sm:text-base">{booking.serviceType}</span>
                         </span>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-bold text-slate-950">
+                        <p className="text-base font-bold text-slate-950 sm:text-lg">
                           {Number(booking.amount) > 0 ? formatCurrency(booking.amount) : ''}
                         </p>
                         <Badge tone={booking.paymentStatus === 'paid' ? 'emerald' : 'amber'}>
@@ -774,7 +774,7 @@ const LabourDashboardPage = () => {
           </LightPanel>
 
           <LightPanel id="labour-profile">
-            <h2 className="text-2xl font-bold text-slate-950">Reviews & work proof</h2>
+            <h2 className="text-xl font-bold text-slate-950 sm:text-[1.35rem]">Reviews & work proof</h2>
             <div className="mt-5 space-y-3">
               {(dashboardProfile.reviews ?? []).length ? (
                 dashboardProfile.reviews.map((review) => (

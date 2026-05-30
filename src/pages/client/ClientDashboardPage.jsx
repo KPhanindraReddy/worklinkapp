@@ -112,7 +112,7 @@ const getInitials = (value) =>
 const LightPanel = ({ id, className = '', children }) => (
   <section
     id={id}
-    className={`scroll-mt-28 rounded-[22px] border border-slate-200 bg-white p-5 shadow-[0_1px_0_rgba(15,23,42,0.03)] sm:p-6 ${className}`}
+    className={`scroll-mt-28 rounded-[18px] border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.03)] sm:rounded-[20px] sm:p-5 ${className}`}
   >
     {children}
   </section>
@@ -127,15 +127,15 @@ const DashboardMetric = ({ label, value, tone = 'slate' }) => {
   }[tone];
 
   return (
-    <div className="rounded-[18px] border border-slate-200 bg-white p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">{label}</p>
-      <p className={`mt-3 text-4xl font-bold leading-none ${toneClass}`}>{value}</p>
+    <div className="rounded-[18px] border border-slate-200 bg-white p-3.5 sm:p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 sm:text-[11px]">{label}</p>
+      <p className={`mt-2 text-3xl font-bold leading-none sm:mt-2.5 sm:text-3xl ${toneClass}`}>{value}</p>
     </div>
   );
 };
 
 const EmptyDashed = ({ children }) => (
-  <div className="rounded-[18px] border border-dashed border-slate-200 bg-slate-50/70 px-4 py-8 text-center text-base font-medium text-slate-300">
+  <div className="rounded-[18px] border border-dashed border-slate-200 bg-slate-50/70 px-4 py-6 text-center text-sm font-medium text-slate-300 sm:py-8 sm:text-base">
     {children}
   </div>
 );
@@ -663,33 +663,33 @@ const ClientDashboardPage = () => {
       <PageSEO title="Client Dashboard" description="Request nearby labour instantly or schedule a trusted worker from your live location." />
 
       <section className="bg-slate-100/80 pb-5 pt-4 sm:py-6">
-        <div className="page-shell max-w-6xl space-y-5">
-          <LightPanel className="p-4 sm:p-5">
-            <div className="flex items-center gap-4">
+        <div className="page-shell max-w-5xl space-y-3.5 sm:space-y-4">
+          <LightPanel className="p-3.5 sm:p-5">
+            <div className="flex items-center gap-3 sm:gap-4">
               {clientAvatar ? (
-                <img src={clientAvatar} alt={clientName} className="h-20 w-20 flex-none rounded-[22px] object-cover" />
+                <img src={clientAvatar} alt={clientName} className="h-16 w-16 flex-none rounded-[18px] object-cover sm:h-[4.5rem] sm:w-[4.5rem] sm:rounded-[20px]" />
               ) : (
-                <span className="grid h-20 w-20 flex-none place-items-center rounded-[22px] bg-brand-600 text-2xl font-bold text-white">
+                <span className="grid h-16 w-16 flex-none place-items-center rounded-[18px] bg-brand-600 text-xl font-bold text-white sm:h-[4.5rem] sm:w-[4.5rem] sm:rounded-[20px] sm:text-2xl">
                   {getInitials(clientName)}
                 </span>
               )}
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h1 className="truncate text-2xl font-bold text-slate-950 sm:text-3xl">{clientName}</h1>
-                    <p className="mt-2 truncate text-base font-medium text-slate-500">Client · Nearby service requests</p>
+                    <h1 className="truncate text-xl font-bold text-slate-950 sm:text-2xl">{clientName}</h1>
+                    <p className="mt-1 truncate text-sm font-medium text-slate-500 sm:mt-2 sm:text-base">Client · Nearby service requests</p>
                   </div>
                   <Badge tone={clientOrigin ? 'emerald' : 'amber'}>
                     {clientOrigin ? 'GPS active' : 'GPS pending'}
                   </Badge>
                 </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="inline-flex max-w-full items-center gap-2 rounded-full bg-sky-50 px-3 py-1.5 text-sm font-semibold text-sky-700">
-                    <LocateFixed size={15} className="flex-none text-brand-600" />
+                <div className="mt-3 flex flex-wrap gap-2 sm:mt-4">
+                  <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700 sm:gap-2 sm:px-3 sm:py-1.5 sm:text-sm">
+                    <LocateFixed size={13} className="flex-none text-brand-600 sm:size-[15px]" />
                     <span className="truncate">{clientLocationLabel}</span>
                   </span>
                   {selectedService ? (
-                    <span className="rounded-full bg-brand-50 px-3 py-1.5 text-sm font-semibold text-brand-700">
+                    <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700 sm:px-3 sm:py-1.5 sm:text-sm">
                       {selectedService}
                     </span>
                   ) : null}
@@ -721,7 +721,7 @@ const ClientDashboardPage = () => {
               initialZoom={12}
               minZoom={9}
               maxZoom={17}
-              className="min-h-[560px] rounded-[22px] border-0 shadow-none sm:min-h-[620px]"
+              className="min-h-[500px] rounded-[18px] border-0 shadow-none sm:min-h-[560px] sm:rounded-[20px]"
               sheetClassName="bottom-0 left-0 right-0 rounded-b-none rounded-t-[24px] border-x-0 border-b-0 p-4 sm:bottom-4 sm:left-4 sm:right-4 sm:rounded-[22px] sm:border"
             >
               <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
@@ -767,7 +767,7 @@ const ClientDashboardPage = () => {
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700">Requesting</p>
-                  <h2 className="mt-2 text-2xl font-bold text-slate-950">Waiting for labour response</h2>
+                  <h2 className="mt-2 text-xl font-bold text-slate-950 sm:text-[1.35rem]">Waiting for labour response</h2>
                   <p className="mt-2 break-words text-sm font-medium leading-6 text-slate-700">
                     {pendingBookings[0].labourName} received your {pendingBookings[0].serviceType} request.
                   </p>
@@ -784,7 +784,7 @@ const ClientDashboardPage = () => {
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700">Labour connected</p>
-                  <h2 className="mt-2 text-2xl font-bold text-slate-950">{activeBookings[0].labourName} accepted your request</h2>
+                  <h2 className="mt-2 text-xl font-bold text-slate-950 sm:text-[1.35rem]">{activeBookings[0].labourName} accepted your request</h2>
                   <p className="mt-2 text-sm font-medium leading-6 text-slate-700">
                     Keep your start OTP ready. Share it only after the labour reaches your location.
                   </p>
@@ -794,7 +794,7 @@ const ClientDashboardPage = () => {
               {activeBookings[0].startOtp ? (
                 <div className="mt-4 rounded-[18px] border border-emerald-200 bg-white p-4">
                   <p className="text-xs font-bold uppercase text-emerald-700">Start OTP</p>
-                  <p className="mt-2 font-display text-3xl font-bold tracking-[0.24em] text-slate-950">{activeBookings[0].startOtp}</p>
+                  <p className="mt-2 font-display text-2xl font-bold tracking-[0.2em] text-slate-950 sm:text-[1.65rem] sm:tracking-[0.22em]">{activeBookings[0].startOtp}</p>
                 </div>
               ) : null}
               {activeBookings[0].status === 'accepted' ? (
@@ -810,7 +810,7 @@ const ClientDashboardPage = () => {
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-700">Work finished</p>
-                  <h2 className="mt-2 text-2xl font-bold text-slate-950">Complete payment for {awaitingPaymentBookings[0].labourName}</h2>
+                  <h2 className="mt-2 text-xl font-bold text-slate-950 sm:text-[1.35rem]">Complete payment for {awaitingPaymentBookings[0].labourName}</h2>
                   <InputField
                     label="Amount paid"
                     type="number"
@@ -832,7 +832,7 @@ const ClientDashboardPage = () => {
           <div className="grid gap-5 xl:grid-cols-[1fr_0.9fr]">
             <LightPanel>
               <div className="flex flex-wrap items-center justify-between gap-4">
-                <h2 className="text-2xl font-bold text-slate-950">Request tracking</h2>
+                <h2 className="text-xl font-bold text-slate-950 sm:text-[1.35rem]">Request tracking</h2>
                 <Button as={Link} to="/chat" variant="outline" size="sm" className="w-full sm:w-auto">
                   <MessageCircle size={16} />
                   Chat
@@ -849,7 +849,7 @@ const ClientDashboardPage = () => {
                     <div key={booking.id} className="rounded-[18px] border border-slate-200 bg-slate-50 p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <h3 className="text-lg font-bold text-slate-950">{booking.serviceType}</h3>
+                          <h3 className="text-base font-bold text-slate-950 sm:text-lg">{booking.serviceType}</h3>
                           <p className="mt-1 break-words text-sm text-slate-600">{booking.labourName} · {getDisplayLocationText(booking.location, 'Live location shared')}</p>
                         </div>
                         <Badge tone={getBookingTone(booking.status)}>{booking.status}</Badge>
@@ -869,7 +869,7 @@ const ClientDashboardPage = () => {
             <LightPanel>
               <div className="flex items-center gap-2">
                 <UserCheck size={20} className="text-emerald-600" />
-                <h2 className="text-2xl font-bold text-slate-950">Related labour</h2>
+                <h2 className="text-xl font-bold text-slate-950 sm:text-[1.35rem]">Related labour</h2>
               </div>
               <div className="mt-5 space-y-2.5">
                 {laboursLoading ? (
@@ -883,7 +883,7 @@ const ClientDashboardPage = () => {
                       <div className="flex min-w-0 items-center gap-3">
                         <img src={labour.profilePhoto} alt={labour.fullName} className="h-12 w-12 flex-none rounded-2xl object-cover" />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-base font-bold text-slate-950">{labour.fullName}</p>
+                          <p className="truncate text-sm font-bold text-slate-950 sm:text-base">{labour.fullName}</p>
                           <p className="mt-1 truncate text-sm font-medium text-slate-500">{formatDistanceKm(labour.distanceKm)}</p>
                         </div>
                         <Badge tone="emerald">{labour.availability}</Badge>
@@ -906,7 +906,7 @@ const ClientDashboardPage = () => {
               <BookingCalendar selectedDate={selectedDate} selectedSlot={selectedSlot} onDateChange={setSelectedDate} onSlotChange={setSelectedSlot} />
               <LightPanel>
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h2 className="text-2xl font-bold text-slate-950">Schedule {selectedService || 'service'} labour</h2>
+                  <h2 className="text-xl font-bold text-slate-950 sm:text-[1.35rem]">Schedule {selectedService || 'service'} labour</h2>
                   <Badge tone={serviceLabours.length ? 'emerald' : 'slate'}>{laboursLoading ? 'Checking' : `${serviceLabours.length} found`}</Badge>
                 </div>
                 <div className="mt-5 space-y-2.5">
@@ -917,7 +917,7 @@ const ClientDashboardPage = () => {
                           <div className="flex min-w-0 items-center gap-3">
                             <img src={labour.profilePhoto} alt={labour.fullName} className="h-12 w-12 flex-none rounded-2xl object-cover" />
                             <div className="min-w-0">
-                              <p className="truncate text-base font-bold text-slate-950">{labour.fullName}</p>
+                              <p className="truncate text-sm font-bold text-slate-950 sm:text-base">{labour.fullName}</p>
                               <p className="mt-1 text-sm font-medium text-slate-500">{labour.category} · {formatDistanceKm(labour.distanceKm)}</p>
                             </div>
                           </div>
