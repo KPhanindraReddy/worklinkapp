@@ -6,12 +6,17 @@ import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { EmptyState } from '../../components/common/EmptyState';
+import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
 import { Skeleton } from '../../components/common/Skeleton';
 import { TextAreaField } from '../../components/common/TextAreaField';
 import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
-import { markBookingPaid, subscribeBookingsForUser } from '../../services/bookingService';
+import {
+  completeClientPayment,
+  subscribeBookingsForUser,
+  updateBookingStatus
+} from '../../services/bookingService';
 import { submitServiceReview } from '../../services/reviewService';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
@@ -20,6 +25,10 @@ import { getDisplayLocationText } from '../../utils/location';
 const getStatusTone = (status) => {
   if (['accepted', 'in_progress'].includes(status)) {
     return 'emerald';
+  }
+
+  if (status === 'awaiting_payment') {
+    return 'amber';
   }
 
   if (status === 'completed') {
@@ -48,6 +57,9 @@ const RecentServicesPage = () => {
   const [bookingsLoading, setBookingsLoading] = useState(true);
   const [reviewDrafts, setReviewDrafts] = useState({});
   const [submittingReviewId, setSubmittingReviewId] = useState('');
+  const [paymentAmounts, setPaymentAmounts] = useState({});
+  const [completingPaymentId, setCompletingPaymentId] = useState('');
+  const [cancellingBookingId, setCancellingBookingId] = useState('');
   const role = userProfile?.role === 'labour' ? 'labour' : 'client';
   const subjectLabel = role === 'labour' ? 'Client' : 'Worker';
 
@@ -134,12 +146,51 @@ const RecentServicesPage = () => {
     }
   };
 
-  const handleMarkPaid = async (booking) => {
+  const handlePaymentAmountChange = (bookingId, value) => {
+    const normalizedValue = value.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1');
+    setPaymentAmounts((prev) => ({ ...prev, [bookingId]: normalizedValue }));
+  };
+
+  const handleCompleteClientPayment = async (booking) => {
+    if (!currentUser?.uid) {
+      return;
+    }
+
+    const paidAmount = Number(paymentAmounts[booking.id]);
+
+    if (!Number.isFinite(paidAmount) || paidAmount <= 0) {
+      toast.error('Enter the amount you paid to complete this service.');
+      return;
+    }
+
+    setCompletingPaymentId(booking.id);
+
     try {
-      await markBookingPaid({ bookingId: booking.id, clientId: currentUser.uid });
-      toast.success('Payment marked as paid.');
+      await completeClientPayment({ bookingId: booking.id, clientId: currentUser.uid, paidAmount });
+      setPaymentAmounts((prev) => ({ ...prev, [booking.id]: '' }));
+      toast.success('Service completed with paid amount.');
     } catch (error) {
       toast.error(getFirebaseErrorMessage(error));
+    } finally {
+      setCompletingPaymentId('');
+    }
+  };
+
+  const handleCancelBooking = async (booking) => {
+    if (booking.clientId !== currentUser?.uid) {
+      toast.error('This request does not belong to your client account.');
+      return;
+    }
+
+    setCancellingBookingId(booking.id);
+
+    try {
+      await updateBookingStatus(booking.id, 'cancelled');
+      toast.success('Service request cancelled.');
+    } catch (error) {
+      toast.error(getFirebaseErrorMessage(error));
+    } finally {
+      setCancellingBookingId('');
     }
   };
 
@@ -208,6 +259,8 @@ const RecentServicesPage = () => {
                     <p>
                       {booking.status === 'completed' && Number(booking.amount) > 0
                         ? formatCurrency(booking.amount)
+                        : booking.status === 'awaiting_payment'
+                          ? 'Enter paid amount'
                         : 'Charge pending'}
                     </p>
                     <p>{getDisplayLocationText(booking.location, 'Location shared after confirmation')}</p>
@@ -224,24 +277,57 @@ const RecentServicesPage = () => {
                             Final charge: {formatCurrency(booking.amount)}
                           </p>
                         </div>
-                        {booking.paymentStatus !== 'paid' ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            className="w-full sm:w-auto"
-                            onClick={() => handleMarkPaid(booking)}
-                          >
-                            Pay worker
-                          </Button>
-                        ) : (
-                          <Badge tone="emerald">Paid</Badge>
-                        )}
+                        <Badge tone={booking.paymentStatus === 'paid' ? 'emerald' : 'amber'}>
+                          {booking.paymentStatus === 'paid' ? 'Paid' : 'Waiting'}
+                        </Badge>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {role === 'client' && booking.status === 'awaiting_payment' ? (
+                    <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                      <p className="text-sm font-semibold text-amber-950">Complete this service</p>
+                      <p className="mt-1 text-xs font-medium leading-5 text-amber-900">
+                        Enter the amount you paid after the labour finished the work.
+                      </p>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                        <InputField
+                          label="Amount paid"
+                          type="number"
+                          min="1"
+                          inputMode="decimal"
+                          value={paymentAmounts[booking.id] ?? ''}
+                          onChange={(event) => handlePaymentAmountChange(booking.id, event.target.value)}
+                          placeholder="Enter amount"
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="h-11 w-full sm:w-auto"
+                          disabled={completingPaymentId === booking.id}
+                          onClick={() => handleCompleteClientPayment(booking)}
+                        >
+                          {completingPaymentId === booking.id ? 'Completing...' : 'Complete service'}
+                        </Button>
                       </div>
                     </div>
                   ) : null}
 
                   {booking.serviceDetails ? (
                     <p className="mt-3 text-[13px] leading-6 text-slate-600">{booking.serviceDetails}</p>
+                  ) : null}
+
+                  {role === 'client' && ['pending', 'accepted'].includes(booking.status) ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="mt-4 w-full sm:w-auto"
+                      disabled={cancellingBookingId === booking.id}
+                      onClick={() => handleCancelBooking(booking)}
+                    >
+                      {cancellingBookingId === booking.id ? 'Cancelling...' : 'Cancel request'}
+                    </Button>
                   ) : null}
 
                   {booking.status === 'accepted' && booking.startOtp ? (

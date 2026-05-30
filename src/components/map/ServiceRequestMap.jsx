@@ -40,6 +40,20 @@ const getMapboxStaticUrl = (center, zoomLevel) => {
   return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${longitude},${latitude},${zoom},0/${MAPBOX_STATIC_SIZE}x${MAPBOX_STATIC_SIZE}?logo=false&attribution=false&access_token=${encodeURIComponent(mapboxToken)}`;
 };
 
+const getGoogleEmbedMapUrl = (center, zoomLevel) => {
+  const normalizedCenter = normalizeCoordinates(center);
+
+  if (!normalizedCenter) {
+    return '';
+  }
+
+  const latitude = normalizedCenter.latitude.toFixed(6);
+  const longitude = normalizedCenter.longitude.toFixed(6);
+  const zoom = Math.round(clampNumber(zoomLevel, 3, 18));
+
+  return `https://www.google.com/maps?q=${latitude},${longitude}&ll=${latitude},${longitude}&z=${zoom}&output=embed`;
+};
+
 const getWorldPoint = (coordinates, zoomLevel) => {
   const latitude = clampNumber(coordinates.latitude, -85.05113, 85.05113);
   const longitude = clampNumber(coordinates.longitude, -180, 180);
@@ -98,6 +112,7 @@ export const ServiceRequestMap = ({
   sheetClassName,
   showRoutePreview = false,
   showZoomControls = true,
+  showInteractiveMap = true,
   initialZoom = 14,
   minZoom = 9,
   maxZoom = 17,
@@ -109,8 +124,12 @@ export const ServiceRequestMap = ({
     () => getMapboxStaticUrl(normalizedCenter, zoomLevel),
     [normalizedCenter, zoomLevel]
   );
+  const interactiveMapUrl = useMemo(
+    () => (showInteractiveMap ? getGoogleEmbedMapUrl(normalizedCenter, zoomLevel) : ''),
+    [normalizedCenter, showInteractiveMap, zoomLevel]
+  );
   const [mapImageFailed, setMapImageFailed] = useState(false);
-  const showMapboxImage = Boolean(mapboxStaticUrl && !mapImageFailed);
+  const showMapboxImage = Boolean(!interactiveMapUrl && mapboxStaticUrl && !mapImageFailed);
   const selectedLabourIndex = useMemo(
     () => labours.findIndex((labour) => labour.id === selectedLabourId),
     [labours, selectedLabourId]
@@ -144,7 +163,15 @@ export const ServiceRequestMap = ({
         className
       )}
     >
-      {showMapboxImage ? (
+      {interactiveMapUrl ? (
+        <iframe
+          title={title ? `${title} map` : 'Interactive location map'}
+          src={interactiveMapUrl}
+          className="absolute inset-0 h-full w-full touch-pan-x touch-pan-y border-0"
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+        />
+      ) : showMapboxImage ? (
         <img
           src={mapboxStaticUrl}
           alt=""
@@ -167,7 +194,7 @@ export const ServiceRequestMap = ({
         </>
       )}
 
-      <div className="absolute inset-0 bg-gradient-to-b from-white/0 via-white/0 to-white/50" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/0 via-white/0 to-white/50" />
 
       {searching ? (
         <div className="absolute inset-0 z-20 bg-white/20 backdrop-blur-[1px]">
@@ -255,7 +282,11 @@ export const ServiceRequestMap = ({
           <RadioTower size={12} />
           {normalizedCenter ? 'GPS active' : 'GPS pending'}
         </Badge>
-        {showMapboxImage ? (
+        {interactiveMapUrl ? (
+          <Badge tone="slate" className="bg-white/95">
+            Movable map
+          </Badge>
+        ) : showMapboxImage ? (
           <Badge tone="slate" className="bg-white/95">
             Mapbox
           </Badge>

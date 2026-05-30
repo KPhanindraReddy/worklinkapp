@@ -18,6 +18,7 @@ import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { EmptyState } from '../../components/common/EmptyState';
+import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
 import { SelectField } from '../../components/common/SelectField';
 import { Skeleton } from '../../components/common/Skeleton';
@@ -26,7 +27,12 @@ import { ServiceRequestMap } from '../../components/map/ServiceRequestMap';
 import { useAuth } from '../../context/AuthContext';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { useLocationName } from '../../hooks/useLocationName';
-import { createBooking, markBookingPaid, subscribeBookingsForUser } from '../../services/bookingService';
+import {
+  completeClientPayment,
+  createBooking,
+  subscribeBookingsForUser,
+  updateBookingStatus
+} from '../../services/bookingService';
 import { searchLabours } from '../../services/labourService';
 import { createNotification } from '../../services/notificationService';
 import {
@@ -46,7 +52,7 @@ import {
 } from '../../utils/location';
 import { createRouteGroupId } from '../../utils/requestRouting';
 
-const openRequestStatuses = ['pending', 'accepted', 'in_progress'];
+const openRequestStatuses = ['pending', 'accepted', 'in_progress', 'awaiting_payment'];
 const generateStartOtp = () => String(Math.floor(100000 + Math.random() * 900000));
 
 const getBookingTone = (status) => {
@@ -64,6 +70,10 @@ const getBookingTone = (status) => {
 
   if (status === 'completed') {
     return 'blue';
+  }
+
+  if (status === 'awaiting_payment') {
+    return 'amber';
   }
 
   if (status === 'in_progress') {
@@ -106,6 +116,9 @@ const ClientDashboardPage = () => {
   const [selectedLabourId, setSelectedLabourId] = useState('');
   const [submittingInstant, setSubmittingInstant] = useState(false);
   const [scheduleSubmittingId, setScheduleSubmittingId] = useState('');
+  const [paymentAmounts, setPaymentAmounts] = useState({});
+  const [completingPaymentId, setCompletingPaymentId] = useState('');
+  const [cancellingBookingId, setCancellingBookingId] = useState('');
   const [requestCoordinates, setRequestCoordinates] = useState(
     () => normalizeCoordinates(userProfile?.coordinates) || null
   );
@@ -261,6 +274,10 @@ const ClientDashboardPage = () => {
     () => bookings.filter((booking) => ['accepted', 'in_progress'].includes(booking.status)),
     [bookings]
   );
+  const awaitingPaymentBookings = useMemo(
+    () => bookings.filter((booking) => booking.status === 'awaiting_payment'),
+    [bookings]
+  );
   const serviceOptions = useMemo(
     () =>
       Array.from(new Set(availableLabours.map((labour) => labour.category).filter(Boolean))).sort((a, b) =>
@@ -277,15 +294,13 @@ const ClientDashboardPage = () => {
   const metrics = useMemo(() => {
     const completed = bookings.filter((item) => item.status === 'completed').length;
     const scheduled = bookings.filter((item) => item.requestMode === 'scheduled').length;
-    const paymentsDue = bookings
-      .filter((item) => item.status === 'completed' && item.paymentStatus !== 'paid')
-      .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const paymentsDue = bookings.filter((item) => item.status === 'awaiting_payment').length;
 
     return [
       { label: 'Open requests', value: openBookings.length },
       { label: 'Scheduled visits', value: scheduled },
       { label: 'Completed services', value: completed },
-      { label: 'Payments due', value: formatCurrency(paymentsDue) }
+      { label: 'Payments due', value: paymentsDue }
     ];
   }, [bookings, openBookings.length]);
   const metricsLoading = bookingsLoading;
@@ -512,16 +527,83 @@ const ClientDashboardPage = () => {
     }
   };
 
-  const handleMarkPaid = async (booking) => {
+  const handlePaymentAmountChange = (bookingId, value) => {
+    const normalizedValue = value.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1');
+    setPaymentAmounts((prev) => ({ ...prev, [bookingId]: normalizedValue }));
+  };
+
+  const handleCompleteClientPayment = async (booking) => {
     if (!currentUser?.uid) {
       return;
     }
 
+    const paidAmount = Number(paymentAmounts[booking.id]);
+
+    if (!Number.isFinite(paidAmount) || paidAmount <= 0) {
+      toast.error('Enter the amount you paid to complete this service.');
+      return;
+    }
+
+    setCompletingPaymentId(booking.id);
+
     try {
-      await markBookingPaid({ bookingId: booking.id, clientId: currentUser.uid });
-      toast.success('Payment marked as paid.');
+      await completeClientPayment({ bookingId: booking.id, clientId: currentUser.uid, paidAmount });
+      setPaymentAmounts((prev) => ({ ...prev, [booking.id]: '' }));
+
+      if (booking.labourId) {
+        try {
+          await createNotification({
+            userId: booking.labourId,
+            senderId: currentUser.uid,
+            title: 'Payment completed',
+            body: `${userProfile?.fullName || 'Client'} completed ${booking.serviceType} with ${formatCurrency(paidAmount)} paid.`,
+            type: 'booking',
+            bookingId: booking.id
+          });
+        } catch (notificationError) {
+          console.warn('WorkLink notification delivery skipped:', notificationError);
+        }
+      }
+
+      toast.success('Service completed with paid amount.');
     } catch (error) {
       toast.error(getFirebaseErrorMessage(error));
+    } finally {
+      setCompletingPaymentId('');
+    }
+  };
+
+  const handleCancelBooking = async (booking) => {
+    if (!currentUser?.uid || booking.clientId !== currentUser.uid) {
+      toast.error('This request does not belong to your client account.');
+      return;
+    }
+
+    setCancellingBookingId(booking.id);
+
+    try {
+      await updateBookingStatus(booking.id, 'cancelled');
+
+      if (booking.labourId) {
+        try {
+          await createNotification({
+            userId: booking.labourId,
+            senderId: currentUser.uid,
+            title: 'Service request cancelled',
+            body: `${userProfile?.fullName || 'Client'} cancelled the ${booking.serviceType} request.`,
+            type: 'booking',
+            bookingId: booking.id
+          });
+        } catch (notificationError) {
+          console.warn('WorkLink notification delivery skipped:', notificationError);
+        }
+      }
+
+      toast.success('Service request cancelled.');
+    } catch (error) {
+      toast.error(getFirebaseErrorMessage(error));
+    } finally {
+      setCancellingBookingId('');
     }
   };
 
@@ -622,6 +704,18 @@ const ClientDashboardPage = () => {
                   <LoaderCircle size={26} className="animate-spin" />
                 </div>
               </div>
+              <div className="mt-4">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  disabled={cancellingBookingId === pendingBookings[0].id}
+                  onClick={() => handleCancelBooking(pendingBookings[0])}
+                >
+                  {cancellingBookingId === pendingBookings[0].id ? 'Cancelling...' : 'Cancel request'}
+                </Button>
+              </div>
             </Card>
           ) : null}
 
@@ -649,6 +743,57 @@ const ClientDashboardPage = () => {
                   </p>
                 </div>
               ) : null}
+              {activeBookings[0].status === 'accepted' ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="mt-4 w-full sm:w-auto"
+                  disabled={cancellingBookingId === activeBookings[0].id}
+                  onClick={() => handleCancelBooking(activeBookings[0])}
+                >
+                  {cancellingBookingId === activeBookings[0].id ? 'Cancelling...' : 'Cancel request'}
+                </Button>
+              ) : null}
+            </Card>
+          ) : null}
+
+          {awaitingPaymentBookings.length ? (
+            <Card className="rounded-[24px] border-amber-200 bg-amber-50 p-5">
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-700">
+                    Work finished
+                  </p>
+                  <h2 className="mt-2 text-xl font-semibold text-slate-950">
+                    Complete payment for {awaitingPaymentBookings[0].labourName}
+                  </h2>
+                  <p className="mt-2 text-sm font-medium leading-6 text-slate-700">
+                    Enter the amount you paid after the labour finishes the work. This closes the service for both sides.
+                  </p>
+                  <InputField
+                    label="Amount paid"
+                    type="number"
+                    min="1"
+                    inputMode="decimal"
+                    value={paymentAmounts[awaitingPaymentBookings[0].id] ?? ''}
+                    onChange={(event) =>
+                      handlePaymentAmountChange(awaitingPaymentBookings[0].id, event.target.value)
+                    }
+                    placeholder="Enter amount"
+                    className="mt-4 max-w-sm"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-11 w-full lg:w-auto"
+                  disabled={completingPaymentId === awaitingPaymentBookings[0].id}
+                  onClick={() => handleCompleteClientPayment(awaitingPaymentBookings[0])}
+                >
+                  {completingPaymentId === awaitingPaymentBookings[0].id ? 'Completing...' : 'Complete service'}
+                </Button>
+              </div>
             </Card>
           ) : null}
 
@@ -808,6 +953,8 @@ const ClientDashboardPage = () => {
                           <WalletCards size={15} />
                           {booking.status === 'completed' && Number(booking.amount) > 0
                             ? formatCurrency(booking.amount)
+                            : booking.status === 'awaiting_payment'
+                              ? 'Enter paid amount'
                             : 'Charge pending'}
                         </span>
                       </div>
@@ -822,19 +969,18 @@ const ClientDashboardPage = () => {
                                 Final charge: {formatCurrency(booking.amount)}
                               </p>
                             </div>
-                            {booking.paymentStatus !== 'paid' ? (
-                              <Button
-                                type="button"
-                                size="sm"
-                                className="w-full sm:w-auto"
-                                onClick={() => handleMarkPaid(booking)}
-                              >
-                                Pay worker
-                              </Button>
-                            ) : (
-                              <Badge tone="emerald">Paid</Badge>
-                            )}
+                            <Badge tone={booking.paymentStatus === 'paid' ? 'emerald' : 'amber'}>
+                              {booking.paymentStatus === 'paid' ? 'Paid' : 'Waiting'}
+                            </Badge>
                           </div>
+                        </div>
+                      ) : null}
+                      {booking.status === 'awaiting_payment' ? (
+                        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+                          <p className="text-sm font-semibold text-amber-950">Payment amount needed</p>
+                          <p className="mt-1 text-xs font-medium leading-5 text-amber-900">
+                            Use the work-finished card above to enter the paid amount and complete this request.
+                          </p>
                         </div>
                       ) : null}
                       {['accepted', 'in_progress'].includes(booking.status) ? (
@@ -855,7 +1001,31 @@ const ClientDashboardPage = () => {
                             <MessageCircle size={15} />
                             Chat labour
                           </Button>
+                          {booking.status === 'accepted' ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="w-full sm:w-auto"
+                              disabled={cancellingBookingId === booking.id}
+                              onClick={() => handleCancelBooking(booking)}
+                            >
+                              {cancellingBookingId === booking.id ? 'Cancelling...' : 'Cancel'}
+                            </Button>
+                          ) : null}
                         </div>
+                      ) : null}
+                      {booking.status === 'pending' ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="mt-4 w-full sm:w-auto"
+                          disabled={cancellingBookingId === booking.id}
+                          onClick={() => handleCancelBooking(booking)}
+                        >
+                          {cancellingBookingId === booking.id ? 'Cancelling...' : 'Cancel request'}
+                        </Button>
                       ) : null}
                     </div>
                   ))

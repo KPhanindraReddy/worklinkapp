@@ -25,6 +25,7 @@ import {
   verifyLabourAccount
 } from '../../services/adminService';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
+import { formatCurrency } from '../../utils/formatters';
 import { getLocationLabel } from '../../utils/location';
 
 const AdminDashboardPage = () => {
@@ -111,6 +112,11 @@ const AdminDashboardPage = () => {
       { label: 'Users', value: overview.analytics.userCount ?? 0, hint: 'Total users on the platform' },
       { label: 'Labour accounts', value: overview.analytics.labourCount ?? 0, hint: 'Registered labour profiles' },
       { label: 'Active bookings', value: overview.analytics.activeBookings ?? 0, hint: 'Current live booking volume' },
+      {
+        label: 'Paid earnings',
+        value: formatCurrency(overview.analytics.paidEarnings ?? 0),
+        hint: `${overview.analytics.paidBookingCount ?? 0} completed payments`
+      },
       {
         label: 'Pending verifications',
         value: overview.analytics.pendingVerifications ?? 0,

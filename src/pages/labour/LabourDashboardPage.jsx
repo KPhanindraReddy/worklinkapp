@@ -42,7 +42,7 @@ const buildAvatarUrl = (fullName) =>
 
 const labourDashboardNavItems = [
   { label: 'Home', href: '#labour-home', icon: House },
-  { label: 'Requests', href: '#labour-requests', icon: ClipboardList },
+  { label: 'Services', href: '#labour-requests', icon: ClipboardList },
   { label: 'Earnings', href: '#labour-earnings', icon: IndianRupee },
   { label: 'Profile', href: '#labour-profile', icon: UserRound }
 ];
@@ -92,7 +92,6 @@ const LabourDashboardPage = () => {
   const [dashboardLoading, setDashboardLoading] = useState(true);
   const [updatingAvailability, setUpdatingAvailability] = useState(false);
   const [otpValues, setOtpValues] = useState({});
-  const [completionAmounts, setCompletionAmounts] = useState({});
   const [startingBookingId, setStartingBookingId] = useState('');
   const [completingBookingId, setCompletingBookingId] = useState('');
 
@@ -250,24 +249,33 @@ const LabourDashboardPage = () => {
   }, [bookings, dashboardProfile.completedJobs]);
 
   const financialSummary = useMemo(() => {
-    const dueAmount = bookings
-      .filter((item) => item.status === 'completed' && item.paymentStatus !== 'paid')
-      .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const awaitingPaymentCount = bookings.filter((item) => item.status === 'awaiting_payment').length;
     const paidAmount = bookings
       .filter((item) => item.status === 'completed' && item.paymentStatus === 'paid')
       .reduce((sum, item) => sum + Number(item.amount || 0), 0);
     const completedAmount = bookings
       .filter((item) => item.status === 'completed')
       .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const todayKey = getDateKey(new Date());
+    const todayAmount = bookings
+      .filter((item) => {
+        const paidDateKey = getDateKey(item.paidAt || item.clientCompletedAt || item.completedAt || item.appointmentAt);
+        return item.status === 'completed' && item.paymentStatus === 'paid' && paidDateKey === todayKey;
+      })
+      .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
     return [
       {
-        label: 'Payment due',
-        value: formatCurrency(dueAmount)
+        label: 'Awaiting client amount',
+        value: `${awaitingPaymentCount} job${awaitingPaymentCount === 1 ? '' : 's'}`
       },
       {
         label: 'Paid earnings',
         value: formatCurrency(paidAmount)
+      },
+      {
+        label: 'Today earned',
+        value: formatCurrency(todayAmount)
       },
       {
         label: 'Total completed',
@@ -308,7 +316,7 @@ const LabourDashboardPage = () => {
     const coordinates = booking.coordinates;
 
     if (coordinates?.latitude != null && coordinates?.longitude != null) {
-      return `https://www.google.com/maps/dir/?api=1&destination=${coordinates.latitude},${coordinates.longitude}`;
+      return `https://www.google.com/maps/dir/?api=1&destination=${coordinates.latitude},${coordinates.longitude}&travelmode=driving`;
     }
 
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(booking.location || '')}`;
@@ -401,11 +409,6 @@ const LabourDashboardPage = () => {
     setOtpValues((prev) => ({ ...prev, [bookingId]: numericValue }));
   };
 
-  const handleCompletionAmountChange = (bookingId, value) => {
-    const normalizedValue = value.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1');
-    setCompletionAmounts((prev) => ({ ...prev, [bookingId]: normalizedValue }));
-  };
-
   const handleStartWork = async (booking) => {
     if (!currentUser || booking.labourId !== currentUser.uid) {
       toast.error('This booking does not belong to your labour account.');
@@ -461,24 +464,16 @@ const LabourDashboardPage = () => {
       return;
     }
 
-    const finalAmount = Number(completionAmounts[booking.id]);
-
-    if (!Number.isFinite(finalAmount) || finalAmount <= 0) {
-      toast.error('Enter the final amount before completing this work.');
-      return;
-    }
-
     setCompletingBookingId(booking.id);
 
     try {
-      await completeBookingWork({ bookingId: booking.id, labourId: currentUser.uid, finalAmount });
+      await completeBookingWork({ bookingId: booking.id, labourId: currentUser.uid });
       setProfile((prev) =>
         prev
           ? {
               ...prev,
               availability: 'Available',
-              activeBookingId: '',
-              completedJobs: Number(prev.completedJobs || 0) + 1
+              activeBookingId: ''
             }
           : prev
       );
@@ -490,8 +485,8 @@ const LabourDashboardPage = () => {
           await createNotification({
             userId: booking.clientId,
             senderId: currentUser.uid,
-            title: 'Work completed',
-            body: `${dashboardProfile.fullName} completed ${booking.serviceType}. Final payment: ${formatCurrency(finalAmount)}.`,
+            title: 'Work finished',
+            body: `${dashboardProfile.fullName} finished your ${booking.serviceType}. Enter the paid amount to complete the service.`,
             type: 'booking',
             bookingId: booking.id
           });
@@ -503,10 +498,9 @@ const LabourDashboardPage = () => {
 
       toast.success(
         notificationDelivered
-          ? `Work completed. Client payment due: ${formatCurrency(finalAmount)}.`
-          : `Work completed for ${formatCurrency(finalAmount)}. Client alert will appear after Firestore rules are deployed.`
+          ? 'Work marked finished. The client will enter the paid amount and complete it.'
+          : 'Work marked finished. Client alert will appear after Firestore rules are deployed.'
       );
-      setCompletionAmounts((prev) => ({ ...prev, [booking.id]: '' }));
     } catch (error) {
       toast.error(getFirebaseErrorMessage(error));
     } finally {
@@ -813,6 +807,43 @@ const LabourDashboardPage = () => {
                         className="mt-4 !min-h-[280px] rounded-[24px] sm:!min-h-[320px]"
                       />
 
+                      <div className="mt-3 grid gap-2 sm:flex sm:flex-wrap">
+                        <Button
+                          as="a"
+                          href={buildDirectionsUrl(booking)}
+                          target="_blank"
+                          rel="noreferrer"
+                          size="sm"
+                          className="w-full sm:w-auto"
+                        >
+                          <Navigation size={15} />
+                          Open directions
+                        </Button>
+                        <Button
+                          as="a"
+                          href={booking.clientPhoneNumber ? `tel:${booking.clientPhoneNumber}` : undefined}
+                          size="sm"
+                          variant="outline"
+                          className={`w-full sm:w-auto ${
+                            !booking.clientPhoneNumber ? 'pointer-events-none opacity-60' : ''
+                          }`}
+                        >
+                          <Phone size={15} />
+                          Call client
+                        </Button>
+                        <Button
+                          as={Link}
+                          to="/chat"
+                          size="sm"
+                          variant="outline"
+                          className="w-full sm:w-auto"
+                          onClick={() => handleOpenClientChat(booking)}
+                        >
+                          <MessageCircle size={15} />
+                          Chat
+                        </Button>
+                      </div>
+
                       {booking.status === 'accepted' ? (
                         <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
                           <InputField
@@ -839,17 +870,8 @@ const LabourDashboardPage = () => {
                             <div>
                               <p className="text-sm font-semibold text-amber-950">Labour marked busy</p>
                               <p className="mt-1 text-xs font-medium leading-5 text-amber-900">
-                                Enter the final work amount before completing. Client will pay this amount after completion.
+                                Tap work finished after the job is done. The client will enter the paid amount and close the service.
                               </p>
-                              <InputField
-                                label="Final amount"
-                                type="number"
-                                min="1"
-                                value={completionAmounts[booking.id] ?? ''}
-                                onChange={(event) => handleCompletionAmountChange(booking.id, event.target.value)}
-                                placeholder="Enter amount to collect"
-                                className="mt-3"
-                              />
                             </div>
                             <Button
                               type="button"
@@ -858,7 +880,7 @@ const LabourDashboardPage = () => {
                               className="h-11 w-full lg:w-auto"
                               onClick={() => handleCompleteWork(booking)}
                             >
-                              {completingBookingId === booking.id ? 'Completing...' : 'Complete work'}
+                              {completingBookingId === booking.id ? 'Updating...' : 'Work finished'}
                             </Button>
                           </div>
                         </div>
@@ -894,7 +916,7 @@ const LabourDashboardPage = () => {
                             {formatDate(booking.appointmentAt)}
                           </p>
                           <p className="mt-2 text-sm font-semibold text-brand-700 dark:text-brand-200">
-                            Final amount is added after work completion.
+                            Client adds the paid amount after you finish the work.
                           </p>
                           {booking.serviceDetails ? (
                             <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
@@ -969,9 +991,9 @@ const LabourDashboardPage = () => {
                   ))}
                 </div>
                 <div className="mt-5 space-y-3">
-                  {bookings.filter((item) => item.status === 'completed').length ? (
+                  {bookings.filter((item) => ['awaiting_payment', 'completed'].includes(item.status)).length ? (
                     bookings
-                      .filter((item) => item.status === 'completed')
+                      .filter((item) => ['awaiting_payment', 'completed'].includes(item.status))
                       .slice(0, 6)
                       .map((booking) => (
                         <div key={booking.id} className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -981,11 +1003,11 @@ const LabourDashboardPage = () => {
                               <p className="mt-1 text-sm text-slate-600">{booking.serviceType}</p>
                             </div>
                             <Badge tone={booking.paymentStatus === 'paid' ? 'emerald' : 'amber'}>
-                              {booking.paymentStatus === 'paid' ? 'Paid' : 'Due'}
+                              {booking.paymentStatus === 'paid' ? 'Paid' : 'Awaiting client'}
                             </Badge>
                           </div>
                           <p className="mt-3 text-lg font-bold text-slate-950">
-                            {formatCurrency(booking.amount)}
+                            {Number(booking.amount) > 0 ? formatCurrency(booking.amount) : 'Amount pending'}
                           </p>
                         </div>
                       ))

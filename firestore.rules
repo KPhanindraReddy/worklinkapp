@@ -55,6 +55,7 @@ service cloud.firestore {
       return request.auth.uid == resource.data.clientId &&
         hasRole('client') &&
         bookingPartiesUnchanged() &&
+        resource.data.status in ['pending', 'accepted'] &&
         onlyBookingFieldsChanged(['status', 'updatedAt']) &&
         request.resource.data.status == 'cancelled';
     }
@@ -110,37 +111,40 @@ service cloud.firestore {
         bookingPartiesUnchanged() &&
         bookingOtpUnchanged() &&
         resource.data.status == 'in_progress' &&
+        request.resource.data.status == 'awaiting_payment' &&
+        request.resource.data.paymentStatus == 'client_amount_required' &&
+        request.resource.data.workFinishedBy == request.auth.uid &&
+        onlyBookingFieldsChanged([
+          'status',
+          'paymentStatus',
+          'workFinishedAt',
+          'workFinishedBy',
+          'updatedAt'
+        ]);
+    }
+
+    function clientCanCompletePaidBooking() {
+      return request.auth.uid == resource.data.clientId &&
+        hasRole('client') &&
+        bookingPartiesUnchanged() &&
+        bookingOtpUnchanged() &&
+        resource.data.status in ['awaiting_payment', 'completed'] &&
+        resource.data.paymentStatus != 'paid' &&
         request.resource.data.status == 'completed' &&
-        request.resource.data.completedBy == request.auth.uid &&
         request.resource.data.amount is number &&
         request.resource.data.amount > 0 &&
         request.resource.data.finalAmount == request.resource.data.amount &&
-        request.resource.data.paymentStatus == 'due' &&
+        request.resource.data.paymentStatus == 'paid' &&
+        request.resource.data.paidBy == request.auth.uid &&
         onlyBookingFieldsChanged([
           'status',
           'amount',
           'finalAmount',
           'paymentStatus',
-          'paymentRequestedAt',
-          'completedAt',
-          'completedBy',
-          'updatedAt'
-        ]);
-    }
-
-    function clientCanMarkBookingPaid() {
-      return request.auth.uid == resource.data.clientId &&
-        hasRole('client') &&
-        bookingPartiesUnchanged() &&
-        bookingOtpUnchanged() &&
-        resource.data.status == 'completed' &&
-        request.resource.data.status == resource.data.status &&
-        request.resource.data.paymentStatus == 'paid' &&
-        request.resource.data.paidBy == request.auth.uid &&
-        onlyBookingFieldsChanged([
-          'paymentStatus',
           'paidAt',
           'paidBy',
+          'completedAt',
+          'clientCompletedAt',
           'updatedAt'
         ]);
     }
@@ -310,7 +314,7 @@ service cloud.firestore {
         (clientCanCancelBooking() ||
          clientCanTimeoutBooking() ||
          clientCanReviewCompletedBooking() ||
-         clientCanMarkBookingPaid() ||
+         clientCanCompletePaidBooking() ||
          labourCanAcceptOrRejectBooking() ||
          labourCanStartBooking() ||
          labourCanCompleteBooking() ||

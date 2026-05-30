@@ -19,7 +19,7 @@ export const buildBottomDockItems = ({ currentUser, userProfile }) => {
         matchers: [homeTarget]
       },
       {
-        label: 'Requests',
+        label: 'Services',
         to: '/labour/dashboard#labour-requests',
         icon: ClipboardList,
         matchers: []
@@ -32,9 +32,9 @@ export const buildBottomDockItems = ({ currentUser, userProfile }) => {
       },
       {
         label: 'Profile',
-        to: '/settings',
+        to: '/labour/dashboard#labour-profile',
         icon: UserRound,
-        matchers: ['/settings', '/complete-profile*']
+        matchers: []
       }
     ];
   }

@@ -27,7 +27,12 @@ import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { useLocationName } from '../../hooks/useLocationName';
-import { createBooking, subscribeBookingsForUser } from '../../services/bookingService';
+import {
+  completeClientPayment,
+  createBooking,
+  subscribeBookingsForUser,
+  updateBookingStatus
+} from '../../services/bookingService';
 import { ensureConversation } from '../../services/chatService';
 import { getLabourById, searchLabours } from '../../services/labourService';
 import { createNotification } from '../../services/notificationService';
@@ -71,6 +76,9 @@ const BookingPage = () => {
   const [searching, setSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [autoRetriedRejectionId, setAutoRetriedRejectionId] = useState('');
+  const [paymentAmounts, setPaymentAmounts] = useState({});
+  const [completingPaymentId, setCompletingPaymentId] = useState('');
+  const [cancellingBookingId, setCancellingBookingId] = useState('');
   const [formValues, setFormValues] = useState({
     serviceName: initialService,
     serviceDetails: '',
@@ -152,6 +160,10 @@ const BookingPage = () => {
     () => bookings.filter((booking) => booking.status === 'pending'),
     [bookings]
   );
+  const awaitingPaymentBookings = useMemo(
+    () => bookings.filter((booking) => booking.status === 'awaiting_payment'),
+    [bookings]
+  );
   const rejectedBookings = useMemo(
     () => bookings.filter((booking) => booking.status === 'rejected'),
     [bookings]
@@ -194,12 +206,12 @@ const BookingPage = () => {
     () => sortedAvailableLabours.filter((labour) => !serviceBookingIds.has(labour.id)),
     [serviceBookingIds, sortedAvailableLabours]
   );
-  const hasPendingRequest = pendingBookings.length > 0;
+  const hasOpenRequest = pendingBookings.length > 0 || activeBookings.length > 0 || awaitingPaymentBookings.length > 0;
 
   const canSearch = Boolean(formValues.serviceName.trim() && formValues.address.trim() && clientLocation);
   const canRequest = Boolean(
     !clientIsBusy &&
-      !hasPendingRequest &&
+      !hasOpenRequest &&
       selectedLabour &&
       selectedLabour.availability === 'Available' &&
       formValues.serviceName.trim() &&
@@ -222,10 +234,18 @@ const BookingPage = () => {
       userId: currentUser.uid,
       pending: pendingBookings.length,
       active: activeBookings.length,
+      awaitingPayment: awaitingPaymentBookings.length,
       rejected: rejectedBookings.length,
       total: bookings.length
     });
-  }, [activeBookings.length, bookings.length, currentUser, pendingBookings.length, rejectedBookings.length]);
+  }, [
+    activeBookings.length,
+    awaitingPaymentBookings.length,
+    bookings.length,
+    currentUser,
+    pendingBookings.length,
+    rejectedBookings.length
+  ]);
 
   const handleServiceSelect = async (service) => {
     setSelectedLabour(null);
@@ -242,8 +262,8 @@ const BookingPage = () => {
   };
 
   const handleSearchLabour = async (serviceOverride) => {
-    if (clientIsBusy) {
-      toast.error('Complete your current in-progress work before requesting another labour.');
+    if (hasOpenRequest) {
+      toast.error('Complete or cancel your current request before searching another labour.');
       return;
     }
 
@@ -312,7 +332,7 @@ const BookingPage = () => {
     if (
       !latestRejected ||
       latestRejected.id === autoRetriedRejectionId ||
-      hasPendingRequest ||
+      hasOpenRequest ||
       searching ||
       !formValues.address.trim()
     ) {
@@ -330,7 +350,7 @@ const BookingPage = () => {
     autoRetriedRejectionId,
     currentService,
     formValues.address,
-    hasPendingRequest,
+    hasOpenRequest,
     rejectedBookings,
     searching
   ]);
@@ -477,6 +497,54 @@ const BookingPage = () => {
     }
   };
 
+  const handlePaymentAmountChange = (bookingId, value) => {
+    const normalizedValue = value.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1');
+    setPaymentAmounts((prev) => ({ ...prev, [bookingId]: normalizedValue }));
+  };
+
+  const handleCompleteClientPayment = async (booking) => {
+    if (!currentUser?.uid) {
+      return;
+    }
+
+    const paidAmount = Number(paymentAmounts[booking.id]);
+
+    if (!Number.isFinite(paidAmount) || paidAmount <= 0) {
+      toast.error('Enter the amount you paid to complete this service.');
+      return;
+    }
+
+    setCompletingPaymentId(booking.id);
+
+    try {
+      await completeClientPayment({ bookingId: booking.id, clientId: currentUser.uid, paidAmount });
+      setPaymentAmounts((prev) => ({ ...prev, [booking.id]: '' }));
+      toast.success('Service completed with paid amount.');
+    } catch (error) {
+      toast.error(getFirebaseErrorMessage(error));
+    } finally {
+      setCompletingPaymentId('');
+    }
+  };
+
+  const handleCancelBooking = async (booking) => {
+    if (booking.clientId !== currentUser?.uid) {
+      toast.error('This request does not belong to your client account.');
+      return;
+    }
+
+    setCancellingBookingId(booking.id);
+
+    try {
+      await updateBookingStatus(booking.id, 'cancelled');
+      toast.success('Service request cancelled.');
+    } catch (error) {
+      toast.error(getFirebaseErrorMessage(error));
+    } finally {
+      setCancellingBookingId('');
+    }
+  };
+
   return (
     <AppShell>
       <PageSEO
@@ -538,6 +606,16 @@ const BookingPage = () => {
                       <LoaderCircle size={30} className="animate-spin" />
                     </div>
                   </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="mt-4 w-full sm:w-auto"
+                    disabled={cancellingBookingId === pendingBookings[0].id}
+                    onClick={() => handleCancelBooking(pendingBookings[0])}
+                  >
+                    {cancellingBookingId === pendingBookings[0].id ? 'Cancelling...' : 'Cancel request'}
+                  </Button>
                 </Card>
               ) : null}
 
@@ -600,6 +678,40 @@ const BookingPage = () => {
                 </Card>
               ) : null}
 
+              {awaitingPaymentBookings.length ? (
+                <Card className="rounded-[28px] border-amber-200 bg-amber-50 p-5">
+                  <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+                    <div>
+                      <h2 className="text-lg font-semibold text-amber-950">Work finished</h2>
+                      <p className="mt-2 text-sm font-medium leading-6 text-amber-900">
+                        Enter the amount you paid to complete {awaitingPaymentBookings[0].serviceType}.
+                      </p>
+                      <InputField
+                        label="Amount paid"
+                        type="number"
+                        min="1"
+                        inputMode="decimal"
+                        value={paymentAmounts[awaitingPaymentBookings[0].id] ?? ''}
+                        onChange={(event) =>
+                          handlePaymentAmountChange(awaitingPaymentBookings[0].id, event.target.value)
+                        }
+                        placeholder="Enter amount"
+                        className="mt-4 max-w-sm"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-11 w-full lg:w-auto"
+                      disabled={completingPaymentId === awaitingPaymentBookings[0].id}
+                      onClick={() => handleCompleteClientPayment(awaitingPaymentBookings[0])}
+                    >
+                      {completingPaymentId === awaitingPaymentBookings[0].id ? 'Completing...' : 'Complete service'}
+                    </Button>
+                  </div>
+                </Card>
+              ) : null}
+
               <form onSubmit={handleSubmit} className="space-y-6">
                 <Card className="rounded-[28px] border-slate-300 p-4 shadow-sm sm:p-6 md:p-8">
                   <div className="grid gap-4">
@@ -646,7 +758,7 @@ const BookingPage = () => {
                   </div>
 
                   <div className="mt-6 grid gap-3 sm:flex sm:flex-wrap">
-                    <Button type="button" className="w-full sm:w-auto" onClick={() => handleSearchLabour()} disabled={searching || !canSearch || clientIsBusy}>
+                    <Button type="button" className="w-full sm:w-auto" onClick={() => handleSearchLabour()} disabled={searching || !canSearch || hasOpenRequest}>
                       <Search size={16} />
                       {searching ? 'Checking...' : `Check labour within ${NEARBY_LABOUR_RADIUS_KM} km`}
                     </Button>
@@ -695,7 +807,7 @@ const BookingPage = () => {
 
                 <Button type="submit" size="lg" className="w-full" disabled={submitting || !canRequest}>
                   <Send size={17} />
-                  {submitting ? 'Sending request...' : hasPendingRequest ? 'Waiting for labour response' : 'Send request to selected labour'}
+                  {submitting ? 'Sending request...' : hasOpenRequest ? 'Finish current request first' : 'Send request to selected labour'}
                 </Button>
               </form>
             </div>
@@ -719,7 +831,7 @@ const BookingPage = () => {
                         key={labour.id}
                         type="button"
                         onClick={() => setSelectedLabour(labour)}
-                        disabled={hasPendingRequest}
+                        disabled={hasOpenRequest}
                         className={`w-full rounded-3xl border p-4 text-left transition ${
                           selectedLabour?.id === labour.id
                             ? 'border-brand-500 bg-brand-50'
@@ -844,6 +956,18 @@ const BookingPage = () => {
                             <MessageCircle size={15} />
                             Chat
                           </Button>
+                          {booking.status === 'accepted' ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="w-full sm:w-auto"
+                              disabled={cancellingBookingId === booking.id}
+                              onClick={() => handleCancelBooking(booking)}
+                            >
+                              {cancellingBookingId === booking.id ? 'Cancelling...' : 'Cancel'}
+                            </Button>
+                          ) : null}
                         </div>
                       </div>
                     ))
@@ -871,7 +995,7 @@ const BookingPage = () => {
                             {booking.labourName} - {getDisplayLocationText(booking.location, 'Live location shared')}
                             </p>
                           </div>
-                          <Badge tone={booking.status === 'accepted' ? 'emerald' : booking.status === 'rejected' ? 'rose' : booking.status === 'timed_out' ? 'slate' : 'amber'}>
+                          <Badge tone={booking.status === 'accepted' ? 'emerald' : booking.status === 'completed' ? 'blue' : booking.status === 'rejected' ? 'rose' : booking.status === 'timed_out' ? 'slate' : 'amber'}>
                             {booking.status}
                           </Badge>
                         </div>
@@ -879,6 +1003,10 @@ const BookingPage = () => {
                         {booking.status === 'completed' && Number(booking.amount) > 0 ? (
                           <p className="mt-2 text-sm font-semibold text-brand-700">
                             Final charge: {formatCurrency(booking.amount)}
+                          </p>
+                        ) : booking.status === 'awaiting_payment' ? (
+                          <p className="mt-2 text-sm font-semibold text-amber-700">
+                            Enter the paid amount above to complete this service.
                           </p>
                         ) : null}
                       </div>

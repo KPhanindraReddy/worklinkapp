@@ -31,7 +31,9 @@ export const getAdminOverview = async () => {
         userCount: 0,
         labourCount: 0,
         activeBookings: 0,
-        pendingVerifications: 0
+        pendingVerifications: 0,
+        paidEarnings: 0,
+        paidBookingCount: 0
       },
       categories: fallbackCategories,
       pendingLabours: []
@@ -43,22 +45,41 @@ export const getAdminOverview = async () => {
     where('verified', '==', false),
     limit(24)
   );
-  const [usersCountSnapshot, laboursCountSnapshot, bookingsCountSnapshot, pendingCountSnapshot, pendingLaboursSnapshot] = await Promise.all([
+  const paidBookingsQuery = query(
+    collection(db, 'bookings'),
+    where('paymentStatus', '==', 'paid'),
+    limit(500)
+  );
+  const [
+    usersCountSnapshot,
+    laboursCountSnapshot,
+    bookingsCountSnapshot,
+    pendingCountSnapshot,
+    pendingLaboursSnapshot,
+    paidBookingsSnapshot
+  ] = await Promise.all([
     getCountFromServer(collection(db, 'users')),
     getCountFromServer(collection(db, 'labours')),
     getCountFromServer(collection(db, 'bookings')),
     getCountFromServer(query(collection(db, 'labours'), where('verified', '==', false))),
-    getDocs(pendingLaboursQuery)
+    getDocs(pendingLaboursQuery),
+    getDocs(paidBookingsQuery)
   ]);
 
   const pendingLabours = pendingLaboursSnapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+  const paidEarnings = paidBookingsSnapshot.docs.reduce(
+    (sum, item) => sum + Number(item.data().amount || 0),
+    0
+  );
 
   return {
     analytics: {
       userCount: usersCountSnapshot.data().count,
       labourCount: laboursCountSnapshot.data().count,
       activeBookings: bookingsCountSnapshot.data().count,
-      pendingVerifications: pendingCountSnapshot.data().count
+      pendingVerifications: pendingCountSnapshot.data().count,
+      paidEarnings,
+      paidBookingCount: paidBookingsSnapshot.size
     },
     categories: fallbackCategories,
     pendingLabours

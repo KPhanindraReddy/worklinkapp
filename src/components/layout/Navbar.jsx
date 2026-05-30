@@ -144,7 +144,7 @@ export const Navbar = () => {
               },
               {
                 to: '/labour/dashboard#labour-requests',
-                label: 'Requests',
+                label: 'Services',
                 icon: ClipboardList,
                 matchers: []
               },
