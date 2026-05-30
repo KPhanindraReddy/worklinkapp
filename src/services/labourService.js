@@ -18,8 +18,8 @@ import {
   labourMatchesServiceQuery,
   recommendLabours
 } from '../utils/recommendations';
-import { workCategories } from '../utils/constants';
-import { buildLocationCacheKey } from '../utils/location';
+import { NEARBY_LABOUR_RADIUS_KM, workCategories } from '../utils/constants';
+import { buildLocationCacheKey, normalizeCoordinates } from '../utils/location';
 
 const SEARCH_RESULT_LIMIT = 80;
 const SEARCH_CACHE_TTL_MS = 30000;
@@ -28,7 +28,7 @@ const debugLabourSearch = (message, payload = {}) => {
   console.debug(`[WorkLink labour search] ${message}`, payload);
 };
 
-const buildSearchCacheKey = (filters, resolvedCategory, origin) =>
+const buildSearchCacheKey = (filters, resolvedCategory, origin, maxDistanceKm) =>
   JSON.stringify({
     skill: String(filters.skill ?? '').trim().toLowerCase(),
     category: String(filters.category ?? '').trim().toLowerCase(),
@@ -37,6 +37,7 @@ const buildSearchCacheKey = (filters, resolvedCategory, origin) =>
     minRating: String(filters.minRating ?? '').trim(),
     minExperience: String(filters.minExperience ?? '').trim(),
     maxPrice: String(filters.maxPrice ?? '').trim(),
+    maxDistanceKm: maxDistanceKm ?? '',
     origin: buildLocationCacheKey(origin)
   });
 
@@ -145,6 +146,16 @@ const fetchLabourCandidates = async (filters, resolvedCategory) => {
 };
 
 const normalizeSearchValue = (value) => String(value ?? '').trim().toLowerCase();
+const resolveMaxDistanceKm = (filters, origin) => {
+  const requestedDistance = Number(filters.maxDistanceKm);
+
+  if (Number.isFinite(requestedDistance) && requestedDistance > 0) {
+    return requestedDistance;
+  }
+
+  return origin ? NEARBY_LABOUR_RADIUS_KM : null;
+};
+
 const resolveCategoryFromSkill = (skill) => {
   const normalizedSkill = normalizeSearchValue(skill);
 
@@ -177,7 +188,9 @@ export const fetchFeaturedLabours = async (count = 6) => {
 
 export const searchLabours = async (filters = {}, origin) => {
   const resolvedCategory = filters.category || resolveCategoryFromSkill(filters.skill);
-  const cacheKey = buildSearchCacheKey(filters, resolvedCategory, origin);
+  const normalizedOrigin = normalizeCoordinates(origin);
+  const maxDistanceKm = resolveMaxDistanceKm(filters, normalizedOrigin);
+  const cacheKey = buildSearchCacheKey(filters, resolvedCategory, normalizedOrigin, maxDistanceKm);
   const cachedEntry = getCachedSearchResults(cacheKey);
 
   if (cachedEntry?.results) {
@@ -193,15 +206,20 @@ export const searchLabours = async (filters = {}, origin) => {
       return [];
     }
 
+    if (Number.isFinite(maxDistanceKm) && !normalizedOrigin) {
+      return [];
+    }
+
     const items = await fetchLabourCandidates(filters, resolvedCategory);
     debugLabourSearch('ranking candidates', {
       filters,
       resolvedCategory,
-      origin,
+      maxDistanceKm,
+      origin: normalizedOrigin,
       candidateCount: items.length
     });
 
-    return recommendLabours(items, filters, origin)
+    return recommendLabours(items, filters, normalizedOrigin)
       .filter((labour) => {
         const matchesSkill = filters.skill ? labourMatchesServiceQuery(labour, filters.skill) : true;
         const matchesCategory = filters.category
@@ -216,8 +234,11 @@ export const searchLabours = async (filters = {}, origin) => {
           ? labour.experienceYears >= Number(filters.minExperience)
           : true;
         const matchesRating = filters.minRating ? labour.rating >= Number(filters.minRating) : true;
+        const matchesDistance = Number.isFinite(maxDistanceKm)
+          ? Number.isFinite(Number(labour.distanceKm)) && Number(labour.distanceKm) <= maxDistanceKm
+          : true;
 
-        return matchesService && matchesPrice && matchesExperience && matchesRating;
+        return matchesService && matchesPrice && matchesExperience && matchesRating && matchesDistance;
       })
       .slice(0, SEARCH_RESULT_LIMIT);
   })();

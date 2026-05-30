@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { MapPin, Navigation, RadioTower, UserCheck } from 'lucide-react';
+import { MapPin, Minus, Navigation, Plus, RadioTower, UserCheck } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
@@ -15,10 +15,27 @@ const fallbackPinPositions = [
   { left: '43%', top: '22%' }
 ];
 
+const MAPBOX_STATIC_SIZE = 1280;
+const MAP_TILE_SIZE = 512;
+
+const clampNumber = (value, min, max) => {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? Math.min(Math.max(numericValue, min), max) : min;
+};
 const clampPercent = (value, min = 9, max = 91) => Math.min(Math.max(value, min), max);
 
-const getMapboxStaticUrl = (center) => {
-  const mapboxToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+const getMapboxToken = () =>
+  [
+    import.meta.env.VITE_MAPBOX_ACCESS_TOKEN,
+    import.meta.env.VITE_MAPBOX_TOKEN,
+    import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN,
+    import.meta.env.REACT_APP_MAPBOX_ACCESS_TOKEN
+  ]
+    .map((value) => String(value ?? '').trim())
+    .find(Boolean) ?? '';
+
+const getMapboxStaticUrl = (center, zoomLevel) => {
+  const mapboxToken = getMapboxToken();
   const normalizedCenter = normalizeCoordinates(center);
 
   if (!mapboxToken || !normalizedCenter) {
@@ -27,22 +44,48 @@ const getMapboxStaticUrl = (center) => {
 
   const longitude = normalizedCenter.longitude.toFixed(5);
   const latitude = normalizedCenter.latitude.toFixed(5);
+  const zoom = clampNumber(zoomLevel, 3, 18).toFixed(2);
 
-  return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${longitude},${latitude},16,0/1280x1280?logo=false&attribution=false&access_token=${encodeURIComponent(mapboxToken)}`;
+  return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${longitude},${latitude},${zoom},0/${MAPBOX_STATIC_SIZE}x${MAPBOX_STATIC_SIZE}?logo=false&attribution=false&access_token=${encodeURIComponent(mapboxToken)}`;
 };
 
-const getPinPosition = ({ labour, index, center }) => {
+const getWorldPoint = (coordinates, zoomLevel) => {
+  const latitude = clampNumber(coordinates.latitude, -85.05113, 85.05113);
+  const longitude = clampNumber(coordinates.longitude, -180, 180);
+  const sinLatitude = Math.sin((latitude * Math.PI) / 180);
+  const scale = MAP_TILE_SIZE * 2 ** zoomLevel;
+
+  return {
+    x: ((longitude + 180) / 360) * scale,
+    y:
+      (0.5 -
+        Math.log((1 + sinLatitude) / (1 - sinLatitude)) / (4 * Math.PI)) *
+      scale
+  };
+};
+
+const getProjectedPinPosition = ({ center, target, zoomLevel }) => {
+  const centerPoint = getWorldPoint(center, zoomLevel);
+  const targetPoint = getWorldPoint(target, zoomLevel);
+  const left = 50 + ((targetPoint.x - centerPoint.x) / MAPBOX_STATIC_SIZE) * 100;
+  const top = 48 + ((targetPoint.y - centerPoint.y) / MAPBOX_STATIC_SIZE) * 100;
+
+  return {
+    left: `${clampPercent(left, 8, 92)}%`,
+    top: `${clampPercent(top, 14, 68)}%`
+  };
+};
+
+const getPinPosition = ({ labour, index, center, zoomLevel }) => {
   const mapCenter = normalizeCoordinates(center);
   const workerCoordinates = normalizeCoordinates(labour?.liveCoordinates || labour?.coordinates);
 
   if (mapCenter && workerCoordinates) {
-    const latitudeDelta = workerCoordinates.latitude - mapCenter.latitude;
-    const longitudeDelta = workerCoordinates.longitude - mapCenter.longitude;
-
-    return {
-      left: `${clampPercent(50 + longitudeDelta * 3600)}%`,
-      top: `${clampPercent(50 - latitudeDelta * 3600, 14, 74)}%`
-    };
+    return getProjectedPinPosition({
+      center: mapCenter,
+      target: workerCoordinates,
+      zoomLevel
+    });
   }
 
   return fallbackPinPositions[index % fallbackPinPositions.length];
@@ -63,16 +106,45 @@ export const ServiceRequestMap = ({
   className,
   sheetClassName,
   showRoutePreview = false,
+  showZoomControls = true,
+  initialZoom = 14,
+  minZoom = 9,
+  maxZoom = 17,
   children
 }) => {
   const normalizedCenter = normalizeCoordinates(center);
-  const mapboxStaticUrl = useMemo(() => getMapboxStaticUrl(normalizedCenter), [normalizedCenter]);
+  const [zoomLevel, setZoomLevel] = useState(() => clampNumber(initialZoom, minZoom, maxZoom));
+  const mapboxStaticUrl = useMemo(
+    () => getMapboxStaticUrl(normalizedCenter, zoomLevel),
+    [normalizedCenter, zoomLevel]
+  );
   const [mapImageFailed, setMapImageFailed] = useState(false);
   const showMapboxImage = Boolean(mapboxStaticUrl && !mapImageFailed);
+  const selectedLabourIndex = useMemo(
+    () => labours.findIndex((labour) => labour.id === selectedLabourId),
+    [labours, selectedLabourId]
+  );
+  const selectedLabour = selectedLabourIndex >= 0 ? labours[selectedLabourIndex] : null;
+  const selectedLabourPosition = selectedLabour
+    ? getPinPosition({
+        labour: selectedLabour,
+        index: selectedLabourIndex,
+        center: normalizedCenter,
+        zoomLevel
+      })
+    : null;
 
   useEffect(() => {
     setMapImageFailed(false);
   }, [mapboxStaticUrl]);
+
+  useEffect(() => {
+    setZoomLevel(clampNumber(initialZoom, minZoom, maxZoom));
+  }, [initialZoom, maxZoom, minZoom]);
+
+  const updateZoom = (amount) => {
+    setZoomLevel((currentZoom) => clampNumber(currentZoom + amount, minZoom, maxZoom));
+  };
 
   return (
     <div
@@ -117,21 +189,30 @@ export const ServiceRequestMap = ({
         </div>
       ) : null}
 
-      {showRoutePreview ? (
-        <div className="pointer-events-none absolute inset-0 z-20">
-          <div className="absolute left-[8%] top-[53%] h-[5px] w-[70%] bg-slate-800/75" />
-          <div className="absolute right-[20%] top-[31%] h-[22%] w-[5px] bg-slate-800/75" />
-          <div className="absolute left-[37%] top-[31%] h-[5px] w-[43%] bg-slate-800/75" />
-          <div className="absolute left-[6%] top-[51%] h-8 w-8 rounded-full border-[6px] border-black bg-white" />
-          <div className="absolute right-[18.5%] top-[28%] h-8 w-5 rounded-sm bg-black" />
-          <div className="absolute left-[34%] top-[22%] max-w-[48%] rounded-sm bg-white px-3 py-2 shadow-soft">
-            <p className="truncate text-sm font-bold text-slate-950">{title}</p>
-            <p className="truncate text-xs font-medium text-slate-600">{subtitle}</p>
-          </div>
-        </div>
+      {showRoutePreview && selectedLabourPosition ? (
+        <svg className="pointer-events-none absolute inset-0 z-20 h-full w-full" aria-hidden="true">
+          <line
+            x1="50%"
+            y1="48%"
+            x2={selectedLabourPosition.left}
+            y2={selectedLabourPosition.top}
+            stroke="rgba(255,255,255,0.9)"
+            strokeWidth="10"
+            strokeLinecap="round"
+          />
+          <line
+            x1="50%"
+            y1="48%"
+            x2={selectedLabourPosition.left}
+            y2={selectedLabourPosition.top}
+            stroke="rgba(15,23,42,0.82)"
+            strokeWidth="5"
+            strokeLinecap="round"
+          />
+        </svg>
       ) : null}
 
-      <div className="absolute left-1/2 top-[42%] z-30 -translate-x-1/2 -translate-y-1/2">
+      <div className="absolute left-1/2 top-[48%] z-30 -translate-x-1/2 -translate-y-1/2">
         <div className="relative grid h-10 w-10 place-items-center rounded-full bg-sky-500/15">
           <span className="absolute h-20 w-20 animate-ping rounded-full bg-sky-500/20" />
           <span className="grid h-7 w-7 place-items-center rounded-full border-[4px] border-white bg-sky-500 shadow-[0_10px_30px_rgba(14,165,233,0.45)]">
@@ -147,7 +228,7 @@ export const ServiceRequestMap = ({
 
       {labours.slice(0, 6).map((labour, index) => {
         const selected = selectedLabourId === labour.id;
-        const pinStyle = getPinPosition({ labour, index, center: normalizedCenter });
+        const pinStyle = getPinPosition({ labour, index, center: normalizedCenter, zoomLevel });
         const PinElement = onSelectLabour ? 'button' : 'div';
 
         return (
@@ -158,6 +239,7 @@ export const ServiceRequestMap = ({
             className="absolute z-40 -translate-x-1/2 -translate-y-1/2 text-left"
             style={pinStyle}
             aria-label={onSelectLabour ? `Select ${labour.fullName}` : undefined}
+            aria-pressed={onSelectLabour ? selected : undefined}
           >
             <div
               className={clsx(
@@ -167,7 +249,7 @@ export const ServiceRequestMap = ({
             >
               <UserCheck size={19} />
             </div>
-            <div className="mt-2 max-w-[150px] rounded-2xl border border-slate-200 bg-white/95 px-3 py-2 shadow-soft">
+            <div className="mt-2 max-w-[120px] rounded-xl border border-slate-200 bg-white/95 px-2 py-1.5 shadow-soft sm:max-w-[150px] sm:rounded-2xl sm:px-3 sm:py-2">
               <p className="truncate text-xs font-bold text-slate-950">{labour.fullName}</p>
               <p className="truncate text-[11px] font-medium text-slate-600">
                 {formatDistanceKm(labour.distanceKm)}
@@ -189,6 +271,32 @@ export const ServiceRequestMap = ({
         ) : null}
       </div>
 
+      {showZoomControls ? (
+        <div className="absolute right-4 top-4 z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white/95 shadow-soft backdrop-blur">
+          <button
+            type="button"
+            className="grid h-10 w-10 place-items-center text-slate-900 transition hover:bg-slate-100 disabled:text-slate-300"
+            onClick={() => updateZoom(1)}
+            disabled={zoomLevel >= maxZoom}
+            aria-label="Zoom in"
+            title="Zoom in"
+          >
+            <Plus size={17} />
+          </button>
+          <div className="h-px bg-slate-200" />
+          <button
+            type="button"
+            className="grid h-10 w-10 place-items-center text-slate-900 transition hover:bg-slate-100 disabled:text-slate-300"
+            onClick={() => updateZoom(-1)}
+            disabled={zoomLevel <= minZoom}
+            aria-label="Zoom out"
+            title="Zoom out"
+          >
+            <Minus size={17} />
+          </button>
+        </div>
+      ) : null}
+
       <div
         className={clsx(
           'absolute bottom-4 left-4 right-4 z-50 rounded-[24px] border border-slate-200 bg-white/95 p-4 shadow-soft backdrop-blur',
@@ -198,9 +306,14 @@ export const ServiceRequestMap = ({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-slate-950">{title}</p>
-            <p className="mt-1 truncate text-xs font-medium text-slate-600">
-              {labours.length ? `${labours.length} nearby workers for this view` : subtitle || emptyLabel}
+            <p className="mt-1 line-clamp-2 text-xs font-medium text-slate-600">
+              {subtitle || emptyLabel}
             </p>
+            {labours.length ? (
+              <p className="mt-1 text-xs font-semibold text-brand-700">
+                {labours.length} nearby workers in this service
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {directionsUrl ? (

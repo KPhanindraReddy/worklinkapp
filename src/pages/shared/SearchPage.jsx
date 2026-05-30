@@ -1,4 +1,4 @@
-import { MapPin, Mic, SlidersHorizontal } from 'lucide-react';
+import { LocateFixed, LoaderCircle, MapPin, Mic, SlidersHorizontal } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { LabourCard } from '../../components/cards/LabourCard';
@@ -14,12 +14,13 @@ import { SectionHeading } from '../../components/common/SectionHeading';
 import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useGeolocation } from '../../hooks/useGeolocation';
 import { useVoiceSearch } from '../../hooks/useVoiceSearch';
 import { searchLabours } from '../../services/labourService';
 import { resolvePostAuthPath } from '../../utils/authFlow';
 import { formatDistanceKm } from '../../utils/formatters';
-import { getLocationLabel, normalizeCoordinates } from '../../utils/location';
-import { availabilityOptions, workCategories } from '../../utils/constants';
+import { formatCoordinates, getLocationLabel, normalizeCoordinates } from '../../utils/location';
+import { availabilityOptions, NEARBY_LABOUR_RADIUS_KM, workCategories } from '../../utils/constants';
 
 const SearchPage = () => {
   const [searchParams] = useSearchParams();
@@ -38,6 +39,7 @@ const SearchPage = () => {
   const [searching, setSearching] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const debouncedFilters = useDebounce(filters, 300);
+  const geolocation = useGeolocation();
   const { isListening, startListening } = useVoiceSearch({
     lang: 'en-IN',
     onResult: (value) => setFilters((prev) => ({ ...prev, query: value }))
@@ -54,6 +56,26 @@ const SearchPage = () => {
       }),
     [userProfile]
   );
+  const liveOrigin = useMemo(
+    () =>
+      normalizeCoordinates({
+        latitude: geolocation.latitude,
+        longitude: geolocation.longitude
+      }) || null,
+    [geolocation.latitude, geolocation.longitude]
+  );
+  const searchOrigin = useMemo(() => liveOrigin || savedOrigin, [liveOrigin, savedOrigin]);
+  const activeLocationLabel = useMemo(() => {
+    if (searchOrigin) {
+      return savedLocationLabel || formatCoordinates(searchOrigin);
+    }
+
+    if (geolocation.loading) {
+      return 'Finding your live location';
+    }
+
+    return geolocation.error || '';
+  }, [geolocation.error, geolocation.loading, savedLocationLabel, searchOrigin]);
 
   useEffect(() => {
     if (shouldRedirectRole) {
@@ -70,9 +92,10 @@ const SearchPage = () => {
         availability: debouncedFilters.availability,
         minRating: debouncedFilters.minRating,
         minExperience: debouncedFilters.minExperience,
-        maxPrice: debouncedFilters.maxPrice
+        maxPrice: debouncedFilters.maxPrice,
+        maxDistanceKm: NEARBY_LABOUR_RADIUS_KM
       },
-      savedOrigin
+      searchOrigin
     )
       .then((items) => {
         if (!isActive) {
@@ -103,7 +126,7 @@ const SearchPage = () => {
     return () => {
       isActive = false;
     };
-  }, [debouncedFilters, savedOrigin, shouldRedirectRole]);
+  }, [debouncedFilters, searchOrigin, shouldRedirectRole]);
 
   const availableResults = useMemo(
     () =>
@@ -137,6 +160,10 @@ const SearchPage = () => {
     () => filters.query.trim() || filters.category || selectedLabour?.category || '',
     [filters.category, filters.query, selectedLabour?.category]
   );
+
+  const handleRefreshLocation = async () => {
+    await geolocation.requestLocation({ force: true });
+  };
 
   const handleQuickBook = (labour) => {
     setQuickBookState({
@@ -246,15 +273,26 @@ const SearchPage = () => {
                 <div className="rounded-2xl bg-brand-50 p-4 text-sm text-brand-900 dark:bg-brand-500/10 dark:text-brand-100">
                   <div className="flex items-center gap-2 font-semibold">
                     <MapPin size={16} />
-                    Nearby labour
+                    Nearby labour within {NEARBY_LABOUR_RADIUS_KM} km
                   </div>
                   <p className="mt-2">
-                    {savedOrigin
-                      ? `Using saved location${savedLocationLabel ? `: ${savedLocationLabel}` : ''}. Results are ranked by distance too.`
+                    {searchOrigin
+                      ? `Using live location${activeLocationLabel ? `: ${activeLocationLabel}` : ''}. Only nearby workers are shown.`
                       : currentUser
-                        ? 'Save your location once in profile to rank workers by distance.'
-                        : 'Sign in and save a location if you want distance-based matching.'}
+                        ? 'Use live location or save your area in profile to show nearby workers.'
+                        : 'Sign in or allow live location to show nearby workers.'}
                   </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 w-full border-brand-200 bg-white text-brand-800 hover:bg-brand-50"
+                    onClick={handleRefreshLocation}
+                    disabled={geolocation.loading}
+                  >
+                    {geolocation.loading ? <LoaderCircle size={15} className="animate-spin" /> : <LocateFixed size={15} />}
+                    {searchOrigin ? 'Update live location' : 'Use live location'}
+                  </Button>
                 </div>
               </div>
             </Card>
@@ -264,10 +302,10 @@ const SearchPage = () => {
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div>
                     <h3 className="text-xl font-semibold text-slate-950 dark:text-white">
-                      Services available near you
+                      Services within {NEARBY_LABOUR_RADIUS_KM} km
                     </h3>
                     <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                      Use the menu to narrow the worker list.
+                      Choose a service to see only matching available labour near your live location.
                     </p>
                   </div>
                   <Badge tone={availableServiceOptions.length ? 'emerald' : 'slate'}>
@@ -290,7 +328,7 @@ const SearchPage = () => {
                   />
                 ) : (
                   <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm font-medium text-slate-600">
-                    No service available in your area right now.
+                    No service available within {NEARBY_LABOUR_RADIUS_KM} km right now.
                   </div>
                 )}
               </Card>
@@ -325,7 +363,7 @@ const SearchPage = () => {
               <div>
                 <h3 className="text-xl font-semibold text-slate-950 dark:text-white">Nearest available labour</h3>
                 <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                  Pick one worker from this service. The closest available profiles are shown first when GPS is active.
+                  Pick one worker from this service. Results are limited to {NEARBY_LABOUR_RADIUS_KM} km and sorted by distance when GPS is active.
                 </p>
                 <div className="mt-4 space-y-2.5">
                   {availableResults.length ? (
@@ -341,7 +379,7 @@ const SearchPage = () => {
                   ) : (
                     <EmptyState
                       title="Service not available in this locality"
-                      description="Try another service or allow location access so WorkLink can search nearby labour more accurately."
+                      description={`Try another service or allow live location so WorkLink can search labour within ${NEARBY_LABOUR_RADIUS_KM} km.`}
                     />
                   )}
                 </div>

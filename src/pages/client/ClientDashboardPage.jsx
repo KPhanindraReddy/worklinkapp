@@ -36,15 +36,16 @@ import {
   parseDateValue
 } from '../../utils/formatters';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
+import { NEARBY_LABOUR_RADIUS_KM } from '../../utils/constants';
 import {
   buildMapsUrl,
   formatCoordinates,
+  getLocationLabel,
   normalizeCoordinates
 } from '../../utils/location';
 import { createRouteGroupId } from '../../utils/requestRouting';
 
 const openRequestStatuses = ['pending', 'accepted', 'in_progress'];
-const NEARBY_LABOUR_RADIUS_KM = 50;
 const generateStartOtp = () => String(Math.floor(100000 + Math.random() * 900000));
 
 const getBookingTone = (status) => {
@@ -105,7 +106,7 @@ const ClientDashboardPage = () => {
   const [submittingInstant, setSubmittingInstant] = useState(false);
   const [scheduleSubmittingId, setScheduleSubmittingId] = useState('');
   const [requestCoordinates, setRequestCoordinates] = useState(
-    null
+    () => normalizeCoordinates(userProfile?.coordinates) || null
   );
 
   useEffect(() => {
@@ -129,6 +130,14 @@ const ClientDashboardPage = () => {
   }, [geolocation.error]);
 
   useEffect(() => {
+    const savedCoordinates = normalizeCoordinates(userProfile?.coordinates);
+
+    if (savedCoordinates) {
+      setRequestCoordinates((prev) => prev || savedCoordinates);
+    }
+  }, [userProfile?.coordinates]);
+
+  useEffect(() => {
     if (!geolocation.hasLocation) {
       return;
     }
@@ -143,10 +152,17 @@ const ClientDashboardPage = () => {
     () => normalizeCoordinates(requestCoordinates) || null,
     [requestCoordinates]
   );
+  const profileLocationLabel = useMemo(
+    () => getLocationLabel(userProfile, { fallback: '' }),
+    [userProfile]
+  );
   const clientLocationLabel = useMemo(
     () => {
       if (clientOrigin) {
-        return `Current GPS - ${formatCoordinates(clientOrigin)}`;
+        const coordinateLabel = formatCoordinates(clientOrigin);
+        return profileLocationLabel
+          ? `${profileLocationLabel} - ${coordinateLabel}`
+          : `Live GPS - ${coordinateLabel}`;
       }
 
       if (geolocation.loading) {
@@ -155,11 +171,13 @@ const ClientDashboardPage = () => {
 
       return geolocation.error || 'Allow location to show nearby services';
     },
-    [clientOrigin, geolocation.error, geolocation.loading]
+    [clientOrigin, geolocation.error, geolocation.loading, profileLocationLabel]
   );
   const bookingAddress =
     clientOrigin
-      ? `Current GPS ${formatCoordinates(clientOrigin)}`
+      ? profileLocationLabel
+        ? `${profileLocationLabel} - ${formatCoordinates(clientOrigin)}`
+        : `Live GPS ${formatCoordinates(clientOrigin)}`
       : '';
 
   useEffect(() => {
@@ -175,7 +193,7 @@ const ClientDashboardPage = () => {
     let isActive = true;
     setLaboursLoading(true);
 
-    searchLabours({ availability: 'Available' }, clientOrigin)
+    searchLabours({ availability: 'Available', maxDistanceKm: NEARBY_LABOUR_RADIUS_KM }, clientOrigin)
       .then((items) => {
         if (!isActive) {
           return;
@@ -254,11 +272,11 @@ const ClientDashboardPage = () => {
     [availableLabours]
   );
   const trackedBookings = useMemo(() => bookings.slice(0, 5), [bookings]);
-  const mapTitle = selectedService ? `${selectedService} near you` : 'Your current location';
+  const mapTitle = selectedService ? `${selectedService} within ${NEARBY_LABOUR_RADIUS_KM} km` : 'Your live location';
   const mapSubtitle = clientOrigin
-    ? `${clientLocationLabel} - ${formatCoordinates(clientOrigin)}`
+    ? `Live location: ${clientLocationLabel}`
     : clientLocationLabel;
-  const visibleMapLabours = selectedService ? serviceLabours : availableLabours.slice(0, 6);
+  const visibleMapLabours = selectedService ? serviceLabours : [];
   const metrics = useMemo(() => {
     const completed = bookings.filter((item) => item.status === 'completed').length;
     const scheduled = bookings.filter((item) => item.requestMode === 'scheduled').length;
@@ -392,7 +410,7 @@ const ClientDashboardPage = () => {
     setLaboursLoading(true);
 
     try {
-      const items = await searchLabours({ availability: 'Available' }, clientOrigin);
+      const items = await searchLabours({ availability: 'Available', maxDistanceKm: NEARBY_LABOUR_RADIUS_KM }, clientOrigin);
       const nearbyItems = filterNearbyLabours(items);
       const matchingLabours = nearbyItems.filter((labour) => labour.category === selectedService);
 
@@ -416,7 +434,9 @@ const ClientDashboardPage = () => {
 
     try {
       const labours = await loadServiceLabours();
-      const targetLabour = getFirstAvailableLabour(labours);
+      const targetLabour =
+        labours.find((labour) => labour.id === selectedLabourId && labour.availability === 'Available') ??
+        getFirstAvailableLabour(labours);
 
       if (!targetLabour) {
         toast.error(`${selectedService} is not available near your location right now.`);
@@ -506,9 +526,13 @@ const ClientDashboardPage = () => {
             searching={laboursLoading || submittingInstant}
             title={mapTitle}
             subtitle={mapSubtitle}
-            emptyLabel="Choose a service below to check nearby labour"
+            centerLabel={profileLocationLabel || 'Your live location'}
+            emptyLabel={`Choose a service below to show labour within ${NEARBY_LABOUR_RADIUS_KM} km`}
             showCenterLabel={false}
-            showRoutePreview
+            showRoutePreview={Boolean(selectedService && selectedLabourId)}
+            initialZoom={9}
+            minZoom={8}
+            maxZoom={16}
             className="-mx-[0.625rem] min-h-[calc(100dvh-5.25rem)] rounded-none border-x-0 sm:mx-0 sm:min-h-[640px] sm:rounded-[28px] sm:border"
             sheetClassName="bottom-0 left-0 right-0 rounded-b-none rounded-t-[28px] border-x-0 border-b-0 p-4 sm:bottom-4 sm:left-4 sm:right-4 sm:rounded-[24px] sm:border"
           >
@@ -521,7 +545,7 @@ const ClientDashboardPage = () => {
                       ? 'Checking nearby services'
                       : serviceOptions.length
                         ? 'Choose available service'
-                        : 'No services available nearby'
+                        : `No services within ${NEARBY_LABOUR_RADIUS_KM} km`
                   }
                   options={serviceOptions}
                   value={selectedService}
@@ -701,8 +725,8 @@ const ClientDashboardPage = () => {
                       title={selectedService ? 'No labour available for this service' : 'Choose a service'}
                       description={
                         selectedService
-                          ? 'Try another time, update GPS, or choose a different service.'
-                          : 'Select a service above to show related labour here.'
+                          ? `Try another time, update GPS, or choose a different service within ${NEARBY_LABOUR_RADIUS_KM} km.`
+                          : `Select a service above to show related labour within ${NEARBY_LABOUR_RADIUS_KM} km.`
                       }
                     />
                   )}
@@ -844,7 +868,7 @@ const ClientDashboardPage = () => {
                   ))
                 ) : (
                   <p className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm font-medium text-slate-600">
-                    Choose a service to show free workers near your GPS location.
+                    Choose a service to show free workers within {NEARBY_LABOUR_RADIUS_KM} km of your live location.
                   </p>
                 )}
               </div>

@@ -5,6 +5,8 @@ export const roles = [
 
 export const availabilityOptions = ['Available', 'Busy', 'Offline'];
 
+export const NEARBY_LABOUR_RADIUS_KM = 50;
+
 export const workCategories = [
   'Construction',
   'Carpenter',
@@ -55,4 +57,3 @@ export const bookingStatuses = [
 ];
 
 export const themeModes = ['light', 'dark'];
-

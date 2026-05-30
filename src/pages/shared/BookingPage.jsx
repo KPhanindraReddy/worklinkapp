@@ -30,7 +30,7 @@ import { createBooking, subscribeBookingsForUser } from '../../services/bookingS
 import { ensureConversation } from '../../services/chatService';
 import { getLabourById, searchLabours } from '../../services/labourService';
 import { createNotification } from '../../services/notificationService';
-import { workCategories } from '../../utils/constants';
+import { NEARBY_LABOUR_RADIUS_KM, workCategories } from '../../utils/constants';
 import {
   buildAppointmentDateTime,
   formatCurrency,
@@ -192,7 +192,7 @@ const BookingPage = () => {
   );
   const hasPendingRequest = pendingBookings.length > 0;
 
-  const canSearch = Boolean(formValues.serviceName.trim() && formValues.address.trim());
+  const canSearch = Boolean(formValues.serviceName.trim() && formValues.address.trim() && clientLocation);
   const canRequest = Boolean(
     !clientIsBusy &&
       !hasPendingRequest &&
@@ -250,6 +250,11 @@ const BookingPage = () => {
       return;
     }
 
+    if (!clientLocation) {
+      toast.error(`Use live location before checking labour within ${NEARBY_LABOUR_RADIUS_KM} km.`);
+      return;
+    }
+
     setSearching(true);
     setSearched(true);
     debugBooking('search started', {
@@ -265,7 +270,8 @@ const BookingPage = () => {
           skill: serviceName,
           category: workCategories.includes(serviceName) ? serviceName : initialCategory,
           availability: 'Available',
-          maxPrice: formValues.budget
+          maxPrice: formValues.budget,
+          maxDistanceKm: NEARBY_LABOUR_RADIUS_KM
         },
         clientLocation
       );
@@ -286,7 +292,7 @@ const BookingPage = () => {
       });
 
       if (!results.length) {
-        toast.error(`${serviceName} is not available in your locality right now.`);
+        toast.error(`${serviceName} is not available within ${NEARBY_LABOUR_RADIUS_KM} km right now.`);
       }
     } catch (error) {
       console.error('[WorkLink booking] search failed', error);
@@ -482,7 +488,7 @@ const BookingPage = () => {
                       Request service
                     </h1>
                     <p className="mt-3 max-w-2xl text-sm font-medium leading-7 text-slate-700">
-                      Share the work, set the address, find available labour nearby, and send one clear request.
+                      Share the work, set the address, find available labour within {NEARBY_LABOUR_RADIUS_KM} km, and send one clear request.
                     </p>
                   </div>
                     <Badge tone={clientLocation ? 'emerald' : 'amber'} className="justify-center">
@@ -627,7 +633,7 @@ const BookingPage = () => {
                         <p className="text-xs font-medium text-slate-600">
                           {clientLocation
                             ? `${locationStatusLabel} - ${formatCoordinates(clientLocation)}`
-                            : 'Manual address works, or save location once in profile and update only when needed.'}
+                            : `Use live location to search labour within ${NEARBY_LABOUR_RADIUS_KM} km.`}
                         </p>
                       </div>
                     </div>
@@ -643,7 +649,7 @@ const BookingPage = () => {
                   <div className="mt-6 grid gap-3 sm:flex sm:flex-wrap">
                     <Button type="button" className="w-full sm:w-auto" onClick={() => handleSearchLabour()} disabled={searching || !canSearch || clientIsBusy}>
                       <Search size={16} />
-                      {searching ? 'Checking...' : 'Check available labour'}
+                      {searching ? 'Checking...' : `Check labour within ${NEARBY_LABOUR_RADIUS_KM} km`}
                     </Button>
                     {selectedLabour ? (
                       <Badge tone="blue" className="px-4 py-2">
@@ -748,8 +754,8 @@ const BookingPage = () => {
                   ) : (
                     <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm font-medium leading-7 text-slate-700">
                       {searched
-                        ? `${formValues.serviceName || 'This service'} is not available in your locality right now.`
-                        : 'Search labour after adding service and address.'}
+                        ? `${formValues.serviceName || 'This service'} is not available within ${NEARBY_LABOUR_RADIUS_KM} km right now.`
+                        : 'Search labour after adding service, address, and live location.'}
                     </div>
                   )}
                 </div>
