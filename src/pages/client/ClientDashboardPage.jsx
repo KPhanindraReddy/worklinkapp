@@ -28,7 +28,6 @@ import { useGeolocation } from '../../hooks/useGeolocation';
 import { createBooking, subscribeBookingsForUser } from '../../services/bookingService';
 import { searchLabours } from '../../services/labourService';
 import { createNotification } from '../../services/notificationService';
-import { workCategories } from '../../utils/constants';
 import {
   buildAppointmentDateTime,
   formatCurrency,
@@ -90,7 +89,8 @@ const getFirstAvailableLabour = (items) =>
 
 const ClientDashboardPage = () => {
   const { currentUser, userProfile } = useAuth();
-  const geolocation = useGeolocation(true);
+  const geolocation = useGeolocation();
+  const [availableLabours, setAvailableLabours] = useState([]);
   const [serviceLabours, setServiceLabours] = useState([]);
   const [laboursLoading, setLaboursLoading] = useState(false);
   const [bookings, setBookings] = useState([]);
@@ -105,6 +105,26 @@ const ClientDashboardPage = () => {
   const [requestCoordinates, setRequestCoordinates] = useState(
     () => normalizeCoordinates(userProfile?.coordinates) || null
   );
+
+  useEffect(() => {
+    let isActive = true;
+
+    geolocation.requestLocation({ force: true }).then((coordinates) => {
+      if (isActive && coordinates) {
+        setRequestCoordinates(coordinates);
+      }
+    });
+
+    return () => {
+      isActive = false;
+    };
+  }, [geolocation.requestLocation]);
+
+  useEffect(() => {
+    if (geolocation.error) {
+      toast.error(`Location error: ${geolocation.error}`);
+    }
+  }, [geolocation.error]);
 
   useEffect(() => {
     if (!geolocation.hasLocation) {
@@ -127,42 +147,45 @@ const ClientDashboardPage = () => {
     () => normalizeCoordinates(requestCoordinates) || normalizeCoordinates(userProfile?.coordinates) || null,
     [requestCoordinates, userProfile?.coordinates]
   );
-  const clientLocationLabel = useMemo(
-    () =>
-      getLocationLabel(userProfile, {
-        fallback: clientOrigin ? `GPS ${formatCoordinates(clientOrigin)}` : 'Location not added'
-      }),
-    [clientOrigin, userProfile]
+  const savedLocationLabel = useMemo(
+    () => getLocationLabel(userProfile, { fallback: '' }),
+    [userProfile]
   );
-  const bookingAddress = clientLocationLabel === 'Location not added' ? '' : clientLocationLabel;
+  const clientLocationLabel = useMemo(
+    () => {
+      if (geolocation.hasLocation && clientOrigin) {
+        return `Current GPS - ${formatCoordinates(clientOrigin)}`;
+      }
+
+      if (savedLocationLabel) {
+        return savedLocationLabel;
+      }
+
+      return clientOrigin ? `GPS - ${formatCoordinates(clientOrigin)}` : 'Location not added';
+    },
+    [clientOrigin, geolocation.hasLocation, savedLocationLabel]
+  );
+  const bookingAddress =
+    clientLocationLabel === 'Location not added'
+      ? ''
+      : geolocation.hasLocation && clientOrigin
+        ? `Current GPS ${formatCoordinates(clientOrigin)}`
+        : clientLocationLabel;
 
   useEffect(() => {
-    if (!selectedService) {
-      setServiceLabours([]);
-      setSelectedLabourId('');
-      setLaboursLoading(false);
-      return undefined;
-    }
-
     let isActive = true;
     setLaboursLoading(true);
-    setSelectedLabourId('');
 
-    searchLabours(
-      {
-        skill: selectedService,
-        category: selectedService,
-        availability: 'Available'
-      },
-      clientOrigin
-    )
+    searchLabours({ availability: 'Available' }, clientOrigin)
       .then((items) => {
         if (!isActive) {
           return;
         }
 
-        setServiceLabours(items);
-        setSelectedLabourId(getFirstAvailableLabour(items)?.id ?? '');
+        setAvailableLabours(items);
+        const nextServices = new Set(items.map((labour) => labour.category).filter(Boolean));
+
+        setSelectedService((prev) => (prev && !nextServices.has(prev) ? '' : prev));
       })
       .catch((error) => {
         if (isActive) {
@@ -178,7 +201,16 @@ const ClientDashboardPage = () => {
     return () => {
       isActive = false;
     };
-  }, [clientOrigin, selectedService]);
+  }, [clientOrigin]);
+
+  useEffect(() => {
+    const matchingLabours = selectedService
+      ? availableLabours.filter((labour) => labour.category === selectedService)
+      : [];
+
+    setServiceLabours(matchingLabours);
+    setSelectedLabourId(getFirstAvailableLabour(matchingLabours)?.id ?? '');
+  }, [availableLabours, selectedService]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -213,11 +245,19 @@ const ClientDashboardPage = () => {
     () => bookings.filter((booking) => ['accepted', 'in_progress'].includes(booking.status)),
     [bookings]
   );
+  const serviceOptions = useMemo(
+    () =>
+      Array.from(new Set(availableLabours.map((labour) => labour.category).filter(Boolean))).sort((a, b) =>
+        a.localeCompare(b)
+      ),
+    [availableLabours]
+  );
   const trackedBookings = useMemo(() => bookings.slice(0, 5), [bookings]);
   const mapTitle = selectedService ? `${selectedService} near you` : 'Your current location';
   const mapSubtitle = clientOrigin
     ? `${clientLocationLabel} - ${formatCoordinates(clientOrigin)}`
     : clientLocationLabel;
+  const visibleMapLabours = selectedService ? serviceLabours : availableLabours.slice(0, 6);
   const metrics = useMemo(() => {
     const completed = bookings.filter((item) => item.status === 'completed').length;
     const scheduled = bookings.filter((item) => item.requestMode === 'scheduled').length;
@@ -347,18 +387,13 @@ const ClientDashboardPage = () => {
     setLaboursLoading(true);
 
     try {
-      const items = await searchLabours(
-        {
-          skill: selectedService,
-          category: selectedService,
-          availability: 'Available'
-        },
-        clientOrigin
-      );
+      const items = await searchLabours({ availability: 'Available' }, clientOrigin);
+      const matchingLabours = items.filter((labour) => labour.category === selectedService);
 
-      setServiceLabours(items);
-      setSelectedLabourId(getFirstAvailableLabour(items)?.id ?? '');
-      return items;
+      setServiceLabours(matchingLabours);
+      setAvailableLabours(items);
+      setSelectedLabourId(getFirstAvailableLabour(matchingLabours)?.id ?? '');
+      return matchingLabours;
     } finally {
       setLaboursLoading(false);
     }
@@ -459,21 +494,32 @@ const ClientDashboardPage = () => {
         <div className="page-shell space-y-6">
           <ServiceRequestMap
             center={clientOrigin}
-            labours={serviceLabours}
+            labours={visibleMapLabours}
             selectedLabourId={selectedLabourId}
             onSelectLabour={(labour) => setSelectedLabourId(labour.id)}
             searching={laboursLoading || submittingInstant}
             title={mapTitle}
             subtitle={mapSubtitle}
             emptyLabel="Choose a service below to check nearby labour"
+            showCenterLabel={false}
+            showRoutePreview
+            className="-mx-[0.625rem] min-h-[calc(100dvh-5.25rem)] rounded-none border-x-0 sm:mx-0 sm:min-h-[640px] sm:rounded-[28px] sm:border"
+            sheetClassName="bottom-0 left-0 right-0 rounded-b-none rounded-t-[28px] border-x-0 border-b-0 p-4 sm:bottom-4 sm:left-4 sm:right-4 sm:rounded-[24px] sm:border"
           >
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
               <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
                 <SelectField
-                  label="Service"
-                  placeholder="Choose service"
-                  options={workCategories}
+                  label="Available service"
+                  placeholder={
+                    laboursLoading
+                      ? 'Checking nearby services'
+                      : serviceOptions.length
+                        ? 'Choose available service'
+                        : 'No services available nearby'
+                  }
+                  options={serviceOptions}
                   value={selectedService}
+                  disabled={laboursLoading || !serviceOptions.length}
                   onChange={(event) => {
                     setSelectedService(event.target.value);
                     setRequestMode('instant');

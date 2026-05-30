@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { LocateFixed, MapPin, Navigation, RadioTower, UserCheck } from 'lucide-react';
+import { MapPin, Navigation, RadioTower, UserCheck } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
@@ -28,7 +28,7 @@ const getMapboxStaticUrl = (center) => {
   const longitude = normalizedCenter.longitude.toFixed(5);
   const latitude = normalizedCenter.latitude.toFixed(5);
 
-  return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${longitude},${latitude},14,0/960x540?logo=false&attribution=false&access_token=${encodeURIComponent(mapboxToken)}`;
+  return `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/${longitude},${latitude},15,0/1280x1280?logo=false&attribution=false&access_token=${encodeURIComponent(mapboxToken)}`;
 };
 
 const getPinPosition = ({ labour, index, center }) => {
@@ -57,9 +57,12 @@ export const ServiceRequestMap = ({
   title = 'Your current location',
   subtitle = 'Live GPS location',
   centerLabel = 'Your live location',
+  showCenterLabel = true,
   emptyLabel = 'Choose a service to show nearby labour',
   directionsUrl = '',
   className,
+  sheetClassName,
+  showRoutePreview = false,
   children
 }) => {
   const normalizedCenter = normalizeCoordinates(center);
@@ -74,7 +77,7 @@ export const ServiceRequestMap = ({
   return (
     <div
       className={clsx(
-        'relative min-h-[420px] overflow-hidden rounded-[28px] border border-slate-300 bg-[#eef3f1] shadow-soft sm:min-h-[500px]',
+        'relative min-h-[520px] overflow-hidden rounded-[28px] border border-slate-300 bg-[#eef3f1] shadow-soft sm:min-h-[560px]',
         className
       )}
     >
@@ -89,13 +92,14 @@ export const ServiceRequestMap = ({
         <>
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(148,163,184,0.32)_1px,transparent_1px),linear-gradient(rgba(148,163,184,0.32)_1px,transparent_1px)] bg-[length:58px_58px]" />
           <div className="absolute inset-0">
-            <div className="absolute left-[-16%] top-[18%] h-12 w-[134%] rotate-[-9deg] bg-white shadow-sm" />
-            <div className="absolute left-[-12%] top-[58%] h-14 w-[126%] rotate-[11deg] bg-white shadow-sm" />
-            <div className="absolute left-[44%] top-[-14%] h-[132%] w-12 rotate-[6deg] bg-white shadow-sm" />
-            <div className="absolute left-[9%] top-[-12%] h-[128%] w-10 rotate-[-18deg] bg-white/95 shadow-sm" />
-            <div className="absolute left-[14%] top-[14%] h-16 w-28 rounded-xl bg-emerald-200/80" />
-            <div className="absolute right-[9%] top-[39%] h-20 w-36 rounded-xl bg-sky-200/75" />
-            <div className="absolute left-[53%] top-[72%] h-14 w-28 rounded-xl bg-emerald-200/70" />
+            <div className="absolute left-[-16%] top-[16%] h-10 w-[134%] rotate-[-8deg] bg-white shadow-sm" />
+            <div className="absolute left-[-14%] top-[55%] h-12 w-[130%] rotate-[9deg] bg-white shadow-sm" />
+            <div className="absolute left-[44%] top-[-14%] h-[132%] w-10 rotate-[5deg] bg-white shadow-sm" />
+            <div className="absolute left-[10%] top-[-12%] h-[128%] w-9 rotate-[-16deg] bg-white/95 shadow-sm" />
+            <div className="absolute left-[13%] top-[13%] h-16 w-28 rounded-sm bg-emerald-200/80" />
+            <div className="absolute right-[8%] top-[36%] h-20 w-36 rounded-sm bg-sky-200/75" />
+            <div className="absolute left-[52%] top-[72%] h-14 w-28 rounded-sm bg-emerald-200/70" />
+            <div className="absolute left-[2%] top-[74%] h-8 w-[72%] rotate-[24deg] bg-white shadow-sm" />
           </div>
         </>
       )}
@@ -113,15 +117,32 @@ export const ServiceRequestMap = ({
         </div>
       ) : null}
 
+      {showRoutePreview ? (
+        <div className="pointer-events-none absolute inset-0 z-20">
+          <div className="absolute left-[8%] top-[53%] h-[5px] w-[70%] bg-slate-800/75" />
+          <div className="absolute right-[20%] top-[31%] h-[22%] w-[5px] bg-slate-800/75" />
+          <div className="absolute left-[37%] top-[31%] h-[5px] w-[43%] bg-slate-800/75" />
+          <div className="absolute left-[6%] top-[51%] h-8 w-8 rounded-full border-[6px] border-black bg-white" />
+          <div className="absolute right-[18.5%] top-[28%] h-8 w-5 rounded-sm bg-black" />
+          <div className="absolute left-[34%] top-[22%] max-w-[48%] rounded-sm bg-white px-3 py-2 shadow-soft">
+            <p className="truncate text-sm font-bold text-slate-950">{title}</p>
+            <p className="truncate text-xs font-medium text-slate-600">{subtitle}</p>
+          </div>
+        </div>
+      ) : null}
+
       <div className="absolute left-1/2 top-[42%] z-30 -translate-x-1/2 -translate-y-1/2">
-        <div className="relative grid h-16 w-16 place-items-center rounded-full border-[5px] border-white bg-brand-600 text-white shadow-glow">
-          <LocateFixed size={25} />
-          <span className="absolute inset-[-12px] rounded-full border border-brand-500/35" />
-          <span className="absolute inset-[-24px] rounded-full border border-brand-500/20" />
+        <div className="relative grid h-10 w-10 place-items-center rounded-full bg-sky-500/15">
+          <span className="absolute h-20 w-20 animate-ping rounded-full bg-sky-500/20" />
+          <span className="grid h-7 w-7 place-items-center rounded-full border-[4px] border-white bg-sky-500 shadow-[0_10px_30px_rgba(14,165,233,0.45)]">
+            <span className="h-2.5 w-2.5 rounded-full bg-white" />
+          </span>
         </div>
-        <div className="mt-2 rounded-full bg-slate-950 px-3 py-1 text-center text-xs font-semibold text-white shadow-soft">
-          {normalizedCenter ? centerLabel : 'Set location'}
-        </div>
+        {showCenterLabel ? (
+          <div className="mt-2 rounded-full bg-slate-950 px-3 py-1 text-center text-xs font-semibold text-white shadow-soft">
+            {normalizedCenter ? centerLabel : 'Set location'}
+          </div>
+        ) : null}
       </div>
 
       {labours.slice(0, 6).map((labour, index) => {
@@ -168,7 +189,12 @@ export const ServiceRequestMap = ({
         ) : null}
       </div>
 
-      <div className="absolute bottom-4 left-4 right-4 z-50 rounded-[24px] border border-slate-200 bg-white/95 p-4 shadow-soft backdrop-blur">
+      <div
+        className={clsx(
+          'absolute bottom-4 left-4 right-4 z-50 rounded-[24px] border border-slate-200 bg-white/95 p-4 shadow-soft backdrop-blur',
+          sheetClassName
+        )}
+      >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-slate-950">{title}</p>
