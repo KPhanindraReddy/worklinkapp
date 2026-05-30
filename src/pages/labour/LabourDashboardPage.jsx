@@ -545,25 +545,6 @@ const LabourDashboardPage = () => {
       <section className="section-space">
         <div className="page-shell">
           <div className="space-y-6">
-            <nav className="sticky top-[4.5rem] z-30 -mx-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white/95 p-1 shadow-sm backdrop-blur">
-              <div className="grid min-w-[34rem] grid-cols-4 gap-1 sm:min-w-0">
-                {labourDashboardNavItems.map((item) => {
-                  const Icon = item.icon;
-
-                  return (
-                    <a
-                      key={item.href}
-                      href={item.href}
-                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-950 hover:text-white"
-                    >
-                      <Icon size={16} />
-                      {item.label}
-                    </a>
-                  );
-                })}
-              </div>
-            </nav>
-
             {dashboardLoading ? (
               <Card className="overflow-hidden rounded-[28px]">
                 <Skeleton className="h-8 w-48" />

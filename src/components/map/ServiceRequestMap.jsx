@@ -124,12 +124,12 @@ export const ServiceRequestMap = ({
     () => getMapboxStaticUrl(normalizedCenter, zoomLevel),
     [normalizedCenter, zoomLevel]
   );
-  const interactiveMapUrl = useMemo(
-    () => (showInteractiveMap ? getGoogleEmbedMapUrl(normalizedCenter, zoomLevel) : ''),
-    [normalizedCenter, showInteractiveMap, zoomLevel]
-  );
   const [mapImageFailed, setMapImageFailed] = useState(false);
-  const showMapboxImage = Boolean(!interactiveMapUrl && mapboxStaticUrl && !mapImageFailed);
+  const interactiveMapUrl = useMemo(
+    () => (showInteractiveMap && mapImageFailed ? getGoogleEmbedMapUrl(normalizedCenter, zoomLevel) : ''),
+    [mapImageFailed, normalizedCenter, showInteractiveMap, zoomLevel]
+  );
+  const showMapboxImage = Boolean(mapboxStaticUrl && !mapImageFailed);
   const selectedLabourIndex = useMemo(
     () => labours.findIndex((labour) => labour.id === selectedLabourId),
     [labours, selectedLabourId]
@@ -163,20 +163,20 @@ export const ServiceRequestMap = ({
         className
       )}
     >
-      {interactiveMapUrl ? (
+      {showMapboxImage ? (
+        <img
+          src={mapboxStaticUrl}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+          onError={() => setMapImageFailed(true)}
+        />
+      ) : interactiveMapUrl ? (
         <iframe
           title={title ? `${title} map` : 'Interactive location map'}
           src={interactiveMapUrl}
           className="absolute inset-0 h-full w-full touch-pan-x touch-pan-y border-0"
           loading="lazy"
           referrerPolicy="no-referrer-when-downgrade"
-        />
-      ) : showMapboxImage ? (
-        <img
-          src={mapboxStaticUrl}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover"
-          onError={() => setMapImageFailed(true)}
         />
       ) : (
         <>
@@ -282,13 +282,13 @@ export const ServiceRequestMap = ({
           <RadioTower size={12} />
           {normalizedCenter ? 'GPS active' : 'GPS pending'}
         </Badge>
-        {interactiveMapUrl ? (
-          <Badge tone="slate" className="bg-white/95">
-            Movable map
-          </Badge>
-        ) : showMapboxImage ? (
+        {showMapboxImage ? (
           <Badge tone="slate" className="bg-white/95">
             Mapbox
+          </Badge>
+        ) : interactiveMapUrl ? (
+          <Badge tone="slate" className="bg-white/95">
+            Movable map
           </Badge>
         ) : null}
       </div>

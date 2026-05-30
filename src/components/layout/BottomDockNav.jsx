@@ -20,21 +20,21 @@ export const buildBottomDockItems = ({ currentUser, userProfile }) => {
       },
       {
         label: 'Services',
-        to: '/labour/dashboard#labour-requests',
+        to: '/labour/services',
         icon: ClipboardList,
-        matchers: []
+        matchers: ['/labour/services']
       },
       {
         label: 'Earnings',
-        to: '/labour/dashboard#labour-earnings',
+        to: '/labour/earnings',
         icon: IndianRupee,
-        matchers: []
+        matchers: ['/labour/earnings']
       },
       {
         label: 'Profile',
-        to: '/labour/dashboard#labour-profile',
+        to: '/settings',
         icon: UserRound,
-        matchers: []
+        matchers: ['/settings', '/complete-profile*']
       }
     ];
   }

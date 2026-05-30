@@ -174,7 +174,7 @@ const ClientDashboardPage = () => {
   const clientLocationLabel = useMemo(
     () => {
       if (clientOrigin) {
-        return profileLocationLabel || resolvedLocationName || 'Live location captured';
+        return resolvedLocationName || profileLocationLabel || 'Live location captured';
       }
 
       if (geolocation.loading) {
@@ -425,14 +425,20 @@ const ClientDashboardPage = () => {
     setLaboursLoading(true);
 
     try {
-      const items = await searchLabours({ availability: 'Available', maxDistanceKm: NEARBY_LABOUR_RADIUS_KM }, clientOrigin);
+      const items = await searchLabours(
+        {
+          availability: 'Available',
+          category: selectedService,
+          skill: selectedService,
+          maxDistanceKm: NEARBY_LABOUR_RADIUS_KM
+        },
+        clientOrigin
+      );
       const nearbyItems = filterNearbyLabours(items);
-      const matchingLabours = nearbyItems.filter((labour) => labour.category === selectedService);
 
-      setServiceLabours(matchingLabours);
-      setAvailableLabours(nearbyItems);
-      setSelectedLabourId(getFirstAvailableLabour(matchingLabours)?.id ?? '');
-      return matchingLabours;
+      setServiceLabours(nearbyItems);
+      setSelectedLabourId(getFirstAvailableLabour(nearbyItems)?.id ?? '');
+      return nearbyItems;
     } finally {
       setLaboursLoading(false);
     }
@@ -621,7 +627,7 @@ const ClientDashboardPage = () => {
             searching={laboursLoading || submittingInstant}
             title={mapTitle}
             subtitle={mapSubtitle}
-            centerLabel={profileLocationLabel || 'Your live location'}
+            centerLabel={clientLocationLabel || 'Your live location'}
             emptyLabel={`Choose a service below to show labour within ${NEARBY_LABOUR_RADIUS_KM} km`}
             showCenterLabel={false}
             showRoutePreview={Boolean(selectedService && selectedLabourId)}

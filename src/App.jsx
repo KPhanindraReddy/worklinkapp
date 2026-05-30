@@ -8,6 +8,8 @@ const HomePage = lazy(() => import('./pages/HomePage'));
 const AuthPage = lazy(() => import('./pages/auth/AuthPage'));
 const CompleteProfilePage = lazy(() => import('./pages/auth/CompleteProfilePage'));
 const LabourDashboardPage = lazy(() => import('./pages/labour/LabourDashboardPage'));
+const LabourServicesPage = lazy(() => import('./pages/labour/LabourServicesPage'));
+const LabourEarningsPage = lazy(() => import('./pages/labour/LabourEarningsPage'));
 const ClientDashboardPage = lazy(() => import('./pages/client/ClientDashboardPage'));
 const SearchPage = lazy(() => import('./pages/shared/SearchPage'));
 const LabourProfilePage = lazy(() => import('./pages/shared/LabourProfilePage'));
@@ -89,6 +91,22 @@ const App = () => (
         element={
           <ProtectedRoute allowedRoles={['labour']}>
             <LabourDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/labour/services"
+        element={
+          <ProtectedRoute allowedRoles={['labour']}>
+            <LabourServicesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/labour/earnings"
+        element={
+          <ProtectedRoute allowedRoles={['labour']}>
+            <LabourEarningsPage />
           </ProtectedRoute>
         }
       />

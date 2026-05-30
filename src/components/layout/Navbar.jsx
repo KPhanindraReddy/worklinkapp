@@ -143,16 +143,16 @@ export const Navbar = () => {
                 matchers: ['/labour/dashboard']
               },
               {
-                to: '/labour/dashboard#labour-requests',
+                to: '/labour/services',
                 label: 'Services',
                 icon: ClipboardList,
-                matchers: []
+                matchers: ['/labour/services']
               },
               {
-                to: '/labour/dashboard#labour-earnings',
+                to: '/labour/earnings',
                 label: 'Earnings',
                 icon: IndianRupee,
-                matchers: []
+                matchers: ['/labour/earnings']
               }
             ]
           : []),
