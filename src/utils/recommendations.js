@@ -114,7 +114,7 @@ export const calculateMatchScore = (labour, filters = {}, origin) => {
     score += 10;
   }
 
-  const distance = calculateHaversineDistance(origin, labour.coordinates);
+  const distance = calculateHaversineDistance(origin, labour.liveCoordinates || labour.coordinates);
   if (distance !== null) {
     score += clamp(12 - distance / 3, 0, 12);
   }
@@ -130,7 +130,7 @@ export const recommendLabours = (labours, filters, origin) =>
   [...labours]
     .map((labour) => ({
       ...labour,
-      distanceKm: calculateHaversineDistance(origin, labour.coordinates),
+      distanceKm: calculateHaversineDistance(origin, labour.liveCoordinates || labour.coordinates),
       matchScore: calculateMatchScore(labour, filters, origin)
     }))
     .sort((a, b) => b.matchScore - a.matchScore || b.rating - a.rating);

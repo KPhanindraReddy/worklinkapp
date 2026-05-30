@@ -33,7 +33,7 @@ const getMapboxStaticUrl = (center) => {
 
 const getPinPosition = ({ labour, index, center }) => {
   const mapCenter = normalizeCoordinates(center);
-  const workerCoordinates = normalizeCoordinates(labour?.coordinates);
+  const workerCoordinates = normalizeCoordinates(labour?.liveCoordinates || labour?.coordinates);
 
   if (mapCenter && workerCoordinates) {
     const latitudeDelta = workerCoordinates.latitude - mapCenter.latitude;

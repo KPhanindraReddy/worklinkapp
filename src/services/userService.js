@@ -1,6 +1,7 @@
 import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import { isFirebaseConfigured } from '../firebase/env';
 import { db } from '../firebase/firestore';
+import { formatCoordinates, normalizeCoordinates } from '../utils/location';
 
 export const getUserProfile = async (uid) => {
   if (!uid || !isFirebaseConfigured || !db) {
@@ -32,6 +33,53 @@ export const updateUserSettings = async (uid, settings) => {
     },
     { merge: true }
   );
+};
+
+export const updateLiveUserLocation = async ({ uid, role, coordinates }) => {
+  const normalizedCoordinates = normalizeCoordinates(coordinates);
+
+  if (!uid || !role || !normalizedCoordinates || !isFirebaseConfigured || !db) {
+    return;
+  }
+
+  const liveLocationLabel = `Current GPS ${formatCoordinates(normalizedCoordinates)}`;
+  const basePayload = {
+    coordinates: normalizedCoordinates,
+    location: liveLocationLabel,
+    liveCoordinates: normalizedCoordinates,
+    liveLocationUpdatedAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  };
+
+  await setDoc(
+    doc(db, 'users', uid),
+    role === 'labour'
+      ? {
+          ...basePayload,
+          currentLocation: liveLocationLabel
+        }
+      : basePayload,
+    { merge: true }
+  );
+
+  if (role === 'labour') {
+    await setDoc(
+      doc(db, 'labours', uid),
+      {
+        ...basePayload,
+        currentLocation: liveLocationLabel
+      },
+      { merge: true }
+    );
+  }
+
+  if (role === 'client') {
+    await setDoc(
+      doc(db, 'clients', uid),
+      basePayload,
+      { merge: true }
+    );
+  }
 };
 
 export const subscribeUserProfile = (uid, onNext, onError) => {

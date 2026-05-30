@@ -39,12 +39,12 @@ import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import {
   buildMapsUrl,
   formatCoordinates,
-  getLocationLabel,
   normalizeCoordinates
 } from '../../utils/location';
 import { createRouteGroupId } from '../../utils/requestRouting';
 
 const openRequestStatuses = ['pending', 'accepted', 'in_progress'];
+const NEARBY_LABOUR_RADIUS_KM = 50;
 const generateStartOtp = () => String(Math.floor(100000 + Math.random() * 900000));
 
 const getBookingTone = (status) => {
@@ -86,6 +86,8 @@ const getDateKey = (value) => {
 
 const getFirstAvailableLabour = (items) =>
   items.find((labour) => labour.availability === 'Available') ?? null;
+const filterNearbyLabours = (items) =>
+  items.filter((labour) => Number.isFinite(Number(labour.distanceKm)) && Number(labour.distanceKm) <= NEARBY_LABOUR_RADIUS_KM);
 
 const ClientDashboardPage = () => {
   const { currentUser, userProfile } = useAuth();
@@ -103,7 +105,7 @@ const ClientDashboardPage = () => {
   const [submittingInstant, setSubmittingInstant] = useState(false);
   const [scheduleSubmittingId, setScheduleSubmittingId] = useState('');
   const [requestCoordinates, setRequestCoordinates] = useState(
-    () => normalizeCoordinates(userProfile?.coordinates) || null
+    null
   );
 
   useEffect(() => {
@@ -137,42 +139,39 @@ const ClientDashboardPage = () => {
     });
   }, [geolocation.hasLocation, geolocation.latitude, geolocation.longitude]);
 
-  useEffect(() => {
-    const savedCoordinates = normalizeCoordinates(userProfile?.coordinates) || null;
-
-    setRequestCoordinates((prev) => prev || savedCoordinates);
-  }, [userProfile?.coordinates]);
-
   const clientOrigin = useMemo(
-    () => normalizeCoordinates(requestCoordinates) || normalizeCoordinates(userProfile?.coordinates) || null,
-    [requestCoordinates, userProfile?.coordinates]
-  );
-  const savedLocationLabel = useMemo(
-    () => getLocationLabel(userProfile, { fallback: '' }),
-    [userProfile]
+    () => normalizeCoordinates(requestCoordinates) || null,
+    [requestCoordinates]
   );
   const clientLocationLabel = useMemo(
     () => {
-      if (geolocation.hasLocation && clientOrigin) {
+      if (clientOrigin) {
         return `Current GPS - ${formatCoordinates(clientOrigin)}`;
       }
 
-      if (savedLocationLabel) {
-        return savedLocationLabel;
+      if (geolocation.loading) {
+        return 'Finding your current GPS location';
       }
 
-      return clientOrigin ? `GPS - ${formatCoordinates(clientOrigin)}` : 'Location not added';
+      return geolocation.error || 'Allow location to show nearby services';
     },
-    [clientOrigin, geolocation.hasLocation, savedLocationLabel]
+    [clientOrigin, geolocation.error, geolocation.loading]
   );
   const bookingAddress =
-    clientLocationLabel === 'Location not added'
-      ? ''
-      : geolocation.hasLocation && clientOrigin
-        ? `Current GPS ${formatCoordinates(clientOrigin)}`
-        : clientLocationLabel;
+    clientOrigin
+      ? `Current GPS ${formatCoordinates(clientOrigin)}`
+      : '';
 
   useEffect(() => {
+    if (!clientOrigin) {
+      setAvailableLabours([]);
+      setServiceLabours([]);
+      setSelectedService('');
+      setSelectedLabourId('');
+      setLaboursLoading(false);
+      return undefined;
+    }
+
     let isActive = true;
     setLaboursLoading(true);
 
@@ -182,8 +181,10 @@ const ClientDashboardPage = () => {
           return;
         }
 
-        setAvailableLabours(items);
-        const nextServices = new Set(items.map((labour) => labour.category).filter(Boolean));
+        const nearbyItems = filterNearbyLabours(items);
+
+        setAvailableLabours(nearbyItems);
+        const nextServices = new Set(nearbyItems.map((labour) => labour.category).filter(Boolean));
 
         setSelectedService((prev) => (prev && !nextServices.has(prev) ? '' : prev));
       })
@@ -380,6 +381,10 @@ const ClientDashboardPage = () => {
   };
 
   const loadServiceLabours = async () => {
+    if (!clientOrigin) {
+      return [];
+    }
+
     if (serviceLabours.length) {
       return serviceLabours;
     }
@@ -388,10 +393,11 @@ const ClientDashboardPage = () => {
 
     try {
       const items = await searchLabours({ availability: 'Available' }, clientOrigin);
-      const matchingLabours = items.filter((labour) => labour.category === selectedService);
+      const nearbyItems = filterNearbyLabours(items);
+      const matchingLabours = nearbyItems.filter((labour) => labour.category === selectedService);
 
       setServiceLabours(matchingLabours);
-      setAvailableLabours(items);
+      setAvailableLabours(nearbyItems);
       setSelectedLabourId(getFirstAvailableLabour(matchingLabours)?.id ?? '');
       return matchingLabours;
     } finally {
