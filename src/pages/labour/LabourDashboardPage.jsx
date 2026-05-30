@@ -19,6 +19,7 @@ import { AvailabilityToggle } from '../../components/dashboard/AvailabilityToggl
 import { MetricsGrid } from '../../components/dashboard/MetricsGrid';
 import { ServiceRequestMap } from '../../components/map/ServiceRequestMap';
 import { useAuth } from '../../context/AuthContext';
+import { useLocationName } from '../../hooks/useLocationName';
 import {
   completeBookingWork,
   startBookingWork,
@@ -30,7 +31,7 @@ import { subscribeLabourById, updateAvailability } from '../../services/labourSe
 import { createNotification } from '../../services/notificationService';
 import { formatCurrency, formatDate, parseDateValue } from '../../utils/formatters';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
-import { formatCoordinates, getLocationLabel } from '../../utils/location';
+import { getDisplayLocationText, getLocationLabel } from '../../utils/location';
 
 const buildAvatarUrl = (fullName) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName || 'WorkLink Labour')}&background=1d4ed8&color=ffffff`;
@@ -105,23 +106,22 @@ const LabourDashboardPage = () => {
     ]
   );
   const dashboardProfile = profile ?? ownProfile;
+  const resolvedDashboardLocationName = useLocationName(dashboardProfile.coordinates);
   const dashboardLocationLabel = useMemo(
-    () => getLocationLabel(dashboardProfile, { preferCurrent: true, fallback: 'Location not set' }),
-    [dashboardProfile]
+    () =>
+      getLocationLabel(dashboardProfile, {
+        preferCurrent: true,
+        fallback: resolvedDashboardLocationName || 'Location not set'
+      }),
+    [dashboardProfile, resolvedDashboardLocationName]
   );
   const getBookingDestinationDetails = (booking) => {
-    const areaLabel = String(booking?.location ?? '').trim();
-    const coordinateLabel = formatCoordinates(booking?.coordinates);
-
-    if (areaLabel && coordinateLabel) {
-      return {
-        primary: areaLabel,
-        secondary: coordinateLabel
-      };
-    }
+    const areaLabel = getDisplayLocationText(booking?.location, '');
+    const hasCoordinates =
+      booking?.coordinates?.latitude != null && booking?.coordinates?.longitude != null;
 
     return {
-      primary: areaLabel || coordinateLabel || 'Location unavailable',
+      primary: areaLabel || (hasCoordinates ? 'Client live location' : 'Location unavailable'),
       secondary: ''
     };
   };
@@ -611,7 +611,7 @@ const LabourDashboardPage = () => {
                           <div className="min-w-0">
                             <h3 className="font-semibold text-slate-950 dark:text-white">{booking.clientName}</h3>
                             <p className="mt-1 break-words text-sm text-slate-600 dark:text-slate-300">
-                              {booking.serviceType} - {booking.location || 'Location shared after accept'}
+                              {booking.serviceType} - {getDisplayLocationText(booking.location, 'Location shared after accept')}
                             </p>
                           </div>
                           <Badge tone={routeUnlocked ? 'emerald' : 'amber'}>
@@ -645,11 +645,6 @@ const LabourDashboardPage = () => {
                               ? destinationDetails.primary
                               : 'Directions appear after you accept this client request.'}
                           </p>
-                          {routeUnlocked && destinationDetails.secondary ? (
-                            <p className="mt-1 break-words text-xs font-medium text-slate-500">
-                              GPS: {destinationDetails.secondary}
-                            </p>
-                          ) : null}
                         </div>
 
                         <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
@@ -744,7 +739,7 @@ const LabourDashboardPage = () => {
                         <div className="min-w-0">
                           <h3 className="font-semibold text-slate-950 dark:text-white">{booking.serviceType}</h3>
                           <p className="mt-1 break-words text-sm text-slate-600 dark:text-slate-300">
-                            {booking.clientName} - {booking.location}
+                            {booking.clientName} - {getDisplayLocationText(booking.location, 'Live location shared')}
                           </p>
                         </div>
                         <Badge tone={booking.status === 'in_progress' ? 'amber' : 'emerald'}>

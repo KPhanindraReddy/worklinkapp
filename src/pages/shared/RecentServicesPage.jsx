@@ -15,6 +15,7 @@ import { subscribeBookingsForUser } from '../../services/bookingService';
 import { submitServiceReview } from '../../services/reviewService';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
+import { getDisplayLocationText } from '../../utils/location';
 
 const getStatusTone = (status) => {
   if (['accepted', 'in_progress'].includes(status)) {
@@ -196,7 +197,7 @@ const RecentServicesPage = () => {
                   <div className="mt-4 grid gap-2 text-[13px] text-slate-600 md:grid-cols-3">
                     <p>{formatDate(booking.appointmentAt)}</p>
                     <p>{formatCurrency(booking.amount)}</p>
-                    <p>{booking.location || 'Location shared after confirmation'}</p>
+                    <p>{getDisplayLocationText(booking.location, 'Location shared after confirmation')}</p>
                   </div>
 
                   {booking.serviceDetails ? (

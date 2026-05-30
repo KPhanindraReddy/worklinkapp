@@ -10,11 +10,12 @@ import { TextAreaField } from '../common/TextAreaField';
 import { VerificationBadge } from '../common/VerificationBadge';
 import { useAuth } from '../../context/AuthContext';
 import { useGeolocation } from '../../hooks/useGeolocation';
+import { useLocationName } from '../../hooks/useLocationName';
 import { createBooking, subscribeBookingsForUser } from '../../services/bookingService';
 import { createNotification } from '../../services/notificationService';
 import { buildAppointmentDateTime, formatCurrency } from '../../utils/formatters';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
-import { formatCoordinates, getLocationLabel, normalizeCoordinates } from '../../utils/location';
+import { getDisplayLocationText, getLocationLabel, normalizeCoordinates } from '../../utils/location';
 import { createRouteGroupId } from '../../utils/requestRouting';
 
 const activeWorkStatuses = ['accepted', 'in_progress'];
@@ -23,7 +24,7 @@ const generateStartOtp = () => String(Math.floor(100000 + Math.random() * 900000
 const buildInitialFormValues = ({ labour, userProfile, defaultService, defaultBudget }) => ({
   serviceName: defaultService || labour?.category || '',
   serviceDetails: '',
-  address: userProfile?.location || userProfile?.currentLocation || '',
+  address: getDisplayLocationText(userProfile?.location || userProfile?.currentLocation, ''),
   budget: defaultBudget || ''
 });
 
@@ -54,6 +55,11 @@ export const QuickBookingDialog = ({
   const savedLocationLabel = useMemo(
     () => getLocationLabel(userProfile, { fallback: '' }),
     [userProfile]
+  );
+  const resolvedLocationName = useLocationName(clientLocation);
+  const requestLocationLabel = getDisplayLocationText(
+    savedLocationLabel || resolvedLocationName,
+    'Live location captured'
   );
   const pendingBookings = useMemo(
     () => bookings.filter((booking) => booking.status === 'pending'),
@@ -379,7 +385,7 @@ export const QuickBookingDialog = ({
               </div>
               <p className="mt-2 leading-6">
                 {clientLocation
-                  ? `${savedLocationLabel || 'Saved location'} - ${formatCoordinates(clientLocation)}`
+                  ? requestLocationLabel
                   : geolocation.error || 'Manual address will be used if GPS is unavailable.'}
               </p>
               <div className="mt-4">

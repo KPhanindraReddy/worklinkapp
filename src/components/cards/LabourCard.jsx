@@ -6,6 +6,7 @@ import { Card } from '../common/Card';
 import { VerificationBadge } from '../common/VerificationBadge';
 import { formatDistanceKm } from '../../utils/formatters';
 import { useAuth } from '../../context/AuthContext';
+import { getDisplayLocationText } from '../../utils/location';
 
 const availabilityTone = {
   Available: 'emerald',
@@ -19,7 +20,10 @@ export const LabourCard = ({ labour, showMatchScore = false, onQuickBook, compac
   const isLabour = userProfile?.role === 'labour';
   const isAvailable = labour.availability === 'Available';
   const canQuickBook = Boolean(isClient && isAvailable && onQuickBook);
-  const locationLabel = labour.currentLocation || labour.location || 'Location not added';
+  const locationLabel = getDisplayLocationText(
+    labour.currentLocation || labour.location,
+    'Location not added'
+  );
 
   if (compact) {
     return (

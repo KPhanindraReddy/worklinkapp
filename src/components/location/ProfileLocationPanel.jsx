@@ -2,9 +2,10 @@ import { LoaderCircle, LocateFixed, MapPin, Navigation } from 'lucide-react';
 import { useMemo } from 'react';
 import { Button } from '../common/Button';
 import { useGeolocation } from '../../hooks/useGeolocation';
+import { useLocationName } from '../../hooks/useLocationName';
 import {
   buildMapsUrl,
-  formatCoordinates,
+  getDisplayLocationText,
   hasCoordinates,
   normalizeCoordinates
 } from '../../utils/location';
@@ -30,8 +31,13 @@ export const ProfileLocationPanel = ({
         : null,
     [geolocation.latitude, geolocation.longitude]
   );
+  const liveLocationName = useLocationName(liveCoordinates);
+  const savedLocationName = useLocationName(savedCoordinates);
   const savedMapsUrl = buildMapsUrl(savedCoordinates, locationValue);
-  const savedLabel = String(locationValue ?? '').trim() || formatCoordinates(savedCoordinates);
+  const savedLabel = getDisplayLocationText(
+    locationValue,
+    hasCoordinates(savedCoordinates) ? savedLocationName || 'Live location captured' : ''
+  );
 
   const handleApplyLiveLocation = async () => {
     const coordinates = await geolocation.requestLocation({ force: true });
@@ -41,7 +47,7 @@ export const ProfileLocationPanel = ({
     }
 
     onApplyLocation?.({
-      label: String(locationValue ?? '').trim() || formatCoordinates(coordinates),
+      label: getDisplayLocationText(locationValue, liveLocationName || 'Live location captured'),
       coordinates
     });
   };
@@ -56,9 +62,9 @@ export const ProfileLocationPanel = ({
           </div>
           <p className="mt-1 break-words text-xs leading-5 text-slate-600">
             {liveCoordinates
-              ? `Updated GPS ready: ${formatCoordinates(liveCoordinates)}`
+              ? `Live location ready${liveLocationName ? `: ${liveLocationName}` : ''}`
               : geolocation.loading
-                ? 'Updating your GPS coordinates.'
+                ? 'Updating your live location.'
                 : savedLabel
                   ? `Saved location: ${savedLabel}`
                   : geolocation.error || 'Save location once, then update it only when you move.'}

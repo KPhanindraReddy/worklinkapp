@@ -19,6 +19,7 @@ import {
   workCategories
 } from '../../utils/constants';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
+import { getDisplayLocationText } from '../../utils/location';
 
 const initialFormState = {
   fullName: '',
@@ -76,8 +77,12 @@ const CompleteProfilePage = () => {
       fullName: prev.fullName || userProfile?.fullName || currentUser?.displayName || '',
       phoneNumber: prev.phoneNumber || userProfile?.phoneNumber || currentUser?.phoneNumber || '',
       email: prev.email || userProfile?.email || currentUser?.email || '',
-      currentLocation: prev.currentLocation || userProfile?.location || '',
-      location: prev.location || userProfile?.location || '',
+      currentLocation:
+        getDisplayLocationText(prev.currentLocation, '') ||
+        getDisplayLocationText(userProfile?.currentLocation || userProfile?.location, ''),
+      location:
+        getDisplayLocationText(prev.location, '') ||
+        getDisplayLocationText(userProfile?.location || userProfile?.currentLocation, ''),
       coordinates: prev.coordinates || userProfile?.coordinates || null
     }));
   }, [
@@ -86,6 +91,7 @@ const CompleteProfilePage = () => {
     currentUser?.phoneNumber,
     queryRole,
     userProfile?.fullName,
+    userProfile?.currentLocation,
     userProfile?.location,
     userProfile?.phoneNumber,
     userProfile?.coordinates,
@@ -237,7 +243,7 @@ const CompleteProfilePage = () => {
                       onApplyLocation={({ label, coordinates }) =>
                         setFormValues((prev) => ({
                           ...prev,
-                          location: prev.location.trim() || label,
+                          location: getDisplayLocationText(prev.location, '') || label,
                           coordinates
                         }))
                       }
@@ -258,7 +264,7 @@ const CompleteProfilePage = () => {
                       onApplyLocation={({ label, coordinates }) =>
                         setFormValues((prev) => ({
                           ...prev,
-                          currentLocation: prev.currentLocation.trim() || label,
+                          currentLocation: getDisplayLocationText(prev.currentLocation, '') || label,
                           coordinates
                         }))
                       }

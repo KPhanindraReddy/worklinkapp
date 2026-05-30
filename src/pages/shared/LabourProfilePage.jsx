@@ -11,9 +11,11 @@ import { SectionHeading } from '../../components/common/SectionHeading';
 import { VerificationBadge } from '../../components/common/VerificationBadge';
 import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
+import { useLocationName } from '../../hooks/useLocationName';
 import { subscribeLabourById } from '../../services/labourService';
 import { subscribeReviewsForLabour } from '../../services/reviewService';
 import { formatCurrency } from '../../utils/formatters';
+import { getDisplayLocationText } from '../../utils/location';
 
 const LabourProfilePage = () => {
   const { labourId } = useParams();
@@ -21,6 +23,7 @@ const LabourProfilePage = () => {
   const [labour, setLabour] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [selectedQuickBookLabour, setSelectedQuickBookLabour] = useState(null);
+  const resolvedLabourLocationName = useLocationName(labour?.coordinates);
 
   useEffect(() => {
     return subscribeLabourById(labourId, setLabour, () => setLabour(null));
@@ -107,7 +110,12 @@ const LabourProfilePage = () => {
                 </p>
                 <div className="mt-6 flex min-w-0 items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
                   <MapPin size={16} className="flex-none" />
-                  <span className="min-w-0 break-words">{labour.currentLocation}</span>
+                  <span className="min-w-0 break-words">
+                    {getDisplayLocationText(
+                      labour.currentLocation || labour.location,
+                      resolvedLabourLocationName || 'Location not added'
+                    )}
+                  </span>
                 </div>
                 <div className="mt-8 grid gap-3 sm:flex sm:flex-wrap">
                   {isClient ? (
@@ -218,7 +226,7 @@ const LabourProfilePage = () => {
                     </p>
                   </div>
                   <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                    {job.location} - {job.date}
+                    {getDisplayLocationText(job.location, 'Location shared')} - {job.date}
                   </p>
                 </div>
               ))}

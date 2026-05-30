@@ -1,7 +1,20 @@
 const isFiniteCoordinate = (value) => Number.isFinite(Number(value));
+const coordinateLabelPattern = /^\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*$/;
 
 export const hasCoordinates = (coordinates) =>
   isFiniteCoordinate(coordinates?.latitude) && isFiniteCoordinate(coordinates?.longitude);
+
+export const isCoordinateLabel = (value) => coordinateLabelPattern.test(String(value ?? '').trim());
+
+export const getDisplayLocationText = (value, fallback = 'Live location captured') => {
+  const trimmedValue = String(value ?? '').trim();
+
+  if (!trimmedValue || isCoordinateLabel(trimmedValue)) {
+    return fallback;
+  }
+
+  return trimmedValue;
+};
 
 export const normalizeCoordinates = (coordinates) =>
   hasCoordinates(coordinates)
@@ -23,19 +36,23 @@ export const formatCoordinates = (coordinates, precision = 5) => {
 
 export const getLocationLabel = (
   profile,
-  { preferCurrent = false, fallback = 'Location not set' } = {}
+  { preferCurrent = false, fallback = 'Location not set', includeCoordinates = false } = {}
 ) => {
   const primaryLocation = preferCurrent
     ? profile?.currentLocation || profile?.location
     : profile?.location || profile?.currentLocation;
   const trimmedLocation = String(primaryLocation ?? '').trim();
 
-  if (trimmedLocation) {
+  if (trimmedLocation && !isCoordinateLabel(trimmedLocation)) {
     return trimmedLocation;
   }
 
-  const coordinateLabel = formatCoordinates(profile?.coordinates);
-  return coordinateLabel || fallback;
+  if (includeCoordinates) {
+    const coordinateLabel = formatCoordinates(profile?.coordinates);
+    return coordinateLabel || fallback;
+  }
+
+  return fallback;
 };
 
 export const buildMapsUrl = (coordinates, label = '') => {

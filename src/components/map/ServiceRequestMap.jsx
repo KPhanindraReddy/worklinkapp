@@ -5,6 +5,7 @@ import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
 import { formatDistanceKm } from '../../utils/formatters';
 import { normalizeCoordinates } from '../../utils/location';
+import { getMapboxAccessToken } from '../../utils/mapbox';
 
 const fallbackPinPositions = [
   { left: '22%', top: '26%' },
@@ -24,18 +25,8 @@ const clampNumber = (value, min, max) => {
 };
 const clampPercent = (value, min = 9, max = 91) => Math.min(Math.max(value, min), max);
 
-const getMapboxToken = () =>
-  [
-    import.meta.env.VITE_MAPBOX_ACCESS_TOKEN,
-    import.meta.env.VITE_MAPBOX_TOKEN,
-    import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN,
-    import.meta.env.REACT_APP_MAPBOX_ACCESS_TOKEN
-  ]
-    .map((value) => String(value ?? '').trim())
-    .find(Boolean) ?? '';
-
 const getMapboxStaticUrl = (center, zoomLevel) => {
-  const mapboxToken = getMapboxToken();
+  const mapboxToken = getMapboxAccessToken();
   const normalizedCenter = normalizeCoordinates(center);
 
   if (!mapboxToken || !normalizedCenter) {
@@ -98,7 +89,7 @@ export const ServiceRequestMap = ({
   onSelectLabour,
   searching = false,
   title = 'Your current location',
-  subtitle = 'Live GPS location',
+  subtitle = 'Live location',
   centerLabel = 'Your live location',
   showCenterLabel = true,
   emptyLabel = 'Choose a service to show nearby labour',

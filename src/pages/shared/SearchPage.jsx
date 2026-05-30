@@ -15,11 +15,12 @@ import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useGeolocation } from '../../hooks/useGeolocation';
+import { useLocationName } from '../../hooks/useLocationName';
 import { useVoiceSearch } from '../../hooks/useVoiceSearch';
 import { searchLabours } from '../../services/labourService';
 import { resolvePostAuthPath } from '../../utils/authFlow';
 import { formatDistanceKm } from '../../utils/formatters';
-import { formatCoordinates, getLocationLabel, normalizeCoordinates } from '../../utils/location';
+import { getLocationLabel, normalizeCoordinates } from '../../utils/location';
 import { availabilityOptions, NEARBY_LABOUR_RADIUS_KM, workCategories } from '../../utils/constants';
 
 const SearchPage = () => {
@@ -65,9 +66,10 @@ const SearchPage = () => {
     [geolocation.latitude, geolocation.longitude]
   );
   const searchOrigin = useMemo(() => liveOrigin || savedOrigin, [liveOrigin, savedOrigin]);
+  const resolvedLocationName = useLocationName(searchOrigin);
   const activeLocationLabel = useMemo(() => {
     if (searchOrigin) {
-      return savedLocationLabel || formatCoordinates(searchOrigin);
+      return savedLocationLabel || resolvedLocationName || 'Live location captured';
     }
 
     if (geolocation.loading) {
@@ -75,7 +77,7 @@ const SearchPage = () => {
     }
 
     return geolocation.error || '';
-  }, [geolocation.error, geolocation.loading, savedLocationLabel, searchOrigin]);
+  }, [geolocation.error, geolocation.loading, resolvedLocationName, savedLocationLabel, searchOrigin]);
 
   useEffect(() => {
     if (shouldRedirectRole) {

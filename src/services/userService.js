@@ -1,7 +1,7 @@
 import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import { isFirebaseConfigured } from '../firebase/env';
 import { db } from '../firebase/firestore';
-import { formatCoordinates, normalizeCoordinates } from '../utils/location';
+import { normalizeCoordinates } from '../utils/location';
 
 export const getUserProfile = async (uid) => {
   if (!uid || !isFirebaseConfigured || !db) {
@@ -42,10 +42,8 @@ export const updateLiveUserLocation = async ({ uid, role, coordinates }) => {
     return;
   }
 
-  const liveLocationLabel = `Current GPS ${formatCoordinates(normalizedCoordinates)}`;
   const basePayload = {
     coordinates: normalizedCoordinates,
-    location: liveLocationLabel,
     liveCoordinates: normalizedCoordinates,
     liveLocationUpdatedAt: serverTimestamp(),
     updatedAt: serverTimestamp()
@@ -53,22 +51,14 @@ export const updateLiveUserLocation = async ({ uid, role, coordinates }) => {
 
   await setDoc(
     doc(db, 'users', uid),
-    role === 'labour'
-      ? {
-          ...basePayload,
-          currentLocation: liveLocationLabel
-        }
-      : basePayload,
+    basePayload,
     { merge: true }
   );
 
   if (role === 'labour') {
     await setDoc(
       doc(db, 'labours', uid),
-      {
-        ...basePayload,
-        currentLocation: liveLocationLabel
-      },
+      basePayload,
       { merge: true }
     );
   }

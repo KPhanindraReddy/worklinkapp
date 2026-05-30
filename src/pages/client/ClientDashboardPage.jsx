@@ -25,6 +25,7 @@ import { AppShell } from '../../components/layout/AppShell';
 import { ServiceRequestMap } from '../../components/map/ServiceRequestMap';
 import { useAuth } from '../../context/AuthContext';
 import { useGeolocation } from '../../hooks/useGeolocation';
+import { useLocationName } from '../../hooks/useLocationName';
 import { createBooking, subscribeBookingsForUser } from '../../services/bookingService';
 import { searchLabours } from '../../services/labourService';
 import { createNotification } from '../../services/notificationService';
@@ -39,7 +40,7 @@ import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { NEARBY_LABOUR_RADIUS_KM } from '../../utils/constants';
 import {
   buildMapsUrl,
-  formatCoordinates,
+  getDisplayLocationText,
   getLocationLabel,
   normalizeCoordinates
 } from '../../utils/location';
@@ -156,13 +157,11 @@ const ClientDashboardPage = () => {
     () => getLocationLabel(userProfile, { fallback: '' }),
     [userProfile]
   );
+  const resolvedLocationName = useLocationName(clientOrigin);
   const clientLocationLabel = useMemo(
     () => {
       if (clientOrigin) {
-        const coordinateLabel = formatCoordinates(clientOrigin);
-        return profileLocationLabel
-          ? `${profileLocationLabel} - ${coordinateLabel}`
-          : `Live GPS - ${coordinateLabel}`;
+        return profileLocationLabel || resolvedLocationName || 'Live location captured';
       }
 
       if (geolocation.loading) {
@@ -171,13 +170,11 @@ const ClientDashboardPage = () => {
 
       return geolocation.error || 'Allow location to show nearby services';
     },
-    [clientOrigin, geolocation.error, geolocation.loading, profileLocationLabel]
+    [clientOrigin, geolocation.error, geolocation.loading, profileLocationLabel, resolvedLocationName]
   );
   const bookingAddress =
     clientOrigin
-      ? profileLocationLabel
-        ? `${profileLocationLabel} - ${formatCoordinates(clientOrigin)}`
-        : `Live GPS ${formatCoordinates(clientOrigin)}`
+      ? getDisplayLocationText(profileLocationLabel || resolvedLocationName, 'Live location shared')
       : '';
 
   useEffect(() => {
@@ -335,7 +332,7 @@ const ClientDashboardPage = () => {
     }
 
     setRequestCoordinates(coordinates);
-    toast.success('Live GPS location updated.');
+    toast.success('Live location updated.');
   };
 
   const notifyLabour = async ({ bookingId, labour, requestMode: mode }) => {
@@ -378,7 +375,7 @@ const ClientDashboardPage = () => {
         mode === 'instant'
           ? 'Instant request from client home.'
           : `Scheduled request for ${selectedDate} ${selectedSlot}.`,
-      location: bookingAddress || (clientOrigin ? formatCoordinates(clientOrigin) : ''),
+      location: bookingAddress || (clientOrigin ? 'Live location shared' : ''),
       coordinates: clientOrigin,
       notes:
         mode === 'instant'
@@ -530,9 +527,9 @@ const ClientDashboardPage = () => {
             emptyLabel={`Choose a service below to show labour within ${NEARBY_LABOUR_RADIUS_KM} km`}
             showCenterLabel={false}
             showRoutePreview={Boolean(selectedService && selectedLabourId)}
-            initialZoom={9}
-            minZoom={8}
-            maxZoom={16}
+            initialZoom={12}
+            minZoom={9}
+            maxZoom={17}
             className="-mx-[0.625rem] min-h-[calc(100dvh-5.25rem)] rounded-none border-x-0 sm:mx-0 sm:min-h-[640px] sm:rounded-[28px] sm:border"
             sheetClassName="bottom-0 left-0 right-0 rounded-b-none rounded-t-[28px] border-x-0 border-b-0 p-4 sm:bottom-4 sm:left-4 sm:right-4 sm:rounded-[24px] sm:border"
           >
@@ -782,7 +779,7 @@ const ClientDashboardPage = () => {
                         <div className="min-w-0">
                           <h3 className="font-semibold text-slate-950">{booking.serviceType}</h3>
                           <p className="mt-1 break-words text-sm text-slate-600">
-                            {booking.labourName} - {booking.location || 'Location shared'}
+                            {booking.labourName} - {getDisplayLocationText(booking.location, 'Live location shared')}
                           </p>
                         </div>
                         <Badge tone={getBookingTone(booking.status)}>{booking.status}</Badge>

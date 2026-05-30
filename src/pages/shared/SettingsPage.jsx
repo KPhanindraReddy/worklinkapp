@@ -15,6 +15,7 @@ import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
 import { availabilityOptions, languageOptions, workCategories } from '../../utils/constants';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
+import { getDisplayLocationText } from '../../utils/location';
 
 const toCommaText = (value) => (Array.isArray(value) ? value.join(', ') : value || '');
 
@@ -22,8 +23,8 @@ const buildProfileForm = (profile, currentUser) => ({
   fullName: profile?.fullName || currentUser?.displayName || '',
   phoneNumber: profile?.phoneNumber || currentUser?.phoneNumber || '',
   email: profile?.email || currentUser?.email || '',
-  location: profile?.location || '',
-  currentLocation: profile?.currentLocation || profile?.location || '',
+  location: getDisplayLocationText(profile?.location, ''),
+  currentLocation: getDisplayLocationText(profile?.currentLocation || profile?.location, ''),
   coordinates: profile?.coordinates || null,
   category: profile?.category || '',
   skills: toCommaText(profile?.skills),
@@ -254,7 +255,7 @@ const SettingsPage = () => {
                     onApplyLocation={({ label, coordinates }) =>
                       setFormValues((prev) => ({
                         ...prev,
-                        location: prev.location.trim() || label,
+                        location: getDisplayLocationText(prev.location, '') || label,
                         coordinates
                       }))
                     }
@@ -277,7 +278,7 @@ const SettingsPage = () => {
                     onApplyLocation={({ label, coordinates }) =>
                       setFormValues((prev) => ({
                         ...prev,
-                        currentLocation: prev.currentLocation.trim() || label,
+                        currentLocation: getDisplayLocationText(prev.currentLocation, '') || label,
                         coordinates
                       }))
                     }

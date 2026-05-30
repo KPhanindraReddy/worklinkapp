@@ -26,6 +26,7 @@ import { TextAreaField } from '../../components/common/TextAreaField';
 import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
 import { useGeolocation } from '../../hooks/useGeolocation';
+import { useLocationName } from '../../hooks/useLocationName';
 import { createBooking, subscribeBookingsForUser } from '../../services/bookingService';
 import { ensureConversation } from '../../services/chatService';
 import { getLabourById, searchLabours } from '../../services/labourService';
@@ -38,7 +39,7 @@ import {
   formatDistanceKm
 } from '../../utils/formatters';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
-import { formatCoordinates, getLocationLabel, normalizeCoordinates } from '../../utils/location';
+import { getDisplayLocationText, getLocationLabel, normalizeCoordinates } from '../../utils/location';
 import { createRouteGroupId } from '../../utils/requestRouting';
 
 const activeWorkStatuses = ['accepted', 'in_progress'];
@@ -73,7 +74,7 @@ const BookingPage = () => {
   const [formValues, setFormValues] = useState({
     serviceName: initialService,
     serviceDetails: '',
-    address: userProfile?.location ?? '',
+    address: getDisplayLocationText(userProfile?.location, ''),
     budget: initialBudget
   });
   const [requestCoordinates, setRequestCoordinates] = useState(
@@ -84,8 +85,9 @@ const BookingPage = () => {
     () => getLocationLabel(userProfile, { fallback: '' }),
     [userProfile]
   );
+  const resolvedLocationName = useLocationName(clientLocation);
   const locationStatusLabel = clientLocation
-    ? savedProfileLocation || formatCoordinates(clientLocation)
+    ? getDisplayLocationText(savedProfileLocation || resolvedLocationName, 'Live location captured')
     : 'Manual address only';
 
   useEffect(() => {
@@ -119,7 +121,10 @@ const BookingPage = () => {
 
   useEffect(() => {
     if (userProfile?.location) {
-      setFormValues((prev) => ({ ...prev, address: prev.address || userProfile.location }));
+      setFormValues((prev) => ({
+        ...prev,
+        address: prev.address || getDisplayLocationText(userProfile.location, '')
+      }));
     }
   }, [userProfile?.location]);
 
@@ -632,7 +637,7 @@ const BookingPage = () => {
                         </Button>
                         <p className="text-xs font-medium text-slate-600">
                           {clientLocation
-                            ? `${locationStatusLabel} - ${formatCoordinates(clientLocation)}`
+                            ? locationStatusLabel
                             : `Use live location to search labour within ${NEARBY_LABOUR_RADIUS_KM} km.`}
                         </p>
                       </div>
@@ -787,7 +792,9 @@ const BookingPage = () => {
                           </span>
                           <span className="inline-flex min-w-0 items-start gap-2 break-words">
                             <MapPin size={15} className="mt-0.5 flex-none" />
-                            <span className="min-w-0">{booking.location}</span>
+                            <span className="min-w-0">
+                              {getDisplayLocationText(booking.location, 'Live location shared')}
+                            </span>
                           </span>
                         </div>
                         {booking.status === 'accepted' && booking.startOtp ? (
@@ -868,7 +875,7 @@ const BookingPage = () => {
                           <div className="min-w-0">
                             <h3 className="font-semibold text-slate-950">{booking.serviceType}</h3>
                             <p className="break-words text-sm font-medium text-slate-600">
-                              {booking.labourName} - {booking.location}
+                            {booking.labourName} - {getDisplayLocationText(booking.location, 'Live location shared')}
                             </p>
                           </div>
                           <Badge tone={booking.status === 'accepted' ? 'emerald' : booking.status === 'rejected' ? 'rose' : booking.status === 'timed_out' ? 'slate' : 'amber'}>
