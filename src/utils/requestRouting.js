@@ -2,6 +2,7 @@ import { parseDateValue } from './formatters';
 
 export const autoRouteRequestFlows = new Set([
   'client_service_map',
+  'client_dashboard_instant',
   'quick_book_dialog',
   'quick_book_reroute'
 ]);

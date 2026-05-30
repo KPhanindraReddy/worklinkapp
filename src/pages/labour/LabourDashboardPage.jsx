@@ -1,6 +1,5 @@
 import {
   CalendarClock,
-  MapPinned,
   MessageCircle,
   Navigation,
   Phone,
@@ -18,6 +17,7 @@ import { Skeleton } from '../../components/common/Skeleton';
 import { AppShell } from '../../components/layout/AppShell';
 import { AvailabilityToggle } from '../../components/dashboard/AvailabilityToggle';
 import { MetricsGrid } from '../../components/dashboard/MetricsGrid';
+import { ServiceRequestMap } from '../../components/map/ServiceRequestMap';
 import { useAuth } from '../../context/AuthContext';
 import {
   completeBookingWork,
@@ -28,12 +28,25 @@ import {
 import { ensureConversation } from '../../services/chatService';
 import { subscribeLabourById, updateAvailability } from '../../services/labourService';
 import { createNotification } from '../../services/notificationService';
-import { formatCurrency, formatDate } from '../../utils/formatters';
+import { formatCurrency, formatDate, parseDateValue } from '../../utils/formatters';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { formatCoordinates, getLocationLabel } from '../../utils/location';
 
 const buildAvatarUrl = (fullName) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName || 'WorkLink Labour')}&background=1d4ed8&color=ffffff`;
+
+const getDateKey = (value) => {
+  const date = parseDateValue(value);
+
+  if (!date) {
+    return '';
+  }
+
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${date.getFullYear()}-${month}-${day}`;
+};
 
 const buildOwnLabourProfile = ({ currentUser, userProfile }) => {
   const fullName = userProfile?.fullName || currentUser?.displayName || 'Your labour profile';
@@ -115,6 +128,18 @@ const LabourDashboardPage = () => {
   const isProfileMissing = !dashboardLoading && !profile;
   const activeWorkBookings = useMemo(
     () => bookings.filter((booking) => ['accepted', 'in_progress'].includes(booking.status)),
+    [bookings]
+  );
+  const scheduledClientBookings = useMemo(
+    () =>
+      bookings
+        .filter((booking) => ['pending', 'accepted', 'in_progress'].includes(booking.status))
+        .sort((a, b) => {
+          const dateA = parseDateValue(a.appointmentAt)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+          const dateB = parseDateValue(b.appointmentAt)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+
+          return dateA - dateB;
+        }),
     [bookings]
   );
   const inProgressBooking = useMemo(
@@ -315,6 +340,21 @@ const LabourDashboardPage = () => {
     if (status === 'accepted' && inProgressBooking) {
       toast.error('Complete your current in-progress work before accepting another job.');
       return;
+    }
+
+    if (status === 'accepted') {
+      const requestedDateKey = getDateKey(booking.appointmentAt);
+      const alreadyBookedForDay = bookings.some(
+        (item) =>
+          item.id !== booking.id &&
+          ['accepted', 'in_progress'].includes(item.status) &&
+          getDateKey(item.appointmentAt) === requestedDateKey
+      );
+
+      if (requestedDateKey && alreadyBookedForDay) {
+        toast.error('You already have an accepted client scheduled for this day.');
+        return;
+      }
     }
 
     try {
@@ -546,6 +586,140 @@ const LabourDashboardPage = () => {
               </div>
             </Card>
 
+            <Card>
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Scheduled clients</h2>
+                  <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
+                    Client time, service details, contact actions, and map directions stay together here.
+                  </p>
+                </div>
+                <Badge tone={scheduledClientBookings.length ? 'emerald' : 'slate'}>
+                  {scheduledClientBookings.length ? `${scheduledClientBookings.length} open` : 'No schedule'}
+                </Badge>
+              </div>
+
+              <div className="mt-5 grid gap-3 lg:grid-cols-2">
+                {scheduledClientBookings.length ? (
+                  scheduledClientBookings.map((booking) => {
+                    const destinationDetails = getBookingDestinationDetails(booking);
+                    const routeUnlocked = ['accepted', 'in_progress'].includes(booking.status);
+
+                    return (
+                      <div key={booking.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-slate-950 dark:text-white">{booking.clientName}</h3>
+                            <p className="mt-1 break-words text-sm text-slate-600 dark:text-slate-300">
+                              {booking.serviceType} - {booking.location || 'Location shared after accept'}
+                            </p>
+                          </div>
+                          <Badge tone={routeUnlocked ? 'emerald' : 'amber'}>
+                            {booking.status === 'in_progress' ? 'In progress' : booking.status}
+                          </Badge>
+                        </div>
+
+                        <div className="mt-4 grid gap-2 text-sm text-slate-600 dark:text-slate-300">
+                          <span className="inline-flex items-center gap-2">
+                            <CalendarClock size={15} />
+                            {formatDate(booking.appointmentAt)}
+                          </span>
+                          <span className="inline-flex items-center gap-2 font-semibold text-brand-700 dark:text-brand-200">
+                            <WalletCards size={15} />
+                            {formatCurrency(booking.amount)}
+                          </span>
+                        </div>
+
+                        {booking.serviceDetails ? (
+                          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                            {booking.serviceDetails}
+                          </p>
+                        ) : null}
+
+                        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+                          <p className="font-semibold text-slate-950">
+                            {routeUnlocked ? 'Client route ready' : 'Accept to unlock route'}
+                          </p>
+                          <p className="mt-2 break-words text-slate-500">
+                            {routeUnlocked
+                              ? destinationDetails.primary
+                              : 'Directions appear after you accept this client request.'}
+                          </p>
+                          {routeUnlocked && destinationDetails.secondary ? (
+                            <p className="mt-1 break-words text-xs font-medium text-slate-500">
+                              GPS: {destinationDetails.secondary}
+                            </p>
+                          ) : null}
+                        </div>
+
+                        <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
+                          {routeUnlocked ? (
+                            <Button
+                              as="a"
+                              href={buildDirectionsUrl(booking)}
+                              target="_blank"
+                              rel="noreferrer"
+                              size="sm"
+                              className="w-full sm:w-auto"
+                            >
+                              <Navigation size={15} />
+                              Directions
+                            </Button>
+                          ) : (
+                            <>
+                              <Button
+                                size="sm"
+                                className="w-full sm:w-auto"
+                                disabled={Boolean(inProgressBooking)}
+                                onClick={() => handleBookingDecision(booking, 'accepted')}
+                              >
+                                Accept
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full sm:w-auto"
+                                onClick={() => handleBookingDecision(booking, 'rejected')}
+                              >
+                                Reject
+                              </Button>
+                            </>
+                          )}
+                          <Button
+                            as="a"
+                            href={booking.clientPhoneNumber ? `tel:${booking.clientPhoneNumber}` : undefined}
+                            size="sm"
+                            variant="outline"
+                            className={`w-full sm:w-auto ${
+                              !booking.clientPhoneNumber ? 'pointer-events-none opacity-60' : ''
+                            }`}
+                          >
+                            <Phone size={15} />
+                            Call
+                          </Button>
+                          <Button
+                            as={Link}
+                            to="/chat"
+                            size="sm"
+                            variant="outline"
+                            className="w-full sm:w-auto"
+                            onClick={() => handleOpenClientChat(booking)}
+                          >
+                            <MessageCircle size={15} />
+                            Chat
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">
+                    Accepted and pending client work will appear here with time and route details.
+                  </p>
+                )}
+              </div>
+            </Card>
+
             {activeWorkBookings.length ? (
               <Card>
                 <div className="flex flex-wrap items-center justify-between gap-4">
@@ -589,40 +763,14 @@ const LabourDashboardPage = () => {
                         </span>
                       </div>
 
-                      <div className="mt-4 overflow-hidden rounded-3xl border border-slate-300 bg-[#f4fbf7] p-4">
-                        <div className="relative h-36 overflow-hidden rounded-2xl bg-white">
-                          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(203,213,225,0.3)_1px,transparent_1px),linear-gradient(rgba(203,213,225,0.3)_1px,transparent_1px)] bg-[length:42px_42px]" />
-                          <div className="absolute left-[-10%] top-[42%] h-8 w-[120%] rotate-[-10deg] bg-slate-100 shadow-sm" />
-                          <div className="absolute left-[48%] top-[-20%] h-[140%] w-8 rotate-[8deg] bg-slate-100 shadow-sm" />
-                          <div className="absolute left-1/2 top-1/2 grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-4 border-white bg-emerald-600 text-white shadow-soft">
-                            <MapPinned size={20} />
-                          </div>
-                        </div>
-                        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-slate-950">Client destination</p>
-                            <p className="mt-1 break-words text-xs font-medium text-slate-600">
-                              {destinationDetails.primary}
-                            </p>
-                            {destinationDetails.secondary ? (
-                              <p className="mt-1 break-words text-[11px] font-medium text-slate-500">
-                                GPS: {destinationDetails.secondary}
-                              </p>
-                            ) : null}
-                          </div>
-                          <Button
-                            as="a"
-                            href={buildDirectionsUrl(booking)}
-                            target="_blank"
-                            rel="noreferrer"
-                            size="sm"
-                            className="w-full sm:w-auto"
-                          >
-                            <Navigation size={15} />
-                            Directions
-                          </Button>
-                        </div>
-                      </div>
+                      <ServiceRequestMap
+                        center={booking.coordinates}
+                        title="Client destination"
+                        subtitle={destinationDetails.secondary || destinationDetails.primary}
+                        centerLabel="Client location"
+                        directionsUrl={buildDirectionsUrl(booking)}
+                        className="mt-4 !min-h-[280px] rounded-[24px] sm:!min-h-[320px]"
+                      />
 
                       {booking.status === 'accepted' ? (
                         <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
