@@ -1,8 +1,12 @@
 import {
+  ClipboardList,
+  House,
+  IndianRupee,
   CalendarClock,
   MessageCircle,
   Navigation,
   Phone,
+  UserRound,
   WalletCards
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -35,6 +39,13 @@ import { getDisplayLocationText, getLocationLabel } from '../../utils/location';
 
 const buildAvatarUrl = (fullName) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName || 'WorkLink Labour')}&background=1d4ed8&color=ffffff`;
+
+const labourDashboardNavItems = [
+  { label: 'Home', href: '#labour-home', icon: House },
+  { label: 'Requests', href: '#labour-requests', icon: ClipboardList },
+  { label: 'Earnings', href: '#labour-earnings', icon: IndianRupee },
+  { label: 'Profile', href: '#labour-profile', icon: UserRound }
+];
 
 const getDateKey = (value) => {
   const date = parseDateValue(value);
@@ -81,6 +92,7 @@ const LabourDashboardPage = () => {
   const [dashboardLoading, setDashboardLoading] = useState(true);
   const [updatingAvailability, setUpdatingAvailability] = useState(false);
   const [otpValues, setOtpValues] = useState({});
+  const [completionAmounts, setCompletionAmounts] = useState({});
   const [startingBookingId, setStartingBookingId] = useState('');
   const [completingBookingId, setCompletingBookingId] = useState('');
 
@@ -224,27 +236,25 @@ const LabourDashboardPage = () => {
     const completedJobs =
       bookings.filter((item) => item.status === 'completed').length || dashboardProfile.completedJobs;
     const pendingRequests = bookings.filter((item) => item.status === 'pending').length;
+    const activeWork = bookings.filter((item) => ['accepted', 'in_progress'].includes(item.status)).length;
     const earnings = bookings
-      .filter((item) => ['accepted', 'completed'].includes(item.status))
+      .filter((item) => item.status === 'completed')
       .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
     return [
       { label: 'Completed jobs', value: completedJobs },
       { label: 'Pending requests', value: pendingRequests },
-      {
-        label: 'Average rating',
-        value: dashboardProfile.rating
-      },
+      { label: 'Active work', value: activeWork },
       { label: 'Tracked earnings', value: formatCurrency(earnings) }
     ];
-  }, [bookings, dashboardProfile]);
+  }, [bookings, dashboardProfile.completedJobs]);
 
   const financialSummary = useMemo(() => {
-    const pendingAmount = bookings
-      .filter((item) => item.status === 'pending')
+    const dueAmount = bookings
+      .filter((item) => item.status === 'completed' && item.paymentStatus !== 'paid')
       .reduce((sum, item) => sum + Number(item.amount || 0), 0);
-    const acceptedAmount = bookings
-      .filter((item) => item.status === 'accepted')
+    const paidAmount = bookings
+      .filter((item) => item.status === 'completed' && item.paymentStatus === 'paid')
       .reduce((sum, item) => sum + Number(item.amount || 0), 0);
     const completedAmount = bookings
       .filter((item) => item.status === 'completed')
@@ -252,15 +262,15 @@ const LabourDashboardPage = () => {
 
     return [
       {
-        label: 'Pending request value',
-        value: formatCurrency(pendingAmount)
+        label: 'Payment due',
+        value: formatCurrency(dueAmount)
       },
       {
-        label: 'Accepted work value',
-        value: formatCurrency(acceptedAmount)
+        label: 'Paid earnings',
+        value: formatCurrency(paidAmount)
       },
       {
-        label: 'Completed earnings',
+        label: 'Total completed',
         value: formatCurrency(completedAmount)
       }
     ];
@@ -391,6 +401,11 @@ const LabourDashboardPage = () => {
     setOtpValues((prev) => ({ ...prev, [bookingId]: numericValue }));
   };
 
+  const handleCompletionAmountChange = (bookingId, value) => {
+    const normalizedValue = value.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1');
+    setCompletionAmounts((prev) => ({ ...prev, [bookingId]: normalizedValue }));
+  };
+
   const handleStartWork = async (booking) => {
     if (!currentUser || booking.labourId !== currentUser.uid) {
       toast.error('This booking does not belong to your labour account.');
@@ -446,10 +461,17 @@ const LabourDashboardPage = () => {
       return;
     }
 
+    const finalAmount = Number(completionAmounts[booking.id]);
+
+    if (!Number.isFinite(finalAmount) || finalAmount <= 0) {
+      toast.error('Enter the final amount before completing this work.');
+      return;
+    }
+
     setCompletingBookingId(booking.id);
 
     try {
-      await completeBookingWork({ bookingId: booking.id, labourId: currentUser.uid });
+      await completeBookingWork({ bookingId: booking.id, labourId: currentUser.uid, finalAmount });
       setProfile((prev) =>
         prev
           ? {
@@ -469,7 +491,7 @@ const LabourDashboardPage = () => {
             userId: booking.clientId,
             senderId: currentUser.uid,
             title: 'Work completed',
-            body: `${dashboardProfile.fullName} marked your ${booking.serviceType} work as completed.`,
+            body: `${dashboardProfile.fullName} completed ${booking.serviceType}. Final payment: ${formatCurrency(finalAmount)}.`,
             type: 'booking',
             bookingId: booking.id
           });
@@ -481,9 +503,10 @@ const LabourDashboardPage = () => {
 
       toast.success(
         notificationDelivered
-          ? 'Work completed. Your profile is available for new requests.'
-          : 'Work completed. Client alert will appear after Firestore rules are deployed.'
+          ? `Work completed. Client payment due: ${formatCurrency(finalAmount)}.`
+          : `Work completed for ${formatCurrency(finalAmount)}. Client alert will appear after Firestore rules are deployed.`
       );
+      setCompletionAmounts((prev) => ({ ...prev, [booking.id]: '' }));
     } catch (error) {
       toast.error(getFirebaseErrorMessage(error));
     } finally {
@@ -506,7 +529,7 @@ const LabourDashboardPage = () => {
               </Card>
 
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {['completed', 'pending', 'rating', 'earnings'].map((item) => (
+                {['completed', 'pending', 'active', 'earnings'].map((item) => (
                   <Card key={item}>
                     <Skeleton className="h-4 w-28" />
                     <Skeleton className="mt-3 h-8 w-20" />
@@ -528,6 +551,25 @@ const LabourDashboardPage = () => {
       <section className="section-space">
         <div className="page-shell">
           <div className="space-y-6">
+            <nav className="sticky top-[4.5rem] z-30 -mx-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white/95 p-1 shadow-sm backdrop-blur">
+              <div className="grid min-w-[34rem] grid-cols-4 gap-1 sm:min-w-0">
+                {labourDashboardNavItems.map((item) => {
+                  const Icon = item.icon;
+
+                  return (
+                    <a
+                      key={item.href}
+                      href={item.href}
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-950 hover:text-white"
+                    >
+                      <Icon size={16} />
+                      {item.label}
+                    </a>
+                  );
+                })}
+              </div>
+            </nav>
+
             {dashboardLoading ? (
               <Card className="overflow-hidden rounded-[28px]">
                 <Skeleton className="h-8 w-48" />
@@ -548,7 +590,7 @@ const LabourDashboardPage = () => {
               </Card>
             ) : null}
 
-            <Card className="overflow-hidden rounded-[28px] sm:rounded-[36px]">
+            <Card id="labour-home" className="scroll-mt-28 overflow-hidden rounded-[28px] sm:rounded-[36px]">
               <div className="grid gap-5 p-4 sm:p-5 md:p-8 lg:grid-cols-[1fr_auto] lg:items-center">
                 <div>
                   <div className="flex flex-wrap gap-2">
@@ -586,7 +628,7 @@ const LabourDashboardPage = () => {
               </div>
             </Card>
 
-            <Card>
+            <Card id="labour-requests" className="scroll-mt-28">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Scheduled clients</h2>
@@ -624,10 +666,12 @@ const LabourDashboardPage = () => {
                             <CalendarClock size={15} />
                             {formatDate(booking.appointmentAt)}
                           </span>
-                          <span className="inline-flex items-center gap-2 font-semibold text-brand-700 dark:text-brand-200">
-                            <WalletCards size={15} />
-                            {formatCurrency(booking.amount)}
-                          </span>
+                          {booking.status === 'completed' && Number(booking.amount) > 0 ? (
+                            <span className="inline-flex items-center gap-2 font-semibold text-brand-700 dark:text-brand-200">
+                              <WalletCards size={15} />
+                              {formatCurrency(booking.amount)}
+                            </span>
+                          ) : null}
                         </div>
 
                         {booking.serviceDetails ? (
@@ -754,7 +798,9 @@ const LabourDashboardPage = () => {
                         </span>
                         <span className="inline-flex items-center gap-2 font-semibold text-brand-700 dark:text-brand-200">
                           <WalletCards size={15} />
-                          {formatCurrency(booking.amount)}
+                          {booking.status === 'completed' && Number(booking.amount) > 0
+                            ? formatCurrency(booking.amount)
+                            : 'Final charge pending'}
                         </span>
                       </div>
 
@@ -789,18 +835,27 @@ const LabourDashboardPage = () => {
                         </div>
                       ) : (
                         <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                          <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
                             <div>
                               <p className="text-sm font-semibold text-amber-950">Labour marked busy</p>
                               <p className="mt-1 text-xs font-medium leading-5 text-amber-900">
-                                This profile is hidden from available search until work is completed.
+                                Enter the final work amount before completing. Client will pay this amount after completion.
                               </p>
+                              <InputField
+                                label="Final amount"
+                                type="number"
+                                min="1"
+                                value={completionAmounts[booking.id] ?? ''}
+                                onChange={(event) => handleCompletionAmountChange(booking.id, event.target.value)}
+                                placeholder="Enter amount to collect"
+                                className="mt-3"
+                              />
                             </div>
                             <Button
                               type="button"
                               size="sm"
                               disabled={completingBookingId === booking.id}
-                              className="w-full sm:w-auto"
+                              className="h-11 w-full lg:w-auto"
                               onClick={() => handleCompleteWork(booking)}
                             >
                               {completingBookingId === booking.id ? 'Completing...' : 'Complete work'}
@@ -839,7 +894,7 @@ const LabourDashboardPage = () => {
                             {formatDate(booking.appointmentAt)}
                           </p>
                           <p className="mt-2 text-sm font-semibold text-brand-700 dark:text-brand-200">
-                            Offered budget: {formatCurrency(booking.amount)}
+                            Final amount is added after work completion.
                           </p>
                           {booking.serviceDetails ? (
                             <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
@@ -903,7 +958,7 @@ const LabourDashboardPage = () => {
                 </div>
               </Card>
 
-              <Card>
+              <Card id="labour-earnings" className="scroll-mt-28">
                 <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Financial overview</h2>
                 <div className="mt-5 space-y-4">
                   {financialSummary.map((item) => (
@@ -913,10 +968,37 @@ const LabourDashboardPage = () => {
                     </div>
                   ))}
                 </div>
+                <div className="mt-5 space-y-3">
+                  {bookings.filter((item) => item.status === 'completed').length ? (
+                    bookings
+                      .filter((item) => item.status === 'completed')
+                      .slice(0, 6)
+                      .map((booking) => (
+                        <div key={booking.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-slate-950">{booking.clientName || 'Client'}</p>
+                              <p className="mt-1 text-sm text-slate-600">{booking.serviceType}</p>
+                            </div>
+                            <Badge tone={booking.paymentStatus === 'paid' ? 'emerald' : 'amber'}>
+                              {booking.paymentStatus === 'paid' ? 'Paid' : 'Due'}
+                            </Badge>
+                          </div>
+                          <p className="mt-3 text-lg font-bold text-slate-950">
+                            {formatCurrency(booking.amount)}
+                          </p>
+                        </div>
+                      ))
+                  ) : (
+                    <p className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                      Completed work earnings will appear here with client names and payment status.
+                    </p>
+                  )}
+                </div>
               </Card>
             </div>
 
-            <Card>
+            <Card id="labour-profile" className="scroll-mt-28">
               <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Reviews & work proof</h2>
               <div className="mt-5 grid gap-4 lg:grid-cols-2">
                 {(dashboardProfile.reviews ?? []).map((review) => (

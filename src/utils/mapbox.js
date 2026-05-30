@@ -28,3 +28,20 @@ export const buildMapboxReverseGeocodeUrl = (coordinates) => {
 
   return `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?${query.toString()}`;
 };
+
+export const fetchMapboxLocationName = async (coordinates) => {
+  const reverseGeocodeUrl = buildMapboxReverseGeocodeUrl(coordinates);
+
+  if (!reverseGeocodeUrl) {
+    return '';
+  }
+
+  const response = await fetch(reverseGeocodeUrl);
+
+  if (!response.ok) {
+    return '';
+  }
+
+  const payload = await response.json();
+  return String(payload?.features?.[0]?.place_name ?? '').trim();
+};

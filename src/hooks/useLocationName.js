@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { buildMapboxReverseGeocodeUrl } from '../utils/mapbox';
+import { fetchMapboxLocationName } from '../utils/mapbox';
 import { normalizeCoordinates } from '../utils/location';
 
 export const useLocationName = (coordinates) => {
@@ -9,32 +9,32 @@ export const useLocationName = (coordinates) => {
   const longitude = normalizedCoordinates?.longitude ?? null;
 
   useEffect(() => {
-    const reverseGeocodeUrl = buildMapboxReverseGeocodeUrl({ latitude, longitude });
+    const normalizedLookup = normalizeCoordinates({ latitude, longitude });
 
-    if (!reverseGeocodeUrl) {
+    if (!normalizedLookup) {
       setLocationName('');
       return undefined;
     }
 
-    const controller = new AbortController();
+    let isActive = true;
 
-    fetch(reverseGeocodeUrl, { signal: controller.signal })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((payload) => {
-        if (controller.signal.aborted) {
+    fetchMapboxLocationName(normalizedLookup)
+      .then((placeName) => {
+        if (!isActive) {
           return;
         }
 
-        const placeName = String(payload?.features?.[0]?.place_name ?? '').trim();
-        setLocationName(placeName);
+        setLocationName(placeName || '');
       })
-      .catch((error) => {
-        if (error?.name !== 'AbortError') {
+      .catch(() => {
+        if (isActive) {
           setLocationName('');
         }
       });
 
-    return () => controller.abort();
+    return () => {
+      isActive = false;
+    };
   }, [latitude, longitude]);
 
   return locationName;

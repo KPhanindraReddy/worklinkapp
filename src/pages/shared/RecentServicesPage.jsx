@@ -11,7 +11,7 @@ import { Skeleton } from '../../components/common/Skeleton';
 import { TextAreaField } from '../../components/common/TextAreaField';
 import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
-import { subscribeBookingsForUser } from '../../services/bookingService';
+import { markBookingPaid, subscribeBookingsForUser } from '../../services/bookingService';
 import { submitServiceReview } from '../../services/reviewService';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
@@ -134,6 +134,15 @@ const RecentServicesPage = () => {
     }
   };
 
+  const handleMarkPaid = async (booking) => {
+    try {
+      await markBookingPaid({ bookingId: booking.id, clientId: currentUser.uid });
+      toast.success('Payment marked as paid.');
+    } catch (error) {
+      toast.error(getFirebaseErrorMessage(error));
+    }
+  };
+
   return (
     <AppShell>
       <PageSEO
@@ -196,9 +205,40 @@ const RecentServicesPage = () => {
 
                   <div className="mt-4 grid gap-2 text-[13px] text-slate-600 md:grid-cols-3">
                     <p>{formatDate(booking.appointmentAt)}</p>
-                    <p>{formatCurrency(booking.amount)}</p>
+                    <p>
+                      {booking.status === 'completed' && Number(booking.amount) > 0
+                        ? formatCurrency(booking.amount)
+                        : 'Charge pending'}
+                    </p>
                     <p>{getDisplayLocationText(booking.location, 'Location shared after confirmation')}</p>
                   </div>
+
+                  {role === 'client' && booking.status === 'completed' && Number(booking.amount) > 0 ? (
+                    <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-950">
+                            {booking.paymentStatus === 'paid' ? 'Payment paid' : 'Payment due'}
+                          </p>
+                          <p className="mt-1 text-xs font-medium text-slate-500">
+                            Final charge: {formatCurrency(booking.amount)}
+                          </p>
+                        </div>
+                        {booking.paymentStatus !== 'paid' ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="w-full sm:w-auto"
+                            onClick={() => handleMarkPaid(booking)}
+                          >
+                            Pay worker
+                          </Button>
+                        ) : (
+                          <Badge tone="emerald">Paid</Badge>
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
 
                   {booking.serviceDetails ? (
                     <p className="mt-3 text-[13px] leading-6 text-slate-600">{booking.serviceDetails}</p>

@@ -9,6 +9,7 @@ import {
   hasCoordinates,
   normalizeCoordinates
 } from '../../utils/location';
+import { fetchMapboxLocationName } from '../../utils/mapbox';
 
 export const ProfileLocationPanel = ({
   roleLabel = 'user',
@@ -46,8 +47,13 @@ export const ProfileLocationPanel = ({
       return;
     }
 
+    const resolvedLocationName = await fetchMapboxLocationName(coordinates);
+
     onApplyLocation?.({
-      label: getDisplayLocationText(locationValue, liveLocationName || 'Live location captured'),
+      label: getDisplayLocationText(
+        locationValue,
+        resolvedLocationName || liveLocationName || 'Live location captured'
+      ),
       coordinates
     });
   };

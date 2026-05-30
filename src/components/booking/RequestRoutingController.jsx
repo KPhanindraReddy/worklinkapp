@@ -38,7 +38,8 @@ const buildNextBookingPayload = ({ booking, currentUser, nextLabour, userProfile
   location: booking.location || '',
   coordinates: booking.coordinates || null,
   notes: booking.notes || booking.serviceDetails || '',
-  amount: Number(booking.amount) || nextLabour.dailyWage || 0,
+  amount: 0,
+  paymentStatus: 'not_requested',
   appointmentAt: booking.appointmentAt || new Date().toISOString(),
   requestMode: booking.requestMode || 'scheduled',
   startOtp: generateStartOtp(),
@@ -121,8 +122,7 @@ export const RequestRoutingController = () => {
           {
             skill: serviceType,
             category: serviceType,
-            availability: 'Available',
-            maxPrice: booking.amount || ''
+            availability: 'Available'
           },
           normalizeCoordinates(booking.coordinates) || clientOrigin
         );
@@ -206,8 +206,7 @@ export const RequestRoutingController = () => {
             {
               skill: activeBooking.serviceType,
               category: activeBooking.serviceType,
-              availability: 'Available',
-              maxPrice: activeBooking.amount || ''
+              availability: 'Available'
             },
             normalizeCoordinates(activeBooking.coordinates) || clientOrigin
           );

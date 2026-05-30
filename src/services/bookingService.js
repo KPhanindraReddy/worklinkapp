@@ -84,6 +84,8 @@ export const createBooking = async (payload) => {
 
     transaction.set(bookingRef, {
       ...payload,
+      amount: Number(payload.amount || 0),
+      paymentStatus: payload.paymentStatus || 'not_requested',
       status: 'pending',
       otpStatus: 'waiting',
       createdAt: serverTimestamp(),
@@ -216,9 +218,15 @@ export const startBookingWork = async ({ bookingId, labourId, otp }) => {
   debugBookingService('start work transaction completed', { bookingId, labourId });
 };
 
-export const completeBookingWork = async ({ bookingId, labourId }) => {
+export const completeBookingWork = async ({ bookingId, labourId, finalAmount }) => {
   if (!isFirebaseConfigured || !db) {
     throw new Error('Firebase must be configured before completing bookings.');
+  }
+
+  const normalizedFinalAmount = Number(finalAmount);
+
+  if (!Number.isFinite(normalizedFinalAmount) || normalizedFinalAmount <= 0) {
+    throw new Error('Enter the final amount before completing this work.');
   }
 
   const bookingRef = doc(db, 'bookings', bookingId);
@@ -245,6 +253,10 @@ export const completeBookingWork = async ({ bookingId, labourId }) => {
 
     transaction.update(bookingRef, {
       status: 'completed',
+      amount: normalizedFinalAmount,
+      finalAmount: normalizedFinalAmount,
+      paymentStatus: 'due',
+      paymentRequestedAt: serverTimestamp(),
       completedAt: serverTimestamp(),
       completedBy: labourId,
       updatedAt: serverTimestamp()
@@ -272,4 +284,40 @@ export const completeBookingWork = async ({ bookingId, labourId }) => {
     );
   });
   debugBookingService('complete work transaction completed', { bookingId, labourId });
+};
+
+export const markBookingPaid = async ({ bookingId, clientId }) => {
+  if (!isFirebaseConfigured || !db) {
+    throw new Error('Firebase must be configured before updating payments.');
+  }
+
+  const bookingRef = doc(db, 'bookings', bookingId);
+  debugBookingService('mark paid transaction started', { bookingId, clientId });
+
+  await runTransaction(db, async (transaction) => {
+    const bookingSnapshot = await transaction.get(bookingRef);
+
+    if (!bookingSnapshot.exists()) {
+      throw new Error('Booking was not found.');
+    }
+
+    const booking = bookingSnapshot.data();
+
+    if (booking.clientId !== clientId) {
+      throw new Error('This payment does not belong to your client account.');
+    }
+
+    if (booking.status !== 'completed') {
+      throw new Error('Payment can be completed after the labour finishes the work.');
+    }
+
+    transaction.update(bookingRef, {
+      paymentStatus: 'paid',
+      paidAt: serverTimestamp(),
+      paidBy: clientId,
+      updatedAt: serverTimestamp()
+    });
+  });
+
+  debugBookingService('mark paid transaction completed', { bookingId, clientId });
 };

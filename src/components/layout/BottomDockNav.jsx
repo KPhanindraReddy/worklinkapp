@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { Bell, BriefcaseBusiness, History, House, MessageCircle, Search, UserRound } from 'lucide-react';
+import { Bell, BriefcaseBusiness, ClipboardList, History, House, IndianRupee, Search, UserRound } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -19,16 +19,16 @@ export const buildBottomDockItems = ({ currentUser, userProfile }) => {
         matchers: [homeTarget]
       },
       {
-        label: 'Jobs',
-        to: '/recent-services',
-        icon: History,
-        matchers: ['/recent-services']
+        label: 'Requests',
+        to: '/labour/dashboard#labour-requests',
+        icon: ClipboardList,
+        matchers: []
       },
       {
-        label: 'Chat',
-        to: '/chat',
-        icon: MessageCircle,
-        matchers: ['/chat']
+        label: 'Earnings',
+        to: '/labour/dashboard#labour-earnings',
+        icon: IndianRupee,
+        matchers: []
       },
       {
         label: 'Profile',

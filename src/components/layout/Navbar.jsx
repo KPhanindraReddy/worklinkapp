@@ -2,6 +2,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Bell,
   CircleHelp,
+  ClipboardList,
+  IndianRupee,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -139,6 +141,18 @@ export const Navbar = () => {
                 label: 'Overview',
                 icon: LayoutDashboard,
                 matchers: ['/labour/dashboard']
+              },
+              {
+                to: '/labour/dashboard#labour-requests',
+                label: 'Requests',
+                icon: ClipboardList,
+                matchers: []
+              },
+              {
+                to: '/labour/dashboard#labour-earnings',
+                label: 'Earnings',
+                icon: IndianRupee,
+                matchers: []
               }
             ]
           : []),

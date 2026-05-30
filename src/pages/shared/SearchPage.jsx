@@ -31,8 +31,7 @@ const SearchPage = () => {
     category: searchParams.get('category') ?? '',
     availability: 'Available',
     minRating: '',
-    minExperience: '',
-    maxPrice: ''
+    minExperience: ''
   });
   const [results, setResults] = useState([]);
   const [selectedLabour, setSelectedLabour] = useState(null);
@@ -94,7 +93,6 @@ const SearchPage = () => {
         availability: debouncedFilters.availability,
         minRating: debouncedFilters.minRating,
         minExperience: debouncedFilters.minExperience,
-        maxPrice: debouncedFilters.maxPrice,
         maxDistanceKm: NEARBY_LABOUR_RADIUS_KM
       },
       searchOrigin
@@ -171,7 +169,6 @@ const SearchPage = () => {
     setQuickBookState({
       labour,
       defaultService: filters.query.trim() || filters.category || labour.category || '',
-      defaultBudget: filters.maxPrice || ''
     });
   };
 
@@ -183,7 +180,7 @@ const SearchPage = () => {
     <AppShell>
       <PageSEO
         title="Search labour"
-        description="Find skilled labour professionals by category, distance, price, rating, and live availability."
+        description="Find skilled labour professionals by category, distance, rating, and live availability."
       />
 
       <section className="section-space">
@@ -202,7 +199,7 @@ const SearchPage = () => {
                   <div className="min-w-0">
                     <h3 className="text-lg font-semibold">Filters</h3>
                     <p className="text-xs text-slate-500 lg:hidden">
-                      {filters.query || filters.category || filters.maxPrice
+                      {filters.query || filters.category
                         ? 'Your filters are active'
                         : 'Tap to narrow results'}
                     </p>
@@ -264,13 +261,6 @@ const SearchPage = () => {
                   onChange={(event) =>
                     setFilters((prev) => ({ ...prev, minExperience: event.target.value }))
                   }
-                />
-                <InputField
-                  label="Maximum daily wage"
-                  type="number"
-                  min="0"
-                  value={filters.maxPrice}
-                  onChange={(event) => setFilters((prev) => ({ ...prev, maxPrice: event.target.value }))}
                 />
                 <div className="rounded-2xl bg-brand-50 p-4 text-sm text-brand-900 dark:bg-brand-500/10 dark:text-brand-100">
                   <div className="flex items-center gap-2 font-semibold">
@@ -397,7 +387,6 @@ const SearchPage = () => {
         labour={quickBookState?.labour ?? null}
         candidateLabours={availableResults}
         defaultService={quickBookState?.defaultService ?? defaultQuickBookService}
-        defaultBudget={quickBookState?.defaultBudget ?? ''}
         onClose={() => setQuickBookState(null)}
       />
     </AppShell>

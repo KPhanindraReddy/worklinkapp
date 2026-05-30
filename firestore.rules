@@ -112,10 +112,35 @@ service cloud.firestore {
         resource.data.status == 'in_progress' &&
         request.resource.data.status == 'completed' &&
         request.resource.data.completedBy == request.auth.uid &&
+        request.resource.data.amount is number &&
+        request.resource.data.amount > 0 &&
+        request.resource.data.finalAmount == request.resource.data.amount &&
+        request.resource.data.paymentStatus == 'due' &&
         onlyBookingFieldsChanged([
           'status',
+          'amount',
+          'finalAmount',
+          'paymentStatus',
+          'paymentRequestedAt',
           'completedAt',
           'completedBy',
+          'updatedAt'
+        ]);
+    }
+
+    function clientCanMarkBookingPaid() {
+      return request.auth.uid == resource.data.clientId &&
+        hasRole('client') &&
+        bookingPartiesUnchanged() &&
+        bookingOtpUnchanged() &&
+        resource.data.status == 'completed' &&
+        request.resource.data.status == resource.data.status &&
+        request.resource.data.paymentStatus == 'paid' &&
+        request.resource.data.paidBy == request.auth.uid &&
+        onlyBookingFieldsChanged([
+          'paymentStatus',
+          'paidAt',
+          'paidBy',
           'updatedAt'
         ]);
     }
@@ -285,6 +310,7 @@ service cloud.firestore {
         (clientCanCancelBooking() ||
          clientCanTimeoutBooking() ||
          clientCanReviewCompletedBooking() ||
+         clientCanMarkBookingPaid() ||
          labourCanAcceptOrRejectBooking() ||
          labourCanStartBooking() ||
          labourCanCompleteBooking() ||

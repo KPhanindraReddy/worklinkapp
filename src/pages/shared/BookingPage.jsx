@@ -40,6 +40,7 @@ import {
 } from '../../utils/formatters';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { getDisplayLocationText, getLocationLabel, normalizeCoordinates } from '../../utils/location';
+import { fetchMapboxLocationName } from '../../utils/mapbox';
 import { createRouteGroupId } from '../../utils/requestRouting';
 
 const activeWorkStatuses = ['accepted', 'in_progress'];
@@ -58,7 +59,6 @@ const BookingPage = () => {
   const labourId = searchParams.get('labourId');
   const initialService = searchParams.get('service') ?? '';
   const initialCategory = searchParams.get('category') ?? '';
-  const initialBudget = searchParams.get('budget') ?? '';
   const { currentUser, userProfile } = useAuth();
   const geolocation = useGeolocation();
   const [availableLabours, setAvailableLabours] = useState([]);
@@ -74,8 +74,7 @@ const BookingPage = () => {
   const [formValues, setFormValues] = useState({
     serviceName: initialService,
     serviceDetails: '',
-    address: getDisplayLocationText(userProfile?.location, ''),
-    budget: initialBudget
+    address: getDisplayLocationText(userProfile?.location, '')
   });
   const [requestCoordinates, setRequestCoordinates] = useState(
     () => normalizeCoordinates(userProfile?.coordinates) || null
@@ -265,8 +264,7 @@ const BookingPage = () => {
     debugBooking('search started', {
       serviceName,
       address: formValues.address,
-      clientLocation,
-      budget: formValues.budget
+      clientLocation
     });
 
     try {
@@ -275,7 +273,6 @@ const BookingPage = () => {
           skill: serviceName,
           category: workCategories.includes(serviceName) ? serviceName : initialCategory,
           availability: 'Available',
-          maxPrice: formValues.budget,
           maxDistanceKm: NEARBY_LABOUR_RADIUS_KM
         },
         clientLocation
@@ -377,6 +374,13 @@ const BookingPage = () => {
     }
 
     setRequestCoordinates(coordinates);
+    const resolvedLocationName = await fetchMapboxLocationName(coordinates);
+    if (resolvedLocationName) {
+      setFormValues((prev) => ({
+        ...prev,
+        address: getDisplayLocationText(prev.address, '') || resolvedLocationName
+      }));
+    }
     toast.success('Location updated for this request.');
   };
 
@@ -425,7 +429,8 @@ const BookingPage = () => {
         location: formValues.address,
         coordinates: clientLocation,
         notes: formValues.serviceDetails,
-        amount: Number(formValues.budget) || selectedLabour.dailyWage,
+        amount: 0,
+        paymentStatus: 'not_requested',
         appointmentAt,
         requestMode: requestTiming,
         startOtp: generateStartOtp(),
@@ -476,7 +481,7 @@ const BookingPage = () => {
     <AppShell>
       <PageSEO
         title="Request Service"
-        description="Request nearby labour with location, service details, budget, and acceptance-based contact access."
+        description="Request nearby labour with location, service details, and acceptance-based contact access."
       />
 
       <section className="section-space">
@@ -597,24 +602,13 @@ const BookingPage = () => {
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <Card className="rounded-[28px] border-slate-300 p-4 shadow-sm sm:p-6 md:p-8">
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-4">
                     <SelectField
                       label="Service name"
                       placeholder="Choose a service"
                       options={workCategories}
                       value={workCategories.includes(formValues.serviceName) ? formValues.serviceName : ''}
                       onChange={(event) => updateFormValue('serviceName', event.target.value)}
-                    />
-                    <InputField
-                      label="Your budget"
-                      type="number"
-                      value={formValues.budget}
-                      onChange={(event) => updateFormValue('budget', event.target.value)}
-                      placeholder={
-                        selectedLabour?.dailyWage
-                          ? `Minimum ${formatCurrency(selectedLabour.dailyWage)}`
-                          : '2500'
-                      }
                     />
                     <div className="md:col-span-2">
                       <InputField
@@ -750,7 +744,6 @@ const BookingPage = () => {
                             <p className="mt-1 text-sm font-medium text-slate-700">{labour.category}</p>
                             <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium text-slate-600">
                               <span>{formatDistanceKm(labour.distanceKm)}</span>
-                              <span>{labour.rating} rating</span>
                             </div>
                           </div>
                         </div>
@@ -883,9 +876,11 @@ const BookingPage = () => {
                           </Badge>
                         </div>
                         <p className="mt-3 text-sm font-medium text-slate-700">{getBookingTime(booking)}</p>
-                        <p className="mt-2 text-sm font-semibold text-brand-700">
-                          Budget: {formatCurrency(booking.amount)}
-                        </p>
+                        {booking.status === 'completed' && Number(booking.amount) > 0 ? (
+                          <p className="mt-2 text-sm font-semibold text-brand-700">
+                            Final charge: {formatCurrency(booking.amount)}
+                          </p>
+                        ) : null}
                       </div>
                     ))
                   ) : (

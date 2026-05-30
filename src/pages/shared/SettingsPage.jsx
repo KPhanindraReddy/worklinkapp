@@ -33,7 +33,7 @@ const buildProfileForm = (profile, currentUser) => ({
   age: profile?.age ?? '',
   education: profile?.education || '',
   experienceYears: profile?.experienceYears ?? '',
-  dailyWage: profile?.dailyWage ?? '',
+  dailyWage: profile?.dailyWage ?? 0,
   availability: profile?.availability || 'Available',
   about: profile?.about || '',
   previousWorkHistory: toCommaText(profile?.previousWorkHistory)
@@ -337,14 +337,6 @@ const SettingsPage = () => {
                   value={formValues.experienceYears}
                   onChange={(event) => updateFormValue('experienceYears', event.target.value)}
                   placeholder="5"
-                />
-                <InputField
-                  label="Minimum budget"
-                  type="number"
-                  disabled={profileFieldsDisabled}
-                  value={formValues.dailyWage}
-                  onChange={(event) => updateFormValue('dailyWage', event.target.value)}
-                  placeholder="1500"
                 />
                 <TextAreaField
                   label="About"

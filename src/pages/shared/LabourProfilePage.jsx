@@ -102,7 +102,6 @@ const LabourProfilePage = () => {
                     {ratingSummary.rating} rating
                   </span>
                   <span>{labour.experienceYears} years experience</span>
-                  <span>Min {formatCurrency(labour.dailyWage)}</span>
                   <span>{labour.completedJobs} completed jobs</span>
                 </div>
                 <p className="mt-6 text-base leading-8 text-slate-600 dark:text-slate-300">
@@ -267,7 +266,6 @@ const LabourProfilePage = () => {
         isOpen={Boolean(selectedQuickBookLabour)}
         labour={selectedQuickBookLabour}
         defaultService={selectedQuickBookLabour?.category ?? labour.category}
-        defaultBudget=""
         onClose={() => setSelectedQuickBookLabour(null)}
       />
     </AppShell>

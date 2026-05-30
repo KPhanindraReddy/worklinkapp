@@ -13,19 +13,19 @@ import { useGeolocation } from '../../hooks/useGeolocation';
 import { useLocationName } from '../../hooks/useLocationName';
 import { createBooking, subscribeBookingsForUser } from '../../services/bookingService';
 import { createNotification } from '../../services/notificationService';
-import { buildAppointmentDateTime, formatCurrency } from '../../utils/formatters';
+import { buildAppointmentDateTime } from '../../utils/formatters';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { getDisplayLocationText, getLocationLabel, normalizeCoordinates } from '../../utils/location';
+import { fetchMapboxLocationName } from '../../utils/mapbox';
 import { createRouteGroupId } from '../../utils/requestRouting';
 
 const activeWorkStatuses = ['accepted', 'in_progress'];
 const generateStartOtp = () => String(Math.floor(100000 + Math.random() * 900000));
 
-const buildInitialFormValues = ({ labour, userProfile, defaultService, defaultBudget }) => ({
+const buildInitialFormValues = ({ labour, userProfile, defaultService }) => ({
   serviceName: defaultService || labour?.category || '',
   serviceDetails: '',
-  address: getDisplayLocationText(userProfile?.location || userProfile?.currentLocation, ''),
-  budget: defaultBudget || ''
+  address: getDisplayLocationText(userProfile?.location || userProfile?.currentLocation, '')
 });
 
 export const QuickBookingDialog = ({
@@ -33,7 +33,6 @@ export const QuickBookingDialog = ({
   labour,
   candidateLabours = [],
   defaultService = '',
-  defaultBudget = '',
   onClose
 }) => {
   const { currentUser, userProfile } = useAuth();
@@ -44,7 +43,7 @@ export const QuickBookingDialog = ({
   const [requestTiming, setRequestTiming] = useState('instant');
   const [submitting, setSubmitting] = useState(false);
   const [formValues, setFormValues] = useState(
-    buildInitialFormValues({ labour, userProfile, defaultService, defaultBudget })
+    buildInitialFormValues({ labour, userProfile, defaultService })
   );
   const [requestCoordinates, setRequestCoordinates] = useState(
     () => normalizeCoordinates(userProfile?.coordinates) || null
@@ -114,13 +113,12 @@ export const QuickBookingDialog = ({
       return;
     }
 
-    setFormValues(buildInitialFormValues({ labour, userProfile, defaultService, defaultBudget }));
+    setFormValues(buildInitialFormValues({ labour, userProfile, defaultService }));
     setSelectedDate('');
     setSelectedSlot('');
     setRequestTiming('instant');
     setRequestCoordinates(normalizeCoordinates(userProfile?.coordinates) || null);
   }, [
-    defaultBudget,
     defaultService,
     isOpen,
     labour,
@@ -159,6 +157,13 @@ export const QuickBookingDialog = ({
     }
 
     setRequestCoordinates(coordinates);
+    const resolvedLocationName = await fetchMapboxLocationName(coordinates);
+    if (resolvedLocationName) {
+      setFormValues((prev) => ({
+        ...prev,
+        address: getDisplayLocationText(prev.address, '') || resolvedLocationName
+      }));
+    }
     toast.success('Location updated for this booking.');
   };
 
@@ -205,7 +210,8 @@ export const QuickBookingDialog = ({
         location: formValues.address.trim(),
         coordinates: clientLocation,
         notes: formValues.serviceDetails.trim(),
-        amount: Number(formValues.budget) || targetLabour.dailyWage || 0,
+        amount: 0,
+        paymentStatus: 'not_requested',
         appointmentAt,
         requestMode: requestTiming,
         startOtp: generateStartOtp(),
@@ -284,7 +290,6 @@ export const QuickBookingDialog = ({
                   <p className="mt-1 text-sm text-slate-600">{labour.category}</p>
                   <div className="mt-3 flex flex-wrap gap-2 text-xs">
                     <Badge tone="emerald">{labour.availability}</Badge>
-                    <Badge tone="blue">Min {formatCurrency(labour.dailyWage)}</Badge>
                   </div>
                 </div>
               </div>
@@ -353,14 +358,6 @@ export const QuickBookingDialog = ({
                 value={formValues.serviceName}
                 onChange={(event) => updateFormValue('serviceName', event.target.value)}
                 placeholder="Electrician, plumbing, painting..."
-              />
-              <InputField
-                label="Your budget"
-                type="number"
-                min="0"
-                value={formValues.budget}
-                onChange={(event) => updateFormValue('budget', event.target.value)}
-                placeholder={`Minimum ${formatCurrency(labour.dailyWage)}`}
               />
               <InputField
                 label="Address"

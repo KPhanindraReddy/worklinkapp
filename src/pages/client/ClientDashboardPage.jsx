@@ -26,7 +26,7 @@ import { ServiceRequestMap } from '../../components/map/ServiceRequestMap';
 import { useAuth } from '../../context/AuthContext';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { useLocationName } from '../../hooks/useLocationName';
-import { createBooking, subscribeBookingsForUser } from '../../services/bookingService';
+import { createBooking, markBookingPaid, subscribeBookingsForUser } from '../../services/bookingService';
 import { searchLabours } from '../../services/labourService';
 import { createNotification } from '../../services/notificationService';
 import {
@@ -277,13 +277,15 @@ const ClientDashboardPage = () => {
   const metrics = useMemo(() => {
     const completed = bookings.filter((item) => item.status === 'completed').length;
     const scheduled = bookings.filter((item) => item.requestMode === 'scheduled').length;
-    const spend = bookings.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const paymentsDue = bookings
+      .filter((item) => item.status === 'completed' && item.paymentStatus !== 'paid')
+      .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
     return [
       { label: 'Open requests', value: openBookings.length },
       { label: 'Scheduled visits', value: scheduled },
       { label: 'Completed services', value: completed },
-      { label: 'Budgeted spend', value: formatCurrency(spend) }
+      { label: 'Payments due', value: formatCurrency(paymentsDue) }
     ];
   }, [bookings, openBookings.length]);
   const metricsLoading = bookingsLoading;
@@ -381,7 +383,8 @@ const ClientDashboardPage = () => {
         mode === 'instant'
           ? 'Client requested immediate service from the dashboard.'
           : `Client scheduled this service for ${selectedDate} at ${selectedSlot}.`,
-      amount: Number(labour.dailyWage) || 0,
+      amount: 0,
+      paymentStatus: 'not_requested',
       appointmentAt,
       requestMode: mode,
       startOtp: generateStartOtp(),
@@ -509,6 +512,19 @@ const ClientDashboardPage = () => {
     }
   };
 
+  const handleMarkPaid = async (booking) => {
+    if (!currentUser?.uid) {
+      return;
+    }
+
+    try {
+      await markBookingPaid({ bookingId: booking.id, clientId: currentUser.uid });
+      toast.success('Payment marked as paid.');
+    } catch (error) {
+      toast.error(getFirebaseErrorMessage(error));
+    }
+  };
+
   return (
     <AppShell>
       <PageSEO title="Client Dashboard" description="Request nearby labour instantly or schedule a trusted worker from your live location." />
@@ -530,7 +546,7 @@ const ClientDashboardPage = () => {
             initialZoom={12}
             minZoom={9}
             maxZoom={17}
-            className="-mx-[0.625rem] min-h-[calc(100dvh-5.25rem)] rounded-none border-x-0 sm:mx-0 sm:min-h-[640px] sm:rounded-[28px] sm:border"
+            className="-mx-[0.625rem] min-h-[560px] touch-pan-y rounded-none border-x-0 sm:mx-0 sm:min-h-[640px] sm:rounded-[28px] sm:border"
             sheetClassName="bottom-0 left-0 right-0 rounded-b-none rounded-t-[28px] border-x-0 border-b-0 p-4 sm:bottom-4 sm:left-4 sm:right-4 sm:rounded-[24px] sm:border"
           >
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
@@ -696,7 +712,6 @@ const ClientDashboardPage = () => {
                                 <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs font-medium text-slate-600">
                                   <span>{labour.category}</span>
                                   <span>{formatDistanceKm(labour.distanceKm)}</span>
-                                  <span>{formatCurrency(labour.dailyWage)}</span>
                                 </div>
                               </div>
                             </div>
@@ -791,9 +806,37 @@ const ClientDashboardPage = () => {
                         </span>
                         <span className="inline-flex items-center gap-2 font-semibold text-brand-700">
                           <WalletCards size={15} />
-                          {formatCurrency(booking.amount)}
+                          {booking.status === 'completed' && Number(booking.amount) > 0
+                            ? formatCurrency(booking.amount)
+                            : 'Charge pending'}
                         </span>
                       </div>
+                      {booking.status === 'completed' && Number(booking.amount) > 0 ? (
+                        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-slate-950">
+                                {booking.paymentStatus === 'paid' ? 'Payment paid' : 'Payment due'}
+                              </p>
+                              <p className="mt-1 text-xs font-medium text-slate-500">
+                                Final charge: {formatCurrency(booking.amount)}
+                              </p>
+                            </div>
+                            {booking.paymentStatus !== 'paid' ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                className="w-full sm:w-auto"
+                                onClick={() => handleMarkPaid(booking)}
+                              >
+                                Pay worker
+                              </Button>
+                            ) : (
+                              <Badge tone="emerald">Paid</Badge>
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
                       {['accepted', 'in_progress'].includes(booking.status) ? (
                         <div className="mt-4 grid gap-3 sm:flex sm:flex-wrap">
                           <Button
@@ -856,7 +899,7 @@ const ClientDashboardPage = () => {
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-semibold text-slate-950">{labour.fullName}</p>
                           <p className="mt-1 truncate text-xs font-medium text-slate-600">
-                            {formatDistanceKm(labour.distanceKm)} - {formatCurrency(labour.dailyWage)}
+                            {formatDistanceKm(labour.distanceKm)}
                           </p>
                         </div>
                         <Badge tone="emerald">{labour.availability}</Badge>

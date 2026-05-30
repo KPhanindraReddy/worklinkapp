@@ -331,13 +331,6 @@ const CompleteProfilePage = () => {
                     onChange={(event) => handleChange('experienceYears', event.target.value)}
                     placeholder="5"
                   />
-                  <InputField
-                    label="Minimum budget"
-                    type="number"
-                    value={formValues.dailyWage}
-                    onChange={(event) => handleChange('dailyWage', event.target.value)}
-                    placeholder="1500"
-                  />
                   <TextAreaField
                     label="About"
                     value={formValues.about}
