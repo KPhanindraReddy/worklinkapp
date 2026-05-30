@@ -28,7 +28,7 @@ const getMapboxStaticUrl = (center) => {
   const longitude = normalizedCenter.longitude.toFixed(5);
   const latitude = normalizedCenter.latitude.toFixed(5);
 
-  return `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/${longitude},${latitude},15,0/1280x1280?logo=false&attribution=false&access_token=${encodeURIComponent(mapboxToken)}`;
+  return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${longitude},${latitude},16,0/1280x1280?logo=false&attribution=false&access_token=${encodeURIComponent(mapboxToken)}`;
 };
 
 const getPinPosition = ({ labour, index, center }) => {
