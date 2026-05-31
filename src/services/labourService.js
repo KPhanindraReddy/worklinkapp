@@ -18,7 +18,7 @@ import {
   labourMatchesServiceQuery,
   recommendLabours
 } from '../utils/recommendations';
-import { NEARBY_LABOUR_RADIUS_KM, workCategories } from '../utils/constants';
+import { availabilityOptions, NEARBY_LABOUR_RADIUS_KM, workCategories } from '../utils/constants';
 import { buildLocationCacheKey, normalizeCoordinates } from '../utils/location';
 
 const SEARCH_RESULT_LIMIT = 80;
@@ -26,6 +26,11 @@ const SEARCH_CACHE_TTL_MS = 30000;
 const labourSearchCache = new Map();
 const debugLabourSearch = (message, payload = {}) => {
   console.debug(`[WorkLink labour search] ${message}`, payload);
+};
+
+const normalizeAvailabilityValue = (value) => {
+  const normalizedValue = String(value ?? '').trim().toLowerCase();
+  return availabilityOptions.find((option) => option.toLowerCase() === normalizedValue) || '';
 };
 
 const buildSearchCacheKey = (filters, resolvedCategory, origin, maxDistanceKm) =>
@@ -75,12 +80,13 @@ const cacheSearchResults = (cacheKey, payload) => {
 
 const fetchLabourCandidates = async (filters, resolvedCategory) => {
   const shouldUseCategoryConstraint = Boolean(resolvedCategory && !filters.skill);
+  const availability = normalizeAvailabilityValue(filters.availability);
   const attempts = [
     () => {
       const constraints = [];
 
-      if (filters.availability) {
-        constraints.push(where('availability', '==', filters.availability));
+      if (availability) {
+        constraints.push(where('availability', '==', availability));
       }
 
       if (shouldUseCategoryConstraint) {
@@ -91,14 +97,14 @@ const fetchLabourCandidates = async (filters, resolvedCategory) => {
       return getDocs(query(collection(db, 'labours'), ...constraints));
     },
     () => {
-      if (!filters.availability) {
+      if (!availability) {
         return null;
       }
 
       return getDocs(
         query(
           collection(db, 'labours'),
-          where('availability', '==', filters.availability),
+          where('availability', '==', availability),
           limit(SEARCH_RESULT_LIMIT)
         )
       );
@@ -188,6 +194,7 @@ export const fetchFeaturedLabours = async (count = 6) => {
 
 export const searchLabours = async (filters = {}, origin) => {
   const resolvedCategory = filters.category || resolveCategoryFromSkill(filters.skill);
+  const availability = normalizeAvailabilityValue(filters.availability);
   const normalizedOrigin = normalizeCoordinates(origin);
   const maxDistanceKm = resolveMaxDistanceKm(filters, normalizedOrigin);
   const cacheKey = buildSearchCacheKey(filters, resolvedCategory, normalizedOrigin, maxDistanceKm);
@@ -234,11 +241,19 @@ export const searchLabours = async (filters = {}, origin) => {
           ? labour.experienceYears >= Number(filters.minExperience)
           : true;
         const matchesRating = filters.minRating ? labour.rating >= Number(filters.minRating) : true;
+        const matchesAvailability = availability ? labour.availability === availability : true;
         const matchesDistance = Number.isFinite(maxDistanceKm)
           ? Number.isFinite(Number(labour.distanceKm)) && Number(labour.distanceKm) <= maxDistanceKm
           : true;
 
-        return matchesService && matchesPrice && matchesExperience && matchesRating && matchesDistance;
+        return (
+          matchesService &&
+          matchesPrice &&
+          matchesExperience &&
+          matchesRating &&
+          matchesAvailability &&
+          matchesDistance
+        );
       })
       .slice(0, SEARCH_RESULT_LIMIT);
   })();
@@ -303,5 +318,18 @@ export const updateLabourProfile = async (uid, payload) => {
   );
 };
 
-export const updateAvailability = async (uid, availability) =>
-  updateLabourProfile(uid, { availability });
+export const updateAvailability = async (uid, availability) => {
+  if (!uid || !isFirebaseConfigured || !db) {
+    throw new Error('Firebase must be configured before updating availability.');
+  }
+
+  const payload = {
+    availability,
+    updatedAt: serverTimestamp()
+  };
+
+  await Promise.all([
+    setDoc(doc(db, 'labours', uid), payload, { merge: true }),
+    setDoc(doc(db, 'users', uid), payload, { merge: true })
+  ]);
+};

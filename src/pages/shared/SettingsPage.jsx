@@ -79,8 +79,8 @@ const ProfileStat = ({ value, label, tone = 'slate' }) => {
   }[tone];
 
   return (
-    <div className="min-w-0 flex-1 text-center">
-      <p className={`truncate text-lg font-extrabold leading-tight sm:text-xl ${toneClass}`}>{value}</p>
+    <div className="min-w-0 flex-1 basis-0 px-2 text-center">
+      <p className={`truncate text-base font-extrabold leading-tight sm:text-xl ${toneClass}`}>{value}</p>
       <p className="mt-1 truncate text-[11px] font-medium text-slate-400 sm:text-xs">{label}</p>
     </div>
   );
@@ -163,6 +163,43 @@ const SettingsPage = () => {
     setIsEditing(false);
   };
 
+  const changeAvailability = async (nextAvailability) => {
+    if (!isLabour || !currentUser || !userProfile?.role || formValues.availability === nextAvailability) {
+      return;
+    }
+
+    const nextValues = {
+      ...formValues,
+      availability: nextAvailability
+    };
+
+    setFormValues(nextValues);
+
+    if (isEditing) {
+      return;
+    }
+
+    setSavingProfile(true);
+
+    try {
+      await createOrUpdateUserProfile(currentUser, {
+        ...nextValues,
+        role: userProfile.role,
+        location: nextValues.currentLocation,
+        currentLocation: nextValues.currentLocation,
+        coordinates: nextValues.coordinates,
+        about: nextValues.about,
+        previousWorkHistory: nextValues.previousWorkHistory
+      });
+      toast.success('Availability updated.');
+    } catch (error) {
+      setFormValues((prev) => ({ ...prev, availability: formValues.availability }));
+      toast.error(getFirebaseErrorMessage(error));
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   const handleLogout = async () => {
     await logout();
     navigate('/auth', { replace: true });
@@ -181,25 +218,6 @@ const SettingsPage = () => {
       <section className="section-space bg-white sm:bg-transparent">
         <div className="page-shell max-w-[860px] space-y-3 sm:space-y-4">
           <div className="overflow-hidden rounded-[18px] border border-slate-200 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.08)]">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <div className="grid h-9 w-9 place-items-center rounded-xl bg-slate-950 text-white">
-                  <CheckCircle2 size={18} />
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-lg font-extrabold text-slate-950">WorkLink</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 text-slate-500">
-                  <Bell size={16} />
-                </span>
-                <span className="grid h-9 w-9 place-items-center rounded-full bg-brand-600 text-sm font-bold text-white">
-                  {profileInitial}
-                </span>
-              </div>
-            </div>
-
             <div className="relative bg-slate-800 px-4 pb-16 pt-6 text-white sm:px-5 sm:pb-14">
               <Button
                 type="button"
@@ -239,7 +257,7 @@ const SettingsPage = () => {
             </div>
 
             <div className="-mt-9 px-4 pb-4 sm:px-5">
-              <div className="flex divide-x divide-slate-100 rounded-[16px] border border-slate-200 bg-white px-2 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.08)]">
+              <div className="flex items-stretch divide-x divide-slate-100 rounded-[16px] border border-slate-200 bg-white px-1 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.08)]">
                 <ProfileStat value={isLabour ? completedJobs : 'Client'} label={isLabour ? 'Jobs done' : 'Account'} tone="emerald" />
                 <ProfileStat value={isLabour ? (rating ? rating.toFixed(1) : '0.0') : 'Live'} label={isLabour ? 'Rating' : 'Location'} tone="amber" />
                 <ProfileStat value={primarySkill} label={isLabour ? 'Skills' : 'Profile'} tone="brand" />
@@ -265,8 +283,8 @@ const SettingsPage = () => {
                       <button
                         key={value}
                         type="button"
-                        disabled={profileFieldsDisabled}
-                        onClick={() => updateFormValue('availability', value)}
+                        disabled={savingProfile}
+                        onClick={() => changeAvailability(value)}
                         className={`min-h-10 rounded-xl px-2 text-sm font-semibold transition ${
                           selected
                             ? 'bg-emerald-600 text-white shadow-sm'

@@ -1,23 +1,20 @@
 import { availabilityOptions } from '../../utils/constants';
-import { Button } from '../common/Button';
 
 export const AvailabilityToggle = ({ value, onChange }) => (
-  <div className="grid grid-cols-3 gap-2 sm:gap-3">
+  <div className="grid grid-cols-3 gap-1 rounded-[14px] border border-slate-200 bg-slate-50 p-1">
     {availabilityOptions.map((option) => (
-      <Button
+      <button
         key={option}
         type="button"
-        variant={value === option ? 'primary' : 'outline'}
-        size="sm"
-        className={`min-h-11 w-full rounded-[14px] px-2 text-sm font-semibold sm:min-h-12 sm:text-base ${
+        className={`min-h-10 w-full rounded-xl px-2 text-sm font-semibold transition sm:min-h-11 ${
           value === option
-            ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-            : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-white'
+            ? 'bg-emerald-600 text-white shadow-sm'
+            : 'text-slate-500 hover:bg-white hover:text-slate-900'
         }`}
         onClick={() => onChange(option)}
       >
         {option}
-      </Button>
+      </button>
     ))}
   </div>
 );
