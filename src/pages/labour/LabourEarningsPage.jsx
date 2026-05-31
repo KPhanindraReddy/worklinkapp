@@ -7,7 +7,6 @@ import { Card } from '../../components/common/Card';
 import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
 import { Skeleton } from '../../components/common/Skeleton';
-import { MetricsGrid } from '../../components/dashboard/MetricsGrid';
 import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
 import { subscribeBookingsForUser } from '../../services/bookingService';
@@ -143,7 +142,24 @@ const LabourEarningsPage = () => {
             </div>
           </Card>
 
-          <MetricsGrid items={metrics} loading={loading} />
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+            {metrics.map((item) => (
+              <Card key={item.label} className="rounded-[16px] p-3 sm:p-4">
+                {loading ? (
+                  <Skeleton className="h-12 w-full rounded-xl" />
+                ) : (
+                  <>
+                    <p className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      {item.label}
+                    </p>
+                    <p className="mt-2 truncate text-xl font-extrabold leading-none text-slate-950 sm:text-2xl">
+                      {item.value}
+                    </p>
+                  </>
+                )}
+              </Card>
+            ))}
+          </div>
 
           <div className="grid gap-5 xl:grid-cols-[1fr_0.8fr]">
             <Card className="rounded-[24px] p-4 sm:p-5">

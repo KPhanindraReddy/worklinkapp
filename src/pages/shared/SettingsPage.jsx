@@ -26,6 +26,7 @@ import { VerificationBadge } from '../../components/common/VerificationBadge';
 import { ProfileLocationPanel } from '../../components/location/ProfileLocationPanel';
 import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
+import { updateAvailability } from '../../services/labourService';
 import { availabilityOptions, languageOptions, workCategories } from '../../utils/constants';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { getDisplayLocationText } from '../../utils/location';
@@ -80,10 +81,28 @@ const ProfileStat = ({ value, label, tone = 'slate' }) => {
 
   return (
     <div className="min-w-0 flex-1 basis-0 px-2 text-center">
-      <p className={`truncate text-base font-extrabold leading-tight sm:text-xl ${toneClass}`}>{value}</p>
+      <p className={`truncate text-sm font-extrabold leading-tight sm:text-xl ${toneClass}`}>{value}</p>
       <p className="mt-1 truncate text-[11px] font-medium text-slate-400 sm:text-xs">{label}</p>
     </div>
   );
+};
+
+const availabilityStyles = {
+  Available: {
+    active: 'bg-emerald-600 text-white shadow-sm',
+    text: 'text-emerald-600',
+    dot: 'bg-emerald-500'
+  },
+  Busy: {
+    active: 'bg-amber-500 text-white shadow-sm',
+    text: 'text-amber-600',
+    dot: 'bg-amber-500'
+  },
+  Offline: {
+    active: 'bg-rose-600 text-white shadow-sm',
+    text: 'text-rose-600',
+    dot: 'bg-rose-500'
+  }
 };
 
 const SettingsPage = () => {
@@ -92,12 +111,22 @@ const SettingsPage = () => {
   const [formValues, setFormValues] = useState(() => buildProfileForm(userProfile, currentUser));
   const [savingProfile, setSavingProfile] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [availabilityOverride, setAvailabilityOverride] = useState('');
 
   useEffect(() => {
     if (!isEditing) {
-      setFormValues(buildProfileForm(userProfile, currentUser));
+      setFormValues({
+        ...buildProfileForm(userProfile, currentUser),
+        ...(availabilityOverride ? { availability: availabilityOverride } : {})
+      });
     }
-  }, [currentUser, isEditing, userProfile]);
+  }, [availabilityOverride, currentUser, isEditing, userProfile]);
+
+  useEffect(() => {
+    if (availabilityOverride && userProfile?.availability === availabilityOverride) {
+      setAvailabilityOverride('');
+    }
+  }, [availabilityOverride, userProfile?.availability]);
 
   const isLabour = userProfile?.role === 'labour';
   const isClient = userProfile?.role === 'client';
@@ -164,16 +193,14 @@ const SettingsPage = () => {
   };
 
   const changeAvailability = async (nextAvailability) => {
-    if (!isLabour || !currentUser || !userProfile?.role || formValues.availability === nextAvailability) {
+    if (!isLabour || !currentUser || formValues.availability === nextAvailability) {
       return;
     }
 
-    const nextValues = {
-      ...formValues,
-      availability: nextAvailability
-    };
+    const previousAvailability = formValues.availability;
 
-    setFormValues(nextValues);
+    setAvailabilityOverride(nextAvailability);
+    setFormValues((prev) => ({ ...prev, availability: nextAvailability }));
 
     if (isEditing) {
       return;
@@ -182,18 +209,10 @@ const SettingsPage = () => {
     setSavingProfile(true);
 
     try {
-      await createOrUpdateUserProfile(currentUser, {
-        ...nextValues,
-        role: userProfile.role,
-        location: nextValues.currentLocation,
-        currentLocation: nextValues.currentLocation,
-        coordinates: nextValues.coordinates,
-        about: nextValues.about,
-        previousWorkHistory: nextValues.previousWorkHistory
-      });
-      toast.success('Availability updated.');
+      await updateAvailability(currentUser.uid, nextAvailability);
     } catch (error) {
-      setFormValues((prev) => ({ ...prev, availability: formValues.availability }));
+      setAvailabilityOverride('');
+      setFormValues((prev) => ({ ...prev, availability: previousAvailability }));
       toast.error(getFirebaseErrorMessage(error));
     } finally {
       setSavingProfile(false);
@@ -210,6 +229,7 @@ const SettingsPage = () => {
   const primarySkill = isLabour ? formValues.category || 'Skill' : 'Client';
   const completedJobs = Number(userProfile?.completedJobs) || 0;
   const rating = Number(userProfile?.rating) || 0;
+  const currentAvailabilityStyle = availabilityStyles[formValues.availability] || availabilityStyles.Available;
 
   return (
     <AppShell>
@@ -217,8 +237,8 @@ const SettingsPage = () => {
 
       <section className="section-space bg-white sm:bg-transparent">
         <div className="page-shell max-w-[860px] space-y-3 sm:space-y-4">
-          <div className="overflow-hidden rounded-[18px] border border-slate-200 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.08)]">
-            <div className="relative bg-slate-800 px-4 pb-16 pt-6 text-white sm:px-5 sm:pb-14">
+          <div className="rounded-[18px] border border-slate-200 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.08)]">
+            <div className="relative rounded-t-[18px] bg-slate-800 px-4 pb-6 pt-5 text-white sm:px-5 sm:py-7">
               <Button
                 type="button"
                 variant={isEditing ? 'secondary' : 'ghost'}
@@ -230,12 +250,12 @@ const SettingsPage = () => {
               >
                 {isEditing ? <X size={18} /> : <Pencil size={17} />}
               </Button>
-              <div className="flex min-w-0 items-center gap-3.5 pr-12">
+              <div className="flex min-w-0 items-center gap-3 pr-12 sm:gap-4">
                 <div className="grid h-16 w-16 shrink-0 place-items-center rounded-[18px] bg-brand-600 text-2xl font-bold shadow-glow sm:h-20 sm:w-20">
                   {profileInitial}
                 </div>
                 <div className="min-w-0">
-                  <h1 className="truncate text-2xl font-extrabold tracking-normal sm:text-3xl">
+                  <h1 className="truncate text-[1.65rem] font-extrabold leading-tight tracking-normal sm:text-3xl">
                     {formValues.fullName.trim() || 'Profile'}
                   </h1>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -256,7 +276,7 @@ const SettingsPage = () => {
               </div>
             </div>
 
-            <div className="-mt-9 px-4 pb-4 sm:px-5">
+            <div className="px-4 py-3 sm:px-5">
               <div className="flex items-stretch divide-x divide-slate-100 rounded-[16px] border border-slate-200 bg-white px-1 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.08)]">
                 <ProfileStat value={isLabour ? completedJobs : 'Client'} label={isLabour ? 'Jobs done' : 'Account'} tone="emerald" />
                 <ProfileStat value={isLabour ? (rating ? rating.toFixed(1) : '0.0') : 'Live'} label={isLabour ? 'Rating' : 'Location'} tone="amber" />
@@ -268,8 +288,8 @@ const SettingsPage = () => {
               <div className="border-t border-slate-100 px-4 pb-4 sm:px-5">
                 <div className="mb-2 flex items-center justify-between">
                   <h2 className="text-base font-bold text-slate-950">Availability</h2>
-                  <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  <span className={`inline-flex items-center gap-1.5 text-sm font-semibold ${currentAvailabilityStyle.text}`}>
+                    <span className={`h-2 w-2 rounded-full ${currentAvailabilityStyle.dot}`} />
                     {formValues.availability}
                   </span>
                 </div>
@@ -287,7 +307,7 @@ const SettingsPage = () => {
                         onClick={() => changeAvailability(value)}
                         className={`min-h-10 rounded-xl px-2 text-sm font-semibold transition ${
                           selected
-                            ? 'bg-emerald-600 text-white shadow-sm'
+                            ? (availabilityStyles[value]?.active || availabilityStyles.Available.active)
                             : 'text-slate-500 hover:bg-white hover:text-slate-900'
                         }`}
                       >
