@@ -12,15 +12,33 @@ import { VerificationBadge } from '../../components/common/VerificationBadge';
 import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
 import { useLocationName } from '../../hooks/useLocationName';
+import { subscribeBookingsForUser } from '../../services/bookingService';
 import { subscribeLabourById } from '../../services/labourService';
 import { subscribeReviewsForLabour } from '../../services/reviewService';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatDate } from '../../utils/formatters';
 import { getDisplayLocationText } from '../../utils/location';
+
+const ProfileStat = ({ value, label, tone = 'slate' }) => {
+  const toneClass = {
+    emerald: 'text-emerald-600',
+    amber: 'text-amber-500',
+    brand: 'text-brand-600',
+    slate: 'text-slate-950 dark:text-white'
+  }[tone];
+
+  return (
+    <div className="min-w-0 flex-1 basis-0 px-2 text-center">
+      <p className={`truncate text-sm font-extrabold leading-tight sm:text-xl ${toneClass}`}>{value}</p>
+      <p className="mt-1 truncate text-[11px] font-medium text-slate-400 sm:text-xs">{label}</p>
+    </div>
+  );
+};
 
 const LabourProfilePage = () => {
   const { labourId } = useParams();
   const { currentUser, userProfile } = useAuth();
   const [labour, setLabour] = useState(null);
+  const [bookings, setBookings] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [selectedQuickBookLabour, setSelectedQuickBookLabour] = useState(null);
   const resolvedLabourLocationName = useLocationName(labour?.coordinates);
@@ -33,6 +51,19 @@ const LabourProfilePage = () => {
     return subscribeReviewsForLabour(labourId, setReviews, () => setReviews([]));
   }, [labourId]);
 
+  useEffect(() => {
+    if (!currentUser?.uid || userProfile?.role !== 'labour' || currentUser.uid !== labourId) {
+      setBookings([]);
+      return undefined;
+    }
+
+    return subscribeBookingsForUser(
+      { userId: labourId, role: 'labour' },
+      setBookings,
+      () => setBookings([])
+    );
+  }, [currentUser?.uid, labourId, userProfile?.role]);
+
   const isClient = userProfile?.role === 'client';
   const canRevealContact = Boolean(isClient && labour?.verified);
   const callButtonLabel = canRevealContact
@@ -41,6 +72,24 @@ const LabourProfilePage = () => {
       ? 'Labour verification required'
       : 'Client account required';
   const profileReviews = reviews.length ? reviews : labour?.reviews ?? [];
+  const completedBookings = useMemo(
+    () => bookings.filter((booking) => booking.status === 'completed'),
+    [bookings]
+  );
+  const completedJobs = completedBookings.length || Number(labour?.completedJobs || 0);
+  const totalEarnings =
+    completedBookings.length
+      ? completedBookings.reduce((sum, booking) => sum + Number(booking.amount || 0), 0)
+      : Number(labour?.totalEarnings || 0);
+  const workHistory = completedBookings.length
+    ? completedBookings.slice(0, 6).map((booking) => ({
+        id: booking.id,
+        title: booking.serviceType || 'Completed service',
+        amountPaid: booking.amount || booking.finalAmount || 0,
+        location: booking.location,
+        date: formatDate(booking.paidAt || booking.completedAt || booking.appointmentAt)
+      }))
+    : labour?.previousWorkHistory ?? [];
   const ratingSummary = useMemo(() => {
     if (!profileReviews.length) {
       return {
@@ -102,7 +151,7 @@ const LabourProfilePage = () => {
                     {ratingSummary.rating} rating
                   </span>
                   <span>{labour.experienceYears} years experience</span>
-                  <span>{labour.completedJobs} completed jobs</span>
+                  <span>{completedJobs} completed jobs</span>
                 </div>
                 <p className="mt-6 text-base leading-8 text-slate-600 dark:text-slate-300">
                   {labour.about}
@@ -159,6 +208,13 @@ const LabourProfilePage = () => {
                 </p>
               </div>
             </div>
+            <div className="border-t border-slate-100 px-4 py-3 sm:px-6 md:px-8 dark:border-slate-800">
+              <div className="flex items-stretch divide-x divide-slate-100 rounded-[16px] border border-slate-200 bg-white px-1 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.08)] dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+                <ProfileStat value={completedJobs} label="Jobs done" tone="emerald" />
+                <ProfileStat value={ratingSummary.rating || '0'} label="Rating" tone="amber" />
+                <ProfileStat value={ratingSummary.count || 0} label="Reviews" tone="brand" />
+              </div>
+            </div>
           </Card>
 
           <div className="space-y-6">
@@ -183,11 +239,16 @@ const LabourProfilePage = () => {
 
             <Card>
               <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Profile details</h2>
-              <div className="mt-4 grid gap-3 text-sm text-slate-600 dark:text-slate-300">
-                <p>Gender: {labour.gender}</p>
-                <p>Age: {labour.age}</p>
-                <p>Education: {labour.education}</p>
-                <p>Response time: {labour.responseTime}</p>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <ProfileStat value={labour.category || 'Service'} label="Service" tone="brand" />
+                <ProfileStat value={formatCurrency(labour.dailyWage || 0)} label="Daily wage" tone="emerald" />
+                <ProfileStat value={totalEarnings ? formatCurrency(totalEarnings) : '0'} label="Earnings" tone="amber" />
+                <ProfileStat value={labour.responseTime || 'Fast'} label="Response" tone="slate" />
+              </div>
+              <div className="mt-5 grid gap-3 text-sm text-slate-600 dark:text-slate-300">
+                <p>Gender: {labour.gender || 'Not added'}</p>
+                <p>Age: {labour.age || 'Not added'}</p>
+                <p>Education: {labour.education || 'Not added'}</p>
               </div>
             </Card>
           </div>
@@ -216,8 +277,8 @@ const LabourProfilePage = () => {
               description="Recent jobs with payment and location details."
             />
             <div className="mt-6 space-y-4">
-              {(labour.previousWorkHistory ?? []).map((job) => (
-                <div key={`${job.title}-${job.date}`} className="rounded-3xl bg-slate-50 p-5 dark:bg-slate-800/50">
+              {workHistory.length ? workHistory.map((job) => (
+                <div key={job.id || `${job.title}-${job.date}`} className="rounded-3xl bg-slate-50 p-5 dark:bg-slate-800/50">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <h3 className="min-w-0 break-words font-semibold text-slate-950 dark:text-white">{job.title}</h3>
                     <p className="text-sm font-semibold text-brand-700 dark:text-brand-200">
@@ -228,7 +289,12 @@ const LabourProfilePage = () => {
                     {getDisplayLocationText(job.location, 'Location shared')} - {job.date}
                   </p>
                 </div>
-              ))}
+              )) : (
+                <EmptyState
+                  title="No completed jobs yet"
+                  description="Finished services will appear here after client payment is completed."
+                />
+              )}
             </div>
           </Card>
         </div>
@@ -242,7 +308,7 @@ const LabourProfilePage = () => {
             description="Ratings and comments from recent clients."
           />
           <div className="mt-8 grid gap-4 lg:grid-cols-2">
-            {profileReviews.map((review) => (
+            {profileReviews.length ? profileReviews.map((review) => (
               <Card key={review.id}>
                 <div className="flex items-center gap-2 text-amber-500">
                   <Star size={16} fill="currentColor" />
@@ -257,7 +323,12 @@ const LabourProfilePage = () => {
                   {review.clientName}
                 </p>
               </Card>
-            ))}
+            )) : (
+              <EmptyState
+                title="No reviews yet"
+                description="Client ratings and comments will appear after completed services are reviewed."
+              />
+            )}
           </div>
         </div>
       </section>
