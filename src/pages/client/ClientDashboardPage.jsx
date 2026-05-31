@@ -10,7 +10,7 @@ import {
   UserCheck,
   WalletCards
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { BookingCalendar } from '../../components/booking/BookingCalendar';
@@ -98,6 +98,16 @@ const getDateKey = (value) => {
 
 const getFirstAvailableLabour = (items) =>
   items.find((labour) => labour.availability === 'Available') ?? null;
+const buildDirectionsUrl = ({ origin, destination }) => {
+  const normalizedOrigin = normalizeCoordinates(origin);
+  const normalizedDestination = normalizeCoordinates(destination);
+
+  if (!normalizedOrigin || !normalizedDestination) {
+    return '';
+  }
+
+  return `https://www.google.com/maps/dir/?api=1&origin=${normalizedOrigin.latitude},${normalizedOrigin.longitude}&destination=${normalizedDestination.latitude},${normalizedDestination.longitude}&travelmode=driving`;
+};
 const filterNearbyLabours = (items) =>
   items.filter((labour) => Number.isFinite(Number(labour.distanceKm)) && Number(labour.distanceKm) <= NEARBY_LABOUR_RADIUS_KM);
 
@@ -158,6 +168,7 @@ const ClientDashboardPage = () => {
   const [paymentAmounts, setPaymentAmounts] = useState({});
   const [completingPaymentId, setCompletingPaymentId] = useState('');
   const [cancellingBookingId, setCancellingBookingId] = useState('');
+  const scheduleSectionRef = useRef(null);
   const [requestCoordinates, setRequestCoordinates] = useState(
     () => normalizeCoordinates(userProfile?.coordinates) || null
   );
@@ -324,12 +335,19 @@ const ClientDashboardPage = () => {
       ),
     [availableLabours]
   );
-  const trackedBookings = useMemo(() => bookings.slice(0, 5), [bookings]);
+  const trackedBookings = useMemo(() => bookings.slice(0, 3), [bookings]);
   const mapTitle = selectedService ? `${selectedService} within ${NEARBY_LABOUR_RADIUS_KM} km` : 'Your live location';
   const mapSubtitle = clientOrigin
     ? `Live location: ${clientLocationLabel}`
     : clientLocationLabel;
   const visibleMapLabours = selectedService ? serviceLabours : [];
+  const selectedMapLabour = visibleMapLabours.find((labour) => labour.id === selectedLabourId) ?? null;
+  const selectedLabourDirectionsUrl = selectedMapLabour
+    ? buildDirectionsUrl({
+        origin: clientOrigin,
+        destination: selectedMapLabour.liveCoordinates || selectedMapLabour.coordinates
+      })
+    : '';
   const metrics = useMemo(() => {
     const completed = bookings.filter((item) => item.status === 'completed').length;
     const scheduled = bookings.filter((item) => item.requestMode === 'scheduled').length;
@@ -530,7 +548,23 @@ const ClientDashboardPage = () => {
     }
 
     try {
-      await loadServiceLabours();
+      const labours = await loadServiceLabours();
+      const targetLabour =
+        labours.find((labour) => labour.id === selectedLabourId && labour.availability === 'Available') ??
+        getFirstAvailableLabour(labours);
+
+      if (requestMode === 'scheduled' && selectedDate && selectedSlot && targetLabour) {
+        await handleScheduleLabour(targetLabour);
+        return;
+      }
+
+      window.requestAnimationFrame(() => {
+        scheduleSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+
+      if (!selectedDate || !selectedSlot) {
+        toast.success('Pick a date and time, then choose the labour to schedule.');
+      }
     } catch (error) {
       toast.error(getFirebaseErrorMessage(error));
     }
@@ -716,8 +750,11 @@ const ClientDashboardPage = () => {
               subtitle={mapSubtitle}
               centerLabel={clientLocationLabel || 'Your live location'}
               emptyLabel={`Choose a service below to show labour within ${NEARBY_LABOUR_RADIUS_KM} km`}
+              directionsUrl={selectedLabourDirectionsUrl}
               showCenterLabel={false}
-              showRoutePreview={Boolean(selectedService && selectedLabourId)}
+              showRoutePreview={false}
+              showLabourPins={false}
+              renderChildrenInSheet={false}
               initialZoom={12}
               minZoom={9}
               maxZoom={17}
@@ -753,14 +790,86 @@ const ClientDashboardPage = () => {
                     {submittingInstant ? <LoaderCircle size={16} className="animate-spin" /> : <Send size={16} />}
                     Instant
                   </Button>
-                  <Button type="button" size="lg" variant={requestMode === 'scheduled' ? 'primary' : 'outline'} className="w-full" onClick={handleScheduleMode} disabled={bookingsLoading}>
+                  <Button type="button" size="lg" variant={requestMode === 'scheduled' ? 'primary' : 'outline'} className="w-full" onClick={handleScheduleMode} disabled={bookingsLoading || Boolean(scheduleSubmittingId)}>
                     <CalendarClock size={16} />
-                    Schedule
+                    {requestMode === 'scheduled' && selectedDate && selectedSlot ? 'Book schedule' : 'Schedule'}
                   </Button>
                 </div>
               </div>
             </ServiceRequestMap>
           </LightPanel>
+
+          <LightPanel className="p-3.5 sm:p-4">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                <SelectField
+                  label="Available service"
+                  placeholder={
+                    laboursLoading
+                      ? 'Checking nearby services'
+                      : serviceOptions.length
+                        ? 'Choose available service'
+                        : `No services within ${NEARBY_LABOUR_RADIUS_KM} km`
+                  }
+                  options={serviceOptions}
+                  value={selectedService}
+                  disabled={laboursLoading || !serviceOptions.length}
+                  onChange={(event) => {
+                    setSelectedService(event.target.value);
+                    setRequestMode('instant');
+                  }}
+                />
+                <Button type="button" variant="outline" size="sm" className="h-11 w-full sm:w-auto" onClick={handleRefreshLocation} disabled={geolocation.loading}>
+                  {geolocation.loading ? <LoaderCircle size={15} className="animate-spin" /> : <LocateFixed size={15} />}
+                  Update GPS
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Button type="button" size="lg" className="w-full bg-slate-950 hover:bg-slate-800" onClick={handleInstantRequest} disabled={submittingInstant || bookingsLoading}>
+                  {submittingInstant ? <LoaderCircle size={16} className="animate-spin" /> : <Send size={16} />}
+                  Instant
+                </Button>
+                <Button type="button" size="lg" variant={requestMode === 'scheduled' ? 'primary' : 'outline'} className="w-full" onClick={handleScheduleMode} disabled={bookingsLoading || Boolean(scheduleSubmittingId)}>
+                  <CalendarClock size={16} />
+                  {requestMode === 'scheduled' && selectedDate && selectedSlot ? 'Book schedule' : 'Schedule'}
+                </Button>
+              </div>
+            </div>
+          </LightPanel>
+
+          {requestMode === 'scheduled' ? (
+            <div ref={scheduleSectionRef} className="scroll-mt-24 grid gap-3 xl:grid-cols-[0.85fr_1.15fr]">
+              <BookingCalendar selectedDate={selectedDate} selectedSlot={selectedSlot} onDateChange={setSelectedDate} onSlotChange={setSelectedSlot} />
+              <LightPanel className="p-3.5 sm:p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="text-lg font-bold text-slate-950 sm:text-xl">Schedule {selectedService || 'service'} labour</h2>
+                  <Badge tone={serviceLabours.length ? 'emerald' : 'slate'}>{laboursLoading ? 'Checking' : `${serviceLabours.length} found`}</Badge>
+                </div>
+                <div className="mt-4 space-y-2">
+                  {serviceLabours.length ? (
+                    serviceLabours.map((labour) => (
+                      <button key={labour.id} type="button" className={`w-full rounded-[16px] border p-3 text-left transition ${selectedLabourId === labour.id ? 'border-brand-400 bg-brand-50' : 'border-slate-200 bg-white hover:border-brand-300'}`} onClick={() => handleScheduleLabour(labour)} disabled={Boolean(scheduleSubmittingId)}>
+                        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <img src={labour.profilePhoto} alt={labour.fullName} className="h-11 w-11 flex-none rounded-xl object-cover" />
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-bold text-slate-950 sm:text-base">{labour.fullName}</p>
+                              <p className="mt-0.5 text-xs font-medium text-slate-500 sm:text-sm">{labour.category} - {formatDistanceKm(labour.distanceKm)}</p>
+                            </div>
+                          </div>
+                          <span className="inline-flex min-h-9 items-center justify-center rounded-xl bg-slate-950 px-3 text-xs font-bold text-white">
+                            {scheduleSubmittingId === labour.id ? 'Scheduling...' : getKnownScheduleConflict(labour) ? 'Not available' : selectedDate && selectedSlot ? 'Schedule' : 'Pick time'}
+                          </span>
+                        </div>
+                      </button>
+                    ))
+                  ) : (
+                    <EmptyDashed>{selectedService ? 'No labour available for this service' : 'Choose a service'}</EmptyDashed>
+                  )}
+                </div>
+              </LightPanel>
+            </div>
+          ) : null}
 
           {pendingBookings.length ? (
             <LightPanel className="border-brand-200 bg-brand-50">
@@ -829,34 +938,34 @@ const ClientDashboardPage = () => {
             </LightPanel>
           ) : null}
 
-          <div className="grid gap-5 xl:grid-cols-[1fr_0.9fr]">
-            <LightPanel>
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <h2 className="text-xl font-bold text-slate-950 sm:text-[1.35rem]">Request tracking</h2>
+          <div className="grid gap-3 xl:grid-cols-[1fr_0.9fr]">
+            <LightPanel className="p-3.5 sm:p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-lg font-bold text-slate-950 sm:text-xl">Request tracking</h2>
                 <Button as={Link} to="/chat" variant="outline" size="sm" className="w-full sm:w-auto">
                   <MessageCircle size={16} />
                   Chat
                 </Button>
               </div>
-              <div className="mt-5 space-y-3">
+              <div className="mt-3 space-y-2">
                 {bookingsLoading ? (
                   <>
-                    <Skeleton className="h-24 w-full rounded-2xl" />
-                    <Skeleton className="h-24 w-full rounded-2xl" />
+                    <Skeleton className="h-16 w-full rounded-2xl" />
+                    <Skeleton className="h-16 w-full rounded-2xl" />
                   </>
                 ) : trackedBookings.length ? (
                   trackedBookings.map((booking) => (
-                    <div key={booking.id} className="rounded-[18px] border border-slate-200 bg-slate-50 p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div key={booking.id} className="rounded-[16px] border border-slate-200 bg-slate-50 p-3">
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
                         <div className="min-w-0">
-                          <h3 className="text-base font-bold text-slate-950 sm:text-lg">{booking.serviceType}</h3>
-                          <p className="mt-1 break-words text-sm text-slate-600">{booking.labourName} · {getDisplayLocationText(booking.location, 'Live location shared')}</p>
+                          <h3 className="truncate text-sm font-bold text-slate-950 sm:text-base">{booking.serviceType}</h3>
+                          <p className="mt-0.5 truncate text-xs font-medium text-slate-500">{booking.labourName || 'Labour'} - {formatDate(booking.appointmentAt)}</p>
                         </div>
                         <Badge tone={getBookingTone(booking.status)}>{booking.status}</Badge>
                       </div>
-                      <div className="mt-3 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
-                        <span className="inline-flex items-center gap-2"><Clock3 size={15} />{formatDate(booking.appointmentAt)}</span>
-                        <span className="inline-flex items-center gap-2 font-semibold text-brand-700"><WalletCards size={15} />{booking.status === 'completed' && Number(booking.amount) > 0 ? formatCurrency(booking.amount) : booking.status === 'awaiting_payment' ? 'Enter paid amount' : 'Charge pending'}</span>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-slate-500">
+                        <span className="inline-flex items-center gap-1.5"><Clock3 size={13} />{booking.requestMode === 'scheduled' ? 'Scheduled' : 'Instant'}</span>
+                        <span className="inline-flex items-center gap-1.5 text-brand-700"><WalletCards size={13} />{booking.status === 'completed' && Number(booking.amount) > 0 ? formatCurrency(booking.amount) : booking.status === 'awaiting_payment' ? 'Payment due' : 'Pending'}</span>
                       </div>
                     </div>
                   ))
@@ -901,8 +1010,8 @@ const ClientDashboardPage = () => {
             </LightPanel>
           </div>
 
-          {requestMode === 'scheduled' ? (
-            <div className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
+          {false && requestMode === 'scheduled' ? (
+            <div ref={scheduleSectionRef} className="scroll-mt-24 grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
               <BookingCalendar selectedDate={selectedDate} selectedSlot={selectedSlot} onDateChange={setSelectedDate} onSlotChange={setSelectedSlot} />
               <LightPanel>
                 <div className="flex flex-wrap items-center justify-between gap-3">

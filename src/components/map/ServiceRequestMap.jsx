@@ -113,6 +113,8 @@ export const ServiceRequestMap = ({
   showRoutePreview = false,
   showZoomControls = true,
   showInteractiveMap = true,
+  showLabourPins = true,
+  renderChildrenInSheet = true,
   initialZoom = 14,
   minZoom = 9,
   maxZoom = 17,
@@ -207,7 +209,7 @@ export const ServiceRequestMap = ({
         </div>
       ) : null}
 
-      {showRoutePreview && selectedLabourPosition ? (
+      {showLabourPins && showRoutePreview && selectedLabourPosition ? (
         <svg className="pointer-events-none absolute inset-0 z-20 h-full w-full" aria-hidden="true">
           <line
             x1="50%"
@@ -244,7 +246,7 @@ export const ServiceRequestMap = ({
         ) : null}
       </div>
 
-      {labours.slice(0, 6).map((labour, index) => {
+      {showLabourPins ? labours.slice(0, 6).map((labour, index) => {
         const selected = selectedLabourId === labour.id;
         const pinStyle = getPinPosition({ labour, index, center: normalizedCenter, zoomLevel });
         const PinElement = onSelectLabour ? 'button' : 'div';
@@ -275,7 +277,7 @@ export const ServiceRequestMap = ({
             </div>
           </PinElement>
         );
-      })}
+      }) : null}
 
       <div className="absolute left-4 top-4 z-40 flex flex-wrap gap-2">
         <Badge tone={normalizedCenter ? 'emerald' : 'amber'} className="bg-white/95">
@@ -351,7 +353,7 @@ export const ServiceRequestMap = ({
             )}
           </div>
         </div>
-        {children ? <div className="mt-4">{children}</div> : null}
+        {renderChildrenInSheet && children ? <div className="mt-4">{children}</div> : null}
       </div>
     </div>
   );
