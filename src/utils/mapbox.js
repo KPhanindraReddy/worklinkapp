@@ -45,3 +45,40 @@ export const fetchMapboxLocationName = async (coordinates) => {
   const payload = await response.json();
   return String(payload?.features?.[0]?.place_name ?? '').trim();
 };
+
+export const fetchMapboxCoordinatesForAddress = async (address) => {
+  const mapboxToken = getMapboxAccessToken();
+  const trimmedAddress = String(address ?? '').trim();
+
+  if (!trimmedAddress || !mapboxToken) {
+    return null;
+  }
+
+  const query = new URLSearchParams({
+    access_token: mapboxToken,
+    limit: '1',
+    country: 'in',
+    types: 'address,neighborhood,locality,place,district'
+  });
+  const response = await fetch(
+    `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(trimmedAddress)}.json?${query.toString()}`
+  );
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const payload = await response.json();
+  const feature = payload?.features?.[0];
+  const longitude = Number(feature?.center?.[0]);
+  const latitude = Number(feature?.center?.[1]);
+
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null;
+  }
+
+  return {
+    coordinates: { latitude, longitude },
+    label: String(feature?.place_name ?? trimmedAddress).trim()
+  };
+};

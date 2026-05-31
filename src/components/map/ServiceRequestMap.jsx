@@ -113,6 +113,7 @@ export const ServiceRequestMap = ({
   showRoutePreview = false,
   showZoomControls = true,
   showInteractiveMap = true,
+  showCenterMarker = true,
   showLabourPins = true,
   renderChildrenInSheet = true,
   initialZoom = 14,
@@ -232,19 +233,21 @@ export const ServiceRequestMap = ({
         </svg>
       ) : null}
 
-      <div className="pointer-events-none absolute left-1/2 top-[48%] z-30 -translate-x-1/2 -translate-y-1/2">
-        <div className="relative grid h-10 w-10 place-items-center rounded-full bg-sky-500/15">
-          <span className="absolute h-20 w-20 animate-ping rounded-full bg-sky-500/20" />
-          <span className="grid h-7 w-7 place-items-center rounded-full border-[4px] border-white bg-sky-500 shadow-[0_10px_30px_rgba(14,165,233,0.45)]">
-            <span className="h-2.5 w-2.5 rounded-full bg-white" />
-          </span>
-        </div>
-        {showCenterLabel ? (
-          <div className="mt-2 rounded-full bg-slate-950 px-3 py-1 text-center text-xs font-semibold text-white shadow-soft">
-            {normalizedCenter ? centerLabel : 'Set location'}
+      {showCenterMarker ? (
+        <div className="pointer-events-none absolute left-1/2 top-[48%] z-30 -translate-x-1/2 -translate-y-1/2">
+          <div className="relative grid h-10 w-10 place-items-center rounded-full bg-sky-500/15">
+            <span className="absolute h-20 w-20 animate-ping rounded-full bg-sky-500/20" />
+            <span className="grid h-7 w-7 place-items-center rounded-full border-[4px] border-white bg-sky-500 shadow-[0_10px_30px_rgba(14,165,233,0.45)]">
+              <span className="h-2.5 w-2.5 rounded-full bg-white" />
+            </span>
           </div>
-        ) : null}
-      </div>
+          {showCenterLabel ? (
+            <div className="mt-2 rounded-full bg-slate-950 px-3 py-1 text-center text-xs font-semibold text-white shadow-soft">
+              {normalizedCenter ? centerLabel : 'Set location'}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {showLabourPins ? labours.slice(0, 6).map((labour, index) => {
         const selected = selectedLabourId === labour.id;

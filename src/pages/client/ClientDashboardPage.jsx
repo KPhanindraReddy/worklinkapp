@@ -50,6 +50,7 @@ import {
   getLocationLabel,
   normalizeCoordinates
 } from '../../utils/location';
+import { fetchMapboxCoordinatesForAddress } from '../../utils/mapbox';
 import { createRouteGroupId } from '../../utils/requestRouting';
 
 const openRequestStatuses = ['pending', 'accepted', 'in_progress', 'awaiting_payment'];
@@ -169,23 +170,29 @@ const ClientDashboardPage = () => {
   const [completingPaymentId, setCompletingPaymentId] = useState('');
   const [cancellingBookingId, setCancellingBookingId] = useState('');
   const scheduleSectionRef = useRef(null);
+  const [liveCoordinates, setLiveCoordinates] = useState(() => normalizeCoordinates(userProfile?.coordinates) || null);
   const [requestCoordinates, setRequestCoordinates] = useState(
     () => normalizeCoordinates(userProfile?.coordinates) || null
   );
+  const [serviceLocationMode, setServiceLocationMode] = useState('live');
+  const [serviceLocationInput, setServiceLocationInput] = useState('');
+  const [manualServiceLocationLabel, setManualServiceLocationLabel] = useState('');
+  const [resolvingServiceLocation, setResolvingServiceLocation] = useState(false);
 
   useEffect(() => {
     let isActive = true;
 
     geolocation.requestLocation({ force: true }).then((coordinates) => {
       if (isActive && coordinates) {
-        setRequestCoordinates(coordinates);
+        setLiveCoordinates(coordinates);
+        setRequestCoordinates((prev) => (serviceLocationMode === 'live' ? coordinates : prev));
       }
     });
 
     return () => {
       isActive = false;
     };
-  }, [geolocation.requestLocation]);
+  }, [geolocation.requestLocation, serviceLocationMode]);
 
   useEffect(() => {
     if (geolocation.error) {
@@ -197,6 +204,7 @@ const ClientDashboardPage = () => {
     const savedCoordinates = normalizeCoordinates(userProfile?.coordinates);
 
     if (savedCoordinates) {
+      setLiveCoordinates((prev) => prev || savedCoordinates);
       setRequestCoordinates((prev) => prev || savedCoordinates);
     }
   }, [userProfile?.coordinates]);
@@ -206,11 +214,16 @@ const ClientDashboardPage = () => {
       return;
     }
 
-    setRequestCoordinates({
+    const nextCoordinates = {
       latitude: geolocation.latitude,
       longitude: geolocation.longitude
-    });
-  }, [geolocation.hasLocation, geolocation.latitude, geolocation.longitude]);
+    };
+
+    setLiveCoordinates(nextCoordinates);
+    if (serviceLocationMode === 'live') {
+      setRequestCoordinates(nextCoordinates);
+    }
+  }, [geolocation.hasLocation, geolocation.latitude, geolocation.longitude, serviceLocationMode]);
 
   const clientOrigin = useMemo(
     () => normalizeCoordinates(requestCoordinates) || null,
@@ -224,7 +237,7 @@ const ClientDashboardPage = () => {
   const clientLocationLabel = useMemo(
     () => {
       if (clientOrigin) {
-        return resolvedLocationName || profileLocationLabel || 'Live location captured';
+        return manualServiceLocationLabel || resolvedLocationName || profileLocationLabel || 'Live location captured';
       }
 
       if (geolocation.loading) {
@@ -233,11 +246,11 @@ const ClientDashboardPage = () => {
 
       return geolocation.error || 'Allow location to show nearby services';
     },
-    [clientOrigin, geolocation.error, geolocation.loading, profileLocationLabel, resolvedLocationName]
+    [clientOrigin, geolocation.error, geolocation.loading, manualServiceLocationLabel, profileLocationLabel, resolvedLocationName]
   );
   const bookingAddress =
     clientOrigin
-      ? getDisplayLocationText(profileLocationLabel || resolvedLocationName, 'Live location shared')
+      ? getDisplayLocationText(manualServiceLocationLabel || resolvedLocationName || profileLocationLabel, 'Live location shared')
       : '';
 
   useEffect(() => {
@@ -336,9 +349,9 @@ const ClientDashboardPage = () => {
     [availableLabours]
   );
   const trackedBookings = useMemo(() => bookings.slice(0, 3), [bookings]);
-  const mapTitle = selectedService ? `${selectedService} within ${NEARBY_LABOUR_RADIUS_KM} km` : 'Your live location';
+  const mapTitle = selectedService ? `${selectedService} within ${NEARBY_LABOUR_RADIUS_KM} km` : 'Service location';
   const mapSubtitle = clientOrigin
-    ? `Live location: ${clientLocationLabel}`
+    ? `${serviceLocationMode === 'manual' ? 'Service address' : 'Live location'}: ${clientLocationLabel}`
     : clientLocationLabel;
   const visibleMapLabours = selectedService ? serviceLabours : [];
   const selectedMapLabour = visibleMapLabours.find((labour) => labour.id === selectedLabourId) ?? null;
@@ -405,8 +418,55 @@ const ClientDashboardPage = () => {
       return;
     }
 
+    setServiceLocationMode('live');
+    setManualServiceLocationLabel('');
     setRequestCoordinates(coordinates);
+    setLiveCoordinates(coordinates);
     toast.success('Live location updated.');
+  };
+
+  const handleUseLiveServiceLocation = () => {
+    const coordinates = liveCoordinates || normalizeCoordinates(userProfile?.coordinates);
+
+    if (!coordinates) {
+      toast.error('Allow GPS first, then use live location.');
+      return;
+    }
+
+    setServiceLocationMode('live');
+    setManualServiceLocationLabel('');
+    setRequestCoordinates(coordinates);
+    toast.success('Service location set to live GPS.');
+  };
+
+  const handleApplyServiceAddress = async () => {
+    const address = serviceLocationInput.trim();
+
+    if (!address) {
+      toast.error('Enter the service address first.');
+      return;
+    }
+
+    setResolvingServiceLocation(true);
+
+    try {
+      const result = await fetchMapboxCoordinatesForAddress(address);
+
+      if (!result?.coordinates) {
+        toast.error('Could not find that address. Try adding area, city, and pincode.');
+        return;
+      }
+
+      setServiceLocationMode('manual');
+      setManualServiceLocationLabel(result.label || address);
+      setServiceLocationInput(result.label || address);
+      setRequestCoordinates(result.coordinates);
+      toast.success('Service location updated.');
+    } catch (error) {
+      toast.error(getFirebaseErrorMessage(error));
+    } finally {
+      setResolvingServiceLocation(false);
+    }
   };
 
   const notifyLabour = async ({ bookingId, labour, requestMode: mode }) => {
@@ -714,7 +774,7 @@ const ClientDashboardPage = () => {
                     <p className="mt-1 truncate text-sm font-medium text-slate-500 sm:mt-2 sm:text-base">Client · Nearby service requests</p>
                   </div>
                   <Badge tone={clientOrigin ? 'emerald' : 'amber'}>
-                    {clientOrigin ? 'GPS active' : 'GPS pending'}
+                    {clientOrigin ? (serviceLocationMode === 'manual' ? 'Address set' : 'GPS active') : 'GPS pending'}
                   </Badge>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2 sm:mt-4">
@@ -752,6 +812,7 @@ const ClientDashboardPage = () => {
               emptyLabel={`Choose a service below to show labour within ${NEARBY_LABOUR_RADIUS_KM} km`}
               directionsUrl={selectedLabourDirectionsUrl}
               showCenterLabel={false}
+              showCenterMarker={false}
               showRoutePreview={false}
               showLabourPins={false}
               renderChildrenInSheet={false}
@@ -800,6 +861,33 @@ const ClientDashboardPage = () => {
           </LightPanel>
 
           <LightPanel className="p-3.5 sm:p-4">
+            <div className="mb-4 rounded-[16px] border border-slate-200 bg-slate-50 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Service location</p>
+                  <p className="mt-1 truncate text-sm font-semibold text-slate-800">{clientLocationLabel}</p>
+                </div>
+                <Badge tone={serviceLocationMode === 'manual' ? 'blue' : 'emerald'}>
+                  {serviceLocationMode === 'manual' ? 'Address' : 'Live GPS'}
+                </Badge>
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+                <InputField
+                  label="Use another service address"
+                  value={serviceLocationInput}
+                  onChange={(event) => setServiceLocationInput(event.target.value)}
+                  placeholder="House, area, city, pincode"
+                />
+                <Button type="button" variant="outline" size="sm" className="h-11 w-full sm:w-auto" onClick={handleApplyServiceAddress} disabled={resolvingServiceLocation}>
+                  {resolvingServiceLocation ? <LoaderCircle size={15} className="animate-spin" /> : <Navigation size={15} />}
+                  Use address
+                </Button>
+                <Button type="button" variant="outline" size="sm" className="h-11 w-full sm:w-auto" onClick={handleUseLiveServiceLocation}>
+                  <LocateFixed size={15} />
+                  Live GPS
+                </Button>
+              </div>
+            </div>
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
               <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
                 <SelectField
