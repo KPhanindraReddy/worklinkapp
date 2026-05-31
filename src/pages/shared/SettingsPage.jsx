@@ -1,7 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, LogOut, Pencil, UserRound, X } from 'lucide-react';
+import {
+  Bell,
+  CheckCircle2,
+  ChevronRight,
+  Info,
+  LogOut,
+  MapPin,
+  Pencil,
+  Search,
+  Settings,
+  UserRound,
+  Wrench,
+  X
+} from 'lucide-react';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
@@ -38,6 +51,40 @@ const buildProfileForm = (profile, currentUser) => ({
   about: profile?.about || '',
   previousWorkHistory: toCommaText(profile?.previousWorkHistory)
 });
+
+const FieldSectionTitle = ({ icon: Icon, tone = 'brand', children }) => {
+  const toneClass = {
+    brand: 'bg-brand-50 text-brand-700',
+    emerald: 'bg-emerald-50 text-emerald-700',
+    amber: 'bg-amber-50 text-amber-700',
+    slate: 'bg-slate-100 text-slate-600'
+  }[tone];
+
+  return (
+    <div className="flex items-center gap-3">
+      <span className={`grid h-9 w-9 place-items-center rounded-xl ${toneClass}`}>
+        <Icon size={17} />
+      </span>
+      <h2 className="text-base font-bold text-slate-950 sm:text-lg">{children}</h2>
+    </div>
+  );
+};
+
+const ProfileStat = ({ value, label, tone = 'slate' }) => {
+  const toneClass = {
+    emerald: 'text-emerald-600',
+    amber: 'text-amber-500',
+    brand: 'text-brand-600',
+    slate: 'text-slate-950'
+  }[tone];
+
+  return (
+    <div className="min-w-0 flex-1 text-center">
+      <p className={`truncate text-lg font-extrabold leading-tight sm:text-xl ${toneClass}`}>{value}</p>
+      <p className="mt-1 truncate text-[11px] font-medium text-slate-400 sm:text-xs">{label}</p>
+    </div>
+  );
+};
 
 const SettingsPage = () => {
   const navigate = useNavigate();
@@ -120,78 +167,124 @@ const SettingsPage = () => {
     await logout();
     navigate('/auth', { replace: true });
   };
+  const locationLabel = isClient
+    ? formValues.location || 'Location not set'
+    : formValues.currentLocation || 'Location not set';
+  const primarySkill = isLabour ? formValues.category || 'Skill' : 'Client';
+  const completedJobs = Number(userProfile?.completedJobs) || 0;
+  const rating = Number(userProfile?.rating) || 0;
 
   return (
     <AppShell>
       <PageSEO title="Profile & Settings" description="Manage your WorkLink profile details." />
 
-      <section className="section-space">
-        <div className="page-shell max-w-[920px] space-y-5">
-          <Card className="rounded-[30px]">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-                <div className="grid h-16 w-16 place-items-center rounded-[20px] bg-brand-600 text-xl font-bold text-white shadow-glow">
+      <section className="section-space bg-white sm:bg-transparent">
+        <div className="page-shell max-w-[860px] space-y-3 sm:space-y-4">
+          <div className="overflow-hidden rounded-[18px] border border-slate-200 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.08)]">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-slate-950 text-white">
+                  <CheckCircle2 size={18} />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-lg font-extrabold text-slate-950">WorkLink</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 text-slate-500">
+                  <Bell size={16} />
+                </span>
+                <span className="grid h-9 w-9 place-items-center rounded-full bg-brand-600 text-sm font-bold text-white">
+                  {profileInitial}
+                </span>
+              </div>
+            </div>
+
+            <div className="relative bg-slate-800 px-4 pb-16 pt-6 text-white sm:px-5 sm:pb-14">
+              <Button
+                type="button"
+                variant={isEditing ? 'secondary' : 'ghost'}
+                className="absolute right-4 top-5 h-10 w-10 rounded-xl border border-white/15 bg-white/10 p-0 text-white hover:bg-white/15"
+                onClick={() => (isEditing ? cancelProfileEdit() : setIsEditing(true))}
+                disabled={savingProfile}
+                aria-label={isEditing ? 'Cancel editing' : 'Edit profile details'}
+                title={isEditing ? 'Cancel editing' : 'Edit profile'}
+              >
+                {isEditing ? <X size={18} /> : <Pencil size={17} />}
+              </Button>
+              <div className="flex min-w-0 items-center gap-3.5 pr-12">
+                <div className="grid h-16 w-16 shrink-0 place-items-center rounded-[18px] bg-brand-600 text-2xl font-bold shadow-glow sm:h-20 sm:w-20">
                   {profileInitial}
                 </div>
                 <div className="min-w-0">
-                  <div className="flex flex-wrap gap-2">
-                    <Badge tone="blue">{roleSummary}</Badge>
+                  <h1 className="truncate text-2xl font-extrabold tracking-normal sm:text-3xl">
+                    {formValues.fullName.trim() || 'Profile'}
+                  </h1>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-white/12 px-3 py-1 text-xs font-semibold text-white/80">
+                      {roleSummary}
+                    </span>
                     {isLabour ? (
                       <VerificationBadge
                         verified={userProfile?.verified}
-                        verifiedLabel="Verified profile"
+                        verifiedLabel="Verified"
                         pendingLabel="Not verified"
                       />
-                    ) : null}
+                    ) : (
+                      <Badge tone="blue">Active</Badge>
+                    )}
                   </div>
-                  <h1 className="mt-2 break-words text-xl font-bold text-slate-950 sm:text-2xl">
-                    {formValues.fullName.trim() || 'Profile'}
-                  </h1>
                 </div>
               </div>
-              <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-                {isEditing ? (
-                  <>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="flex-1 sm:flex-none"
-                      onClick={cancelProfileEdit}
-                      disabled={savingProfile}
-                    >
-                      <X size={16} />
-                      Cancel
-                    </Button>
-                    <Button className="flex-1 sm:flex-none" onClick={saveProfile} disabled={savingProfile || !canSaveProfile}>
-                      <CheckCircle2 size={16} />
-                      {savingProfile ? 'Saving...' : 'Save'}
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-10 w-10 rounded-full p-0"
-                    onClick={() => setIsEditing(true)}
-                    aria-label="Edit profile details"
-                    title="Edit profile"
-                  >
-                    <Pencil size={17} />
-                  </Button>
-                )}
-              </div>
-            </div>
-          </Card>
-
-          <Card className="rounded-[30px]">
-            <div className="flex items-center gap-3">
-              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-brand-100 text-brand-700">
-                <UserRound size={18} />
-              </div>
-              <h2 className="text-xl font-semibold text-slate-950">Personal details</h2>
             </div>
 
-            <div className="mt-5 space-y-4">
+            <div className="-mt-9 px-4 pb-4 sm:px-5">
+              <div className="flex divide-x divide-slate-100 rounded-[16px] border border-slate-200 bg-white px-2 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.08)]">
+                <ProfileStat value={isLabour ? completedJobs : 'Client'} label={isLabour ? 'Jobs done' : 'Account'} tone="emerald" />
+                <ProfileStat value={isLabour ? (rating ? rating.toFixed(1) : '0.0') : 'Live'} label={isLabour ? 'Rating' : 'Location'} tone="amber" />
+                <ProfileStat value={primarySkill} label={isLabour ? 'Skills' : 'Profile'} tone="brand" />
+              </div>
+            </div>
+
+            {isLabour ? (
+              <div className="border-t border-slate-100 px-4 pb-4 sm:px-5">
+                <div className="mb-2 flex items-center justify-between">
+                  <h2 className="text-base font-bold text-slate-950">Availability</h2>
+                  <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    {formValues.availability}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-1 rounded-[14px] border border-slate-200 bg-slate-50 p-1">
+                  {availabilityOptions.map((option) => {
+                    const value = option.value ?? option;
+                    const label = option.label ?? option;
+                    const selected = formValues.availability === value;
+
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        disabled={profileFieldsDisabled}
+                        onClick={() => updateFormValue('availability', value)}
+                        className={`min-h-10 rounded-xl px-2 text-sm font-semibold transition ${
+                          selected
+                            ? 'bg-emerald-600 text-white shadow-sm'
+                            : 'text-slate-500 hover:bg-white hover:text-slate-900'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <Card className="space-y-4 rounded-[18px] p-4 sm:p-5">
+            <FieldSectionTitle icon={UserRound}>Personal details</FieldSectionTitle>
+            <div className="grid gap-3 sm:grid-cols-2">
               <InputField
                 label="Full name"
                 disabled={profileFieldsDisabled}
@@ -214,84 +307,83 @@ const SettingsPage = () => {
                 onChange={(event) => updateFormValue('email', event.target.value)}
                 placeholder="name@example.com"
               />
-              <SelectField
-                label="Gender"
-                placeholder="Select gender"
-                disabled={profileFieldsDisabled}
-                value={formValues.gender}
-                options={['Male', 'Female', 'Other']}
-                onChange={(event) => updateFormValue('gender', event.target.value)}
-              />
-              <InputField
-                label="Age"
-                type="number"
-                disabled={profileFieldsDisabled}
-                value={formValues.age}
-                onChange={(event) => updateFormValue('age', event.target.value)}
-                placeholder="28"
-              />
+              <div className="grid grid-cols-2 gap-3">
+                <SelectField
+                  label="Gender"
+                  placeholder="Select gender"
+                  disabled={profileFieldsDisabled}
+                  value={formValues.gender}
+                  options={['Male', 'Female', 'Other']}
+                  onChange={(event) => updateFormValue('gender', event.target.value)}
+                />
+                <InputField
+                  label="Age"
+                  type="number"
+                  disabled={profileFieldsDisabled}
+                  value={formValues.age}
+                  onChange={(event) => updateFormValue('age', event.target.value)}
+                  placeholder="28"
+                />
+              </div>
             </div>
           </Card>
 
-          <Card className="rounded-[30px]">
-            <h2 className="text-xl font-semibold text-slate-950">
-              {isClient ? 'Location' : 'Current location'}
-            </h2>
-            <div className="mt-5 space-y-3">
-              {isClient ? (
-                <>
-                  <InputField
-                    label="Location"
-                    disabled={profileFieldsDisabled}
-                    value={formValues.location}
-                    onChange={(event) => updateFormValue('location', event.target.value)}
-                    placeholder="Gachibowli, Hyderabad"
-                  />
-                  <ProfileLocationPanel
-                    roleLabel="client"
-                    locationValue={formValues.location}
-                    savedCoordinates={formValues.coordinates}
-                    disabled={profileFieldsDisabled}
-                    onApplyLocation={({ label, coordinates }) =>
-                      setFormValues((prev) => ({
-                        ...prev,
-                        location: label || getDisplayLocationText(prev.location, ''),
-                        coordinates
-                      }))
-                    }
-                  />
-                </>
-              ) : (
-                <>
-                  <InputField
-                    label="Current location"
-                    disabled={profileFieldsDisabled}
-                    value={formValues.currentLocation}
-                    onChange={(event) => updateFormValue('currentLocation', event.target.value)}
-                    placeholder="Madhapur, Hyderabad"
-                  />
-                  <ProfileLocationPanel
-                    roleLabel="labour"
-                    locationValue={formValues.currentLocation}
-                    savedCoordinates={formValues.coordinates}
-                    disabled={profileFieldsDisabled}
-                    onApplyLocation={({ label, coordinates }) =>
-                      setFormValues((prev) => ({
-                        ...prev,
-                        currentLocation: label || getDisplayLocationText(prev.currentLocation, ''),
-                        coordinates
-                      }))
-                    }
-                  />
-                </>
-              )}
-            </div>
+          <Card className="space-y-4 rounded-[18px] p-4 sm:p-5">
+            <FieldSectionTitle icon={MapPin} tone="emerald">Location</FieldSectionTitle>
+            {isClient ? (
+              <>
+                <InputField
+                  label="Current location"
+                  disabled={profileFieldsDisabled}
+                  value={formValues.location}
+                  onChange={(event) => updateFormValue('location', event.target.value)}
+                  placeholder="Gachibowli, Hyderabad"
+                />
+                <ProfileLocationPanel
+                  roleLabel="client"
+                  locationValue={formValues.location}
+                  savedCoordinates={formValues.coordinates}
+                  disabled={profileFieldsDisabled}
+                  onApplyLocation={({ label, coordinates }) =>
+                    setFormValues((prev) => ({
+                      ...prev,
+                      location: label || getDisplayLocationText(prev.location, ''),
+                      coordinates
+                    }))
+                  }
+                />
+              </>
+            ) : (
+              <>
+                <InputField
+                  label="Current location"
+                  disabled={profileFieldsDisabled}
+                  value={formValues.currentLocation}
+                  onChange={(event) => updateFormValue('currentLocation', event.target.value)}
+                  placeholder="Madhapur, Hyderabad"
+                />
+                <ProfileLocationPanel
+                  roleLabel="labour"
+                  locationValue={formValues.currentLocation}
+                  savedCoordinates={formValues.coordinates}
+                  disabled={profileFieldsDisabled}
+                  onApplyLocation={({ label, coordinates }) =>
+                    setFormValues((prev) => ({
+                      ...prev,
+                      currentLocation: label || getDisplayLocationText(prev.currentLocation, ''),
+                      coordinates
+                    }))
+                  }
+                />
+              </>
+            )}
+            <p className="truncate text-xs font-medium text-slate-400">{locationLabel}</p>
           </Card>
 
           {isLabour ? (
-            <Card className="rounded-[30px]">
-              <h2 className="text-xl font-semibold text-slate-950">Work details</h2>
-              <div className="mt-5 space-y-4">
+            <Card className="space-y-4 rounded-[18px] p-4 sm:p-5">
+              <FieldSectionTitle icon={Wrench} tone="amber">Work details</FieldSectionTitle>
+              <div className="grid gap-3 sm:grid-cols-2">
                 <SelectField
                   label="Work category"
                   placeholder="Select category"
@@ -300,20 +392,30 @@ const SettingsPage = () => {
                   options={workCategories}
                   onChange={(event) => updateFormValue('category', event.target.value)}
                 />
-                <SelectField
-                  label="Availability"
+                <InputField
+                  label="Experience (yrs)"
+                  type="number"
                   disabled={profileFieldsDisabled}
-                  value={formValues.availability}
-                  options={availabilityOptions}
-                  onChange={(event) => updateFormValue('availability', event.target.value)}
+                  value={formValues.experienceYears}
+                  onChange={(event) => updateFormValue('experienceYears', event.target.value)}
+                  placeholder="5"
+                />
+                <InputField
+                  label="Education"
+                  disabled={profileFieldsDisabled}
+                  value={formValues.education}
+                  onChange={(event) => updateFormValue('education', event.target.value)}
+                  placeholder="SSC / ITI / Diploma / Degree"
+                  className="sm:col-span-2"
                 />
                 <InputField
                   label="Skills"
                   disabled={profileFieldsDisabled}
                   value={formValues.skills}
                   onChange={(event) => updateFormValue('skills', event.target.value)}
-                  placeholder="Electrician, CCTV installation, Internet/WiFi setup"
+                  placeholder="Arc welding, MIG welding..."
                   hint="Use commas to separate multiple skills."
+                  className="sm:col-span-2"
                 />
                 <InputField
                   label="Languages known"
@@ -322,45 +424,64 @@ const SettingsPage = () => {
                   onChange={(event) => updateFormValue('languages', event.target.value)}
                   placeholder={languageOptions.join(', ')}
                   hint="Use commas to separate multiple languages."
-                />
-                <InputField
-                  label="Education"
-                  disabled={profileFieldsDisabled}
-                  value={formValues.education}
-                  onChange={(event) => updateFormValue('education', event.target.value)}
-                  placeholder="SSC / ITI / Diploma / Degree"
-                />
-                <InputField
-                  label="Experience (years)"
-                  type="number"
-                  disabled={profileFieldsDisabled}
-                  value={formValues.experienceYears}
-                  onChange={(event) => updateFormValue('experienceYears', event.target.value)}
-                  placeholder="5"
+                  className="sm:col-span-2"
                 />
                 <TextAreaField
                   label="About"
                   disabled={profileFieldsDisabled}
                   value={formValues.about}
                   onChange={(event) => updateFormValue('about', event.target.value)}
-                  placeholder="Describe your work style, strengths, and preferred jobs."
+                  placeholder="Describe your work style, strengths..."
+                  className="sm:col-span-2"
                 />
                 <TextAreaField
                   label="Previous work history"
                   disabled={profileFieldsDisabled}
                   value={formValues.previousWorkHistory}
                   onChange={(event) => updateFormValue('previousWorkHistory', event.target.value)}
-                  placeholder="Apartment rewiring, RO repair, CCTV setup..."
+                  placeholder="Apartment rewiring, RO repair..."
+                  className="sm:col-span-2"
                 />
               </div>
             </Card>
           ) : null}
 
-          <Card className="rounded-[30px]">
-            <h2 className="text-xl font-semibold text-slate-950">Settings</h2>
-            <div className="mt-5 grid gap-4 rounded-2xl bg-slate-50 px-4 py-4 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
-              <p className="text-sm font-medium text-slate-600">Signed in to WorkLink</p>
-              <Button variant="danger" className="w-full sm:w-auto" onClick={handleLogout}>
+          {isEditing ? (
+            <div className="grid gap-2 sm:flex sm:justify-end">
+              <Button type="button" variant="outline" onClick={cancelProfileEdit} disabled={savingProfile}>
+                <X size={16} />
+                Cancel
+              </Button>
+              <Button type="button" onClick={saveProfile} disabled={savingProfile || !canSaveProfile}>
+                <CheckCircle2 size={16} />
+                {savingProfile ? 'Saving...' : 'Save profile'}
+              </Button>
+            </div>
+          ) : null}
+
+          <Card className="space-y-4 rounded-[18px] p-4 sm:p-5">
+            <FieldSectionTitle icon={Settings} tone="slate">Settings</FieldSectionTitle>
+            <div className="overflow-hidden rounded-[14px] border border-slate-200 bg-white">
+              {[
+                { label: 'About WorkLink', icon: Info },
+                { label: 'Notifications', icon: Bell },
+                { label: isLabour ? 'Browse labour' : 'Browse services', icon: Search }
+              ].map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div key={item.label} className="flex items-center gap-3 border-b border-slate-100 px-3 py-3 last:border-b-0">
+                    <Icon size={18} className="text-slate-500" />
+                    <span className="min-w-0 flex-1 text-sm font-semibold text-slate-800">{item.label}</span>
+                    <ChevronRight size={17} className="text-slate-300" />
+                  </div>
+                );
+              })}
+            </div>
+            <div className="rounded-[14px] border border-rose-100 bg-rose-50 p-3">
+              <p className="mb-3 text-xs font-medium text-slate-500">
+                Signed in to WorkLink as <span className="font-bold text-slate-700">{formValues.fullName || 'user'}</span>
+              </p>
+              <Button variant="danger" className="w-full" onClick={handleLogout}>
                 <LogOut size={16} />
                 Sign out
               </Button>

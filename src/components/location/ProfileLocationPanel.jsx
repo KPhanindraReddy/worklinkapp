@@ -59,20 +59,20 @@ export const ProfileLocationPanel = ({
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+    <div className="rounded-[14px] border border-emerald-200 bg-emerald-50/70 px-3 py-3 sm:px-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
-            <MapPin size={15} className="text-brand-600" />
-            Live location for {roleLabel}
+          <div className="flex items-center gap-2 text-sm font-bold text-emerald-800">
+            <MapPin size={15} className="text-emerald-600" />
+            Live location active
           </div>
-          <p className="mt-1 break-words text-xs leading-5 text-slate-600">
+          <p className="mt-1 break-words text-xs leading-5 text-emerald-900/80">
             {liveCoordinates
-              ? `Live location ready${liveLocationName ? `: ${liveLocationName}` : ''}`
+              ? liveLocationName || `Live location ready for ${roleLabel}`
               : geolocation.loading
                 ? 'Updating your live location.'
                 : savedLabel
-                  ? `Saved location: ${savedLabel}`
+                  ? savedLabel
                   : geolocation.error || 'Save location once, then update it only when you move.'}
           </p>
         </div>

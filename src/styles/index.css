@@ -99,9 +99,13 @@
   }
 
   @media (max-width: 639px) {
+    body {
+      font-size: 14px;
+    }
+
     .page-shell {
-      width: min(100%, calc(100vw - 1.25rem));
-      max-width: calc(100vw - 1.25rem);
+      width: min(100%, calc(100vw - 1rem));
+      max-width: calc(100vw - 1rem);
     }
   }
 
@@ -124,7 +128,7 @@
   }
 
   .surface-card {
-    @apply rounded-[24px] border border-slate-200 bg-[rgb(var(--surface))] shadow-soft;
+    @apply rounded-[18px] border border-slate-200 bg-[rgb(var(--surface))] shadow-[0_1px_0_rgba(15,23,42,0.03),0_10px_24px_rgba(15,23,42,0.05)];
   }
 
   .section-space {
@@ -155,12 +159,12 @@
 
   @media (max-width: 639px) {
     .surface-card {
-      border-radius: 1rem;
-      box-shadow: 0 12px 34px rgba(15, 23, 42, 0.1);
+      border-radius: 0.95rem;
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.07);
     }
 
     .section-space {
-      @apply py-4;
+      @apply py-3;
     }
   }
 

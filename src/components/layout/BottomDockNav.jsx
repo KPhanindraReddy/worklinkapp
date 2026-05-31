@@ -105,7 +105,7 @@ export const BottomDockNav = () => {
   return (
     <div className="app-bottom-dock pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center lg:hidden">
       <nav
-        className="pointer-events-auto w-full border-t border-slate-200 bg-white/95 px-4 py-1.5 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur-2xl"
+        className="pointer-events-auto w-full border-t border-slate-200 bg-white/95 px-3 py-1 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur-2xl"
         aria-label="Mobile primary navigation"
       >
         <div
@@ -122,7 +122,7 @@ export const BottomDockNav = () => {
                 to={item.to}
                 aria-current={isActive ? 'page' : undefined}
                 className={clsx(
-                  'min-h-[3.35rem] touch-manipulation rounded-none border border-transparent px-1 py-1.5 text-center transition duration-200',
+                  'min-h-[3rem] touch-manipulation rounded-none border border-transparent px-1 py-1 text-center transition duration-200',
                   isActive
                     ? 'bg-white text-brand-900'
                     : 'bg-white text-slate-300 hover:text-slate-500'
@@ -130,15 +130,15 @@ export const BottomDockNav = () => {
               >
                 <span
                   className={clsx(
-                    'mx-auto grid h-7 w-7 place-items-center rounded-none transition',
+                    'mx-auto grid h-6 w-6 place-items-center rounded-none transition',
                     isActive ? 'text-brand-900' : 'text-slate-300'
                   )}
                 >
-                  <Icon size={23} strokeWidth={isActive ? 2.5 : 2} />
+                  <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
                 </span>
                 <span
                   className={clsx(
-                    'mt-0.5 block min-h-[1.2rem] text-xs font-semibold leading-tight',
+                    'mt-0.5 block min-h-[1rem] text-[11px] font-semibold leading-tight',
                     isActive ? 'text-brand-900' : 'text-slate-400'
                   )}
                 >
