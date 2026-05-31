@@ -1,10 +1,15 @@
 const isFiniteCoordinate = (value) => Number.isFinite(Number(value));
 const coordinateLabelPattern = /^\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*$/;
+const gpsCoordinateLabelPattern =
+  /^\s*(?:current\s+gps|gps|live\s+location)\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*$/i;
 
 export const hasCoordinates = (coordinates) =>
   isFiniteCoordinate(coordinates?.latitude) && isFiniteCoordinate(coordinates?.longitude);
 
-export const isCoordinateLabel = (value) => coordinateLabelPattern.test(String(value ?? '').trim());
+export const isCoordinateLabel = (value) => {
+  const trimmedValue = String(value ?? '').trim();
+  return coordinateLabelPattern.test(trimmedValue) || gpsCoordinateLabelPattern.test(trimmedValue);
+};
 
 export const getDisplayLocationText = (value, fallback = 'Live location captured') => {
   const trimmedValue = String(value ?? '').trim();

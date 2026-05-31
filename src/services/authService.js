@@ -318,55 +318,67 @@ export const createOrUpdateUserProfile = async (user, formValues) => {
   if (resolvedRole === 'labour') {
     const existingLabourSnapshot = await getDoc(labourRef);
     const existingLabour = existingLabourSnapshot.exists() ? existingLabourSnapshot.data() : null;
+    const labourProfileFields = {
+      category:
+        getFormValue(formValues, 'category', existingLabour?.category) ||
+        normalizeCommaSeparated(
+          getFormValue(formValues, 'skills', existingLabour?.skills || formValues.category || '')
+        )[0] ||
+        '',
+      gender: getFormValue(formValues, 'gender', existingLabour?.gender || ''),
+      age: getNumericFormValue(formValues, 'age', existingLabour?.age ?? null, { emptyAsNull: true }),
+      education: getFormValue(formValues, 'education', existingLabour?.education || ''),
+      experienceYears: getNumericFormValue(
+        formValues,
+        'experienceYears',
+        existingLabour?.experienceYears ?? 0
+      ),
+      skills: hasFormValue(formValues, 'skills')
+        ? normalizeCommaSeparated(formValues.skills || formValues.category)
+        : (existingLabour?.skills ?? []),
+      languages: hasFormValue(formValues, 'languages')
+        ? normalizeCommaSeparated(formValues.languages)
+        : (existingLabour?.languages ?? []),
+      currentLocation: getFormValue(
+        formValues,
+        'currentLocation',
+        existingLabour?.currentLocation || existingUser?.location || ''
+      ),
+      coordinates:
+        normalizeCoordinates(formValues.coordinates) ||
+        normalizeCoordinates(existingLabour?.coordinates) ||
+        normalizeCoordinates(existingUser?.coordinates) ||
+        null,
+      about: getFormValue(formValues, 'about', existingLabour?.about || ''),
+      availability: getFormValue(
+        formValues,
+        'availability',
+        existingLabour?.availability || 'Available'
+      ),
+      dailyWage: getNumericFormValue(formValues, 'dailyWage', existingLabour?.dailyWage ?? 0),
+      previousWorkHistory: hasFormValue(formValues, 'previousWorkHistory')
+        ? normalizeCommaSeparated(formValues.previousWorkHistory)
+        : (existingLabour?.previousWorkHistory ?? [])
+    };
 
     await setDoc(
       labourRef,
       {
         ...baseProfile,
-        category:
-          getFormValue(formValues, 'category', existingLabour?.category) ||
-          normalizeCommaSeparated(
-            getFormValue(formValues, 'skills', existingLabour?.skills || formValues.category || '')
-          )[0] ||
-          '',
-        gender: getFormValue(formValues, 'gender', existingLabour?.gender || ''),
-        age: getNumericFormValue(formValues, 'age', existingLabour?.age ?? null, { emptyAsNull: true }),
-        education: getFormValue(formValues, 'education', existingLabour?.education || ''),
-        experienceYears: getNumericFormValue(
-          formValues,
-          'experienceYears',
-          existingLabour?.experienceYears ?? 0
-        ),
-        skills: hasFormValue(formValues, 'skills')
-          ? normalizeCommaSeparated(formValues.skills || formValues.category)
-          : (existingLabour?.skills ?? []),
-        languages: hasFormValue(formValues, 'languages')
-          ? normalizeCommaSeparated(formValues.languages)
-          : (existingLabour?.languages ?? []),
-        currentLocation: getFormValue(
-          formValues,
-          'currentLocation',
-          existingLabour?.currentLocation || existingUser?.location || ''
-        ),
-        coordinates:
-          normalizeCoordinates(formValues.coordinates) ||
-          normalizeCoordinates(existingLabour?.coordinates) ||
-          normalizeCoordinates(existingUser?.coordinates) ||
-          null,
-        about: getFormValue(formValues, 'about', existingLabour?.about || ''),
-        availability: getFormValue(
-          formValues,
-          'availability',
-          existingLabour?.availability || 'Available'
-        ),
-        dailyWage: getNumericFormValue(formValues, 'dailyWage', existingLabour?.dailyWage ?? 0),
-        previousWorkHistory: hasFormValue(formValues, 'previousWorkHistory')
-          ? normalizeCommaSeparated(formValues.previousWorkHistory)
-          : (existingLabour?.previousWorkHistory ?? []),
+        ...labourProfileFields,
         verified: existingLabour?.verified ?? false,
         rating: existingLabour?.rating ?? 0,
         reviewsCount: existingLabour?.reviewsCount ?? 0,
         completedJobs: existingLabour?.completedJobs ?? 0
+      },
+      { merge: true }
+    );
+
+    await setDoc(
+      userRef,
+      {
+        ...labourProfileFields,
+        location: labourProfileFields.currentLocation || baseProfile.location || ''
       },
       { merge: true }
     );

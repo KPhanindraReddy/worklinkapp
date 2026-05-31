@@ -21,6 +21,8 @@ import {
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { getDisplayLocationText } from '../../utils/location';
 
+const toCommaText = (value) => (Array.isArray(value) ? value.join(', ') : value || '');
+
 const initialFormState = {
   fullName: '',
   phoneNumber: '',
@@ -83,7 +85,18 @@ const CompleteProfilePage = () => {
       location:
         getDisplayLocationText(prev.location, '') ||
         getDisplayLocationText(userProfile?.location || userProfile?.currentLocation, ''),
-      coordinates: prev.coordinates || userProfile?.coordinates || null
+      coordinates: prev.coordinates || userProfile?.coordinates || null,
+      gender: prev.gender || userProfile?.gender || '',
+      age: prev.age || userProfile?.age || '',
+      education: prev.education || userProfile?.education || '',
+      experienceYears: prev.experienceYears || userProfile?.experienceYears || '',
+      category: prev.category || userProfile?.category || '',
+      skills: prev.skills || toCommaText(userProfile?.skills),
+      languages: prev.languages || toCommaText(userProfile?.languages),
+      about: prev.about || userProfile?.about || '',
+      availability: prev.availability || userProfile?.availability || 'Available',
+      dailyWage: prev.dailyWage || userProfile?.dailyWage || '',
+      previousWorkHistory: prev.previousWorkHistory || toCommaText(userProfile?.previousWorkHistory)
     }));
   }, [
     currentUser?.displayName,
@@ -95,6 +108,17 @@ const CompleteProfilePage = () => {
     userProfile?.location,
     userProfile?.phoneNumber,
     userProfile?.coordinates,
+    userProfile?.gender,
+    userProfile?.age,
+    userProfile?.education,
+    userProfile?.experienceYears,
+    userProfile?.category,
+    userProfile?.skills,
+    userProfile?.languages,
+    userProfile?.about,
+    userProfile?.availability,
+    userProfile?.dailyWage,
+    userProfile?.previousWorkHistory,
     userProfile?.email,
     userProfile?.role
   ]);
@@ -243,7 +267,7 @@ const CompleteProfilePage = () => {
                       onApplyLocation={({ label, coordinates }) =>
                         setFormValues((prev) => ({
                           ...prev,
-                          location: getDisplayLocationText(prev.location, '') || label,
+                          location: label || getDisplayLocationText(prev.location, ''),
                           coordinates
                         }))
                       }
@@ -264,7 +288,7 @@ const CompleteProfilePage = () => {
                       onApplyLocation={({ label, coordinates }) =>
                         setFormValues((prev) => ({
                           ...prev,
-                          currentLocation: getDisplayLocationText(prev.currentLocation, '') || label,
+                          currentLocation: label || getDisplayLocationText(prev.currentLocation, ''),
                           coordinates
                         }))
                       }

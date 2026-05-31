@@ -3,6 +3,32 @@ import { isFirebaseConfigured } from '../firebase/env';
 import { db } from '../firebase/firestore';
 import { normalizeCoordinates } from '../utils/location';
 
+const roleProfileCollections = {
+  labour: 'labours',
+  client: 'clients'
+};
+
+const mergeRoleProfile = async (profile) => {
+  const roleCollection = roleProfileCollections[profile?.role];
+
+  if (!profile?.id || !roleCollection) {
+    return profile;
+  }
+
+  const roleSnapshot = await getDoc(doc(db, roleCollection, profile.id));
+
+  if (!roleSnapshot.exists()) {
+    return profile;
+  }
+
+  return {
+    ...profile,
+    ...roleSnapshot.data(),
+    id: profile.id,
+    role: profile.role
+  };
+};
+
 export const getUserProfile = async (uid) => {
   if (!uid || !isFirebaseConfigured || !db) {
     return null;
@@ -10,7 +36,7 @@ export const getUserProfile = async (uid) => {
 
   try {
     const snapshot = await getDoc(doc(db, 'users', uid));
-    return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
+    return snapshot.exists() ? mergeRoleProfile({ id: snapshot.id, ...snapshot.data() }) : null;
   } catch (error) {
     if (error?.code === 'permission-denied') {
       return null;
@@ -81,7 +107,21 @@ export const subscribeUserProfile = (uid, onNext, onError) => {
   return onSnapshot(
     doc(db, 'users', uid),
     (snapshot) => {
-      onNext(snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null);
+      if (!snapshot.exists()) {
+        onNext(null);
+        return;
+      }
+
+      mergeRoleProfile({ id: snapshot.id, ...snapshot.data() })
+        .then(onNext)
+        .catch((error) => {
+          if (error?.code === 'permission-denied') {
+            onNext({ id: snapshot.id, ...snapshot.data() });
+            return;
+          }
+
+          onError?.(error);
+        });
     },
     (error) => {
       if (error?.code === 'permission-denied') {

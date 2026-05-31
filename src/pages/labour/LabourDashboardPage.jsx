@@ -161,9 +161,10 @@ const LabourDashboardPage = () => {
   const resolvedDashboardLocationName = useLocationName(dashboardProfile.coordinates);
   const dashboardLocationLabel = useMemo(
     () =>
+      resolvedDashboardLocationName ||
       getLocationLabel(dashboardProfile, {
         preferCurrent: true,
-        fallback: resolvedDashboardLocationName || 'Location not set'
+        fallback: 'Location not set'
       }),
     [dashboardProfile, resolvedDashboardLocationName]
   );

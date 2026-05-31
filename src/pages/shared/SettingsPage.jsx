@@ -255,7 +255,7 @@ const SettingsPage = () => {
                     onApplyLocation={({ label, coordinates }) =>
                       setFormValues((prev) => ({
                         ...prev,
-                        location: getDisplayLocationText(prev.location, '') || label,
+                        location: label || getDisplayLocationText(prev.location, ''),
                         coordinates
                       }))
                     }
@@ -278,7 +278,7 @@ const SettingsPage = () => {
                     onApplyLocation={({ label, coordinates }) =>
                       setFormValues((prev) => ({
                         ...prev,
-                        currentLocation: getDisplayLocationText(prev.currentLocation, '') || label,
+                        currentLocation: label || getDisplayLocationText(prev.currentLocation, ''),
                         coordinates
                       }))
                     }
