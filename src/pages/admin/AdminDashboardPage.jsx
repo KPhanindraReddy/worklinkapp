@@ -32,7 +32,8 @@ const AdminDashboardPage = () => {
   const [overview, setOverview] = useState({
     analytics: {},
     categories: [],
-    pendingLabours: []
+    pendingLabours: [],
+    demandByLocation: []
   });
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [labourDirectory, setLabourDirectory] = useState({
@@ -309,6 +310,44 @@ const AdminDashboardPage = () => {
                 </div>
               </Card>
             </div>
+
+            <Card>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Requested addresses</h2>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    Locations where clients searched but no labour was available.
+                  </p>
+                </div>
+                <Badge tone="blue">{overview.demandByLocation?.length || 0} locations</Badge>
+              </div>
+              <div className="mt-5 grid gap-3 lg:grid-cols-2">
+                {overviewLoading ? (
+                  <>
+                    <Skeleton className="h-20 w-full rounded-2xl" />
+                    <Skeleton className="h-20 w-full rounded-2xl" />
+                  </>
+                ) : overview.demandByLocation?.length ? (
+                  overview.demandByLocation.map((item) => (
+                    <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="break-words text-sm font-semibold text-slate-950">{item.location}</p>
+                          <p className="mt-2 text-xs font-medium text-slate-500">
+                            {item.services?.join(', ') || 'Any service'}
+                          </p>
+                        </div>
+                        <Badge tone="amber">{item.requestCount} requests</Badge>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm font-medium text-slate-500">
+                    No unavailable-location demand recorded yet.
+                  </p>
+                )}
+              </div>
+            </Card>
 
             <div className="grid gap-6 xl:grid-cols-2">
               <Card>

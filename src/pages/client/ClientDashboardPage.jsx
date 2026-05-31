@@ -35,6 +35,7 @@ import {
 } from '../../services/bookingService';
 import { searchLabours } from '../../services/labourService';
 import { createNotification } from '../../services/notificationService';
+import { createServiceDemandRequest } from '../../services/serviceDemandService';
 import {
   buildAppointmentDateTime,
   formatCurrency,
@@ -178,6 +179,8 @@ const ClientDashboardPage = () => {
   const [serviceLocationInput, setServiceLocationInput] = useState('');
   const [manualServiceLocationLabel, setManualServiceLocationLabel] = useState('');
   const [resolvingServiceLocation, setResolvingServiceLocation] = useState(false);
+  const [coverageMessage, setCoverageMessage] = useState('');
+  const lastDemandKeyRef = useRef('');
 
   useEffect(() => {
     let isActive = true;
@@ -253,12 +256,39 @@ const ClientDashboardPage = () => {
       ? getDisplayLocationText(manualServiceLocationLabel || resolvedLocationName || profileLocationLabel, 'Live location shared')
       : '';
 
+  const recordUnavailableDemand = async (serviceType = selectedService || 'Any service') => {
+    if (!currentUser?.uid || userProfile?.role !== 'client' || !bookingAddress || !clientOrigin) {
+      return;
+    }
+
+    const demandKey = `${serviceType}|${bookingAddress}|${clientOrigin.latitude.toFixed(3)}|${clientOrigin.longitude.toFixed(3)}`;
+
+    if (lastDemandKeyRef.current === demandKey) {
+      return;
+    }
+
+    lastDemandKeyRef.current = demandKey;
+
+    try {
+      await createServiceDemandRequest({
+        clientId: currentUser.uid,
+        clientName: userProfile?.fullName || currentUser.displayName || 'Client',
+        serviceType,
+        location: bookingAddress,
+        coordinates: clientOrigin
+      });
+    } catch (error) {
+      console.warn('WorkLink service demand recording skipped:', error);
+    }
+  };
+
   useEffect(() => {
     if (!clientOrigin) {
       setAvailableLabours([]);
       setServiceLabours([]);
       setSelectedService('');
       setSelectedLabourId('');
+      setCoverageMessage('');
       setLaboursLoading(false);
       return undefined;
     }
@@ -275,6 +305,16 @@ const ClientDashboardPage = () => {
         const nearbyItems = filterNearbyLabours(items);
 
         setAvailableLabours(nearbyItems);
+        if (nearbyItems.length) {
+          setCoverageMessage('');
+        } else {
+          const message = `We are currently not available in this location: ${bookingAddress || clientLocationLabel}.`;
+          setCoverageMessage(message);
+          if (serviceLocationMode === 'manual') {
+            toast.error(message);
+            recordUnavailableDemand('Any service');
+          }
+        }
         const nextServices = new Set(nearbyItems.map((labour) => labour.category).filter(Boolean));
 
         setSelectedService((prev) => (prev && !nextServices.has(prev) ? '' : prev));
@@ -293,7 +333,7 @@ const ClientDashboardPage = () => {
     return () => {
       isActive = false;
     };
-  }, [clientOrigin]);
+  }, [clientOrigin, serviceLocationMode]);
 
   useEffect(() => {
     const matchingLabours = selectedService
@@ -510,6 +550,8 @@ const ClientDashboardPage = () => {
           ? 'Instant request from client home.'
           : `Scheduled request for ${selectedDate} ${selectedSlot}.`,
       location: bookingAddress || (clientOrigin ? 'Live location shared' : ''),
+      requestedAddress: bookingAddress || (clientOrigin ? 'Live location shared' : ''),
+      requestedLocationMode: serviceLocationMode,
       coordinates: clientOrigin,
       notes:
         mode === 'instant'
@@ -555,6 +597,14 @@ const ClientDashboardPage = () => {
 
       setServiceLabours(nearbyItems);
       setSelectedLabourId(getFirstAvailableLabour(nearbyItems)?.id ?? '');
+      if (!nearbyItems.length) {
+        const message = `${selectedService} is currently not available in this location: ${bookingAddress || clientLocationLabel}.`;
+        setCoverageMessage(message);
+        toast.error(message);
+        await recordUnavailableDemand(selectedService);
+      } else {
+        setCoverageMessage('');
+      }
       return nearbyItems;
     } finally {
       setLaboursLoading(false);
@@ -888,6 +938,11 @@ const ClientDashboardPage = () => {
                 </Button>
               </div>
             </div>
+            {coverageMessage ? (
+              <div className="mb-4 rounded-[16px] border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
+                {coverageMessage}
+              </div>
+            ) : null}
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
               <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
                 <SelectField

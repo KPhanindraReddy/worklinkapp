@@ -337,6 +337,17 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    match /serviceDemandRequests/{requestId} {
+      allow read: if isAdmin();
+      allow create: if isVerifiedUser() &&
+        hasRole('client') &&
+        request.auth.uid == request.resource.data.clientId &&
+        request.resource.data.location is string &&
+        request.resource.data.serviceType is string &&
+        request.resource.data.status == 'open';
+      allow update, delete: if isAdmin();
+    }
+
     match /notifications/{notificationId} {
       allow read: if signedIn() && request.auth.uid == resource.data.userId;
       allow update: if signedIn() &&

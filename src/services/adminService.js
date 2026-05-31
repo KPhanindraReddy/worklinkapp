@@ -36,7 +36,8 @@ export const getAdminOverview = async () => {
         paidBookingCount: 0
       },
       categories: fallbackCategories,
-      pendingLabours: []
+      pendingLabours: [],
+      demandByLocation: []
     };
   }
 
@@ -50,20 +51,27 @@ export const getAdminOverview = async () => {
     where('paymentStatus', '==', 'paid'),
     limit(500)
   );
+  const demandQuery = query(
+    collection(db, 'serviceDemandRequests'),
+    orderBy('createdAt', 'desc'),
+    limit(500)
+  );
   const [
     usersCountSnapshot,
     laboursCountSnapshot,
     bookingsCountSnapshot,
     pendingCountSnapshot,
     pendingLaboursSnapshot,
-    paidBookingsSnapshot
+    paidBookingsSnapshot,
+    demandSnapshot
   ] = await Promise.all([
     getCountFromServer(collection(db, 'users')),
     getCountFromServer(collection(db, 'labours')),
     getCountFromServer(collection(db, 'bookings')),
     getCountFromServer(query(collection(db, 'labours'), where('verified', '==', false))),
     getDocs(pendingLaboursQuery),
-    getDocs(paidBookingsQuery)
+    getDocs(paidBookingsQuery),
+    getDocs(demandQuery).catch(() => ({ docs: [] }))
   ]);
 
   const pendingLabours = pendingLaboursSnapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
@@ -71,6 +79,34 @@ export const getAdminOverview = async () => {
     (sum, item) => sum + Number(item.data().amount || 0),
     0
   );
+  const demandByLocation = Array.from(
+    demandSnapshot.docs
+      .map((item) => ({ id: item.id, ...item.data() }))
+      .reduce((map, item) => {
+        const location = String(item.location || 'Unknown requested address').trim();
+        const key = location.toLowerCase();
+        const current = map.get(key) || {
+          id: key,
+          location,
+          requestCount: 0,
+          services: new Set(),
+          latestRequest: item.createdAt
+        };
+
+        current.requestCount += 1;
+        current.services.add(item.serviceType || 'Any service');
+        current.latestRequest = current.latestRequest || item.createdAt;
+        map.set(key, current);
+        return map;
+      }, new Map())
+      .values()
+  )
+    .map((item) => ({
+      ...item,
+      services: Array.from(item.services).slice(0, 4)
+    }))
+    .sort((a, b) => b.requestCount - a.requestCount)
+    .slice(0, 8);
 
   return {
     analytics: {
@@ -82,7 +118,8 @@ export const getAdminOverview = async () => {
       paidBookingCount: paidBookingsSnapshot.size
     },
     categories: fallbackCategories,
-    pendingLabours
+    pendingLabours,
+    demandByLocation
   };
 };
 
