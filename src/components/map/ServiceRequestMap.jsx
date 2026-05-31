@@ -126,10 +126,10 @@ export const ServiceRequestMap = ({
   );
   const [mapImageFailed, setMapImageFailed] = useState(false);
   const interactiveMapUrl = useMemo(
-    () => (showInteractiveMap && mapImageFailed ? getGoogleEmbedMapUrl(normalizedCenter, zoomLevel) : ''),
-    [mapImageFailed, normalizedCenter, showInteractiveMap, zoomLevel]
+    () => (showInteractiveMap ? getGoogleEmbedMapUrl(normalizedCenter, zoomLevel) : ''),
+    [normalizedCenter, showInteractiveMap, zoomLevel]
   );
-  const showMapboxImage = Boolean(mapboxStaticUrl && !mapImageFailed);
+  const showMapboxImage = Boolean(!interactiveMapUrl && mapboxStaticUrl && !mapImageFailed);
   const selectedLabourIndex = useMemo(
     () => labours.findIndex((labour) => labour.id === selectedLabourId),
     [labours, selectedLabourId]
@@ -163,20 +163,20 @@ export const ServiceRequestMap = ({
         className
       )}
     >
-      {showMapboxImage ? (
+      {interactiveMapUrl ? (
+        <iframe
+          title={title ? `${title} map` : 'Interactive location map'}
+          src={interactiveMapUrl}
+          className="absolute inset-0 h-full w-full border-0"
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+        />
+      ) : showMapboxImage ? (
         <img
           src={mapboxStaticUrl}
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
           onError={() => setMapImageFailed(true)}
-        />
-      ) : interactiveMapUrl ? (
-        <iframe
-          title={title ? `${title} map` : 'Interactive location map'}
-          src={interactiveMapUrl}
-          className="absolute inset-0 h-full w-full touch-pan-x touch-pan-y border-0"
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
         />
       ) : (
         <>
@@ -230,7 +230,7 @@ export const ServiceRequestMap = ({
         </svg>
       ) : null}
 
-      <div className="absolute left-1/2 top-[48%] z-30 -translate-x-1/2 -translate-y-1/2">
+      <div className="pointer-events-none absolute left-1/2 top-[48%] z-30 -translate-x-1/2 -translate-y-1/2">
         <div className="relative grid h-10 w-10 place-items-center rounded-full bg-sky-500/15">
           <span className="absolute h-20 w-20 animate-ping rounded-full bg-sky-500/20" />
           <span className="grid h-7 w-7 place-items-center rounded-full border-[4px] border-white bg-sky-500 shadow-[0_10px_30px_rgba(14,165,233,0.45)]">
@@ -282,13 +282,13 @@ export const ServiceRequestMap = ({
           <RadioTower size={12} />
           {normalizedCenter ? 'GPS active' : 'GPS pending'}
         </Badge>
-        {showMapboxImage ? (
-          <Badge tone="slate" className="bg-white/95">
-            Mapbox
-          </Badge>
-        ) : interactiveMapUrl ? (
+        {interactiveMapUrl ? (
           <Badge tone="slate" className="bg-white/95">
             Movable map
+          </Badge>
+        ) : showMapboxImage ? (
+          <Badge tone="slate" className="bg-white/95">
+            Mapbox
           </Badge>
         ) : null}
       </div>

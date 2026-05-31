@@ -26,7 +26,9 @@ import { VerificationBadge } from '../../components/common/VerificationBadge';
 import { ProfileLocationPanel } from '../../components/location/ProfileLocationPanel';
 import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
+import { subscribeBookingsForUser } from '../../services/bookingService';
 import { updateAvailability } from '../../services/labourService';
+import { subscribeReviewsForLabour } from '../../services/reviewService';
 import { availabilityOptions, languageOptions, workCategories } from '../../utils/constants';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { getDisplayLocationText } from '../../utils/location';
@@ -112,6 +114,8 @@ const SettingsPage = () => {
   const [savingProfile, setSavingProfile] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [availabilityOverride, setAvailabilityOverride] = useState('');
+  const [labourBookings, setLabourBookings] = useState([]);
+  const [labourReviews, setLabourReviews] = useState([]);
 
   useEffect(() => {
     if (!isEditing) {
@@ -127,6 +131,30 @@ const SettingsPage = () => {
       setAvailabilityOverride('');
     }
   }, [availabilityOverride, userProfile?.availability]);
+
+  useEffect(() => {
+    if (!currentUser?.uid || userProfile?.role !== 'labour') {
+      setLabourBookings([]);
+      setLabourReviews([]);
+      return undefined;
+    }
+
+    const unsubscribeBookings = subscribeBookingsForUser(
+      { userId: currentUser.uid, role: 'labour' },
+      setLabourBookings,
+      () => setLabourBookings([])
+    );
+    const unsubscribeReviews = subscribeReviewsForLabour(
+      currentUser.uid,
+      setLabourReviews,
+      () => setLabourReviews([])
+    );
+
+    return () => {
+      unsubscribeBookings();
+      unsubscribeReviews();
+    };
+  }, [currentUser?.uid, userProfile?.role]);
 
   const isLabour = userProfile?.role === 'labour';
   const isClient = userProfile?.role === 'client';
@@ -226,9 +254,14 @@ const SettingsPage = () => {
   const locationLabel = isClient
     ? formValues.location || 'Location not set'
     : formValues.currentLocation || 'Location not set';
-  const primarySkill = isLabour ? formValues.category || 'Skill' : 'Client';
-  const completedJobs = Number(userProfile?.completedJobs) || 0;
-  const rating = Number(userProfile?.rating) || 0;
+  const primarySkill = formValues.category || 'Skill';
+  const completedJobs =
+    labourBookings.filter((booking) => booking.status === 'completed').length ||
+    Number(userProfile?.completedJobs) ||
+    0;
+  const rating = labourReviews.length
+    ? labourReviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / labourReviews.length
+    : Number(userProfile?.rating) || 0;
   const currentAvailabilityStyle = availabilityStyles[formValues.availability] || availabilityStyles.Available;
 
   return (
@@ -276,13 +309,15 @@ const SettingsPage = () => {
               </div>
             </div>
 
-            <div className="px-4 py-3 sm:px-5">
-              <div className="flex items-stretch divide-x divide-slate-100 rounded-[16px] border border-slate-200 bg-white px-1 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.08)]">
-                <ProfileStat value={isLabour ? completedJobs : 'Client'} label={isLabour ? 'Jobs done' : 'Account'} tone="emerald" />
-                <ProfileStat value={isLabour ? (rating ? rating.toFixed(1) : '0.0') : 'Live'} label={isLabour ? 'Rating' : 'Location'} tone="amber" />
-                <ProfileStat value={primarySkill} label={isLabour ? 'Skills' : 'Profile'} tone="brand" />
+            {isLabour ? (
+              <div className="px-4 py-3 sm:px-5">
+                <div className="flex items-stretch divide-x divide-slate-100 rounded-[16px] border border-slate-200 bg-white px-1 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.08)]">
+                  <ProfileStat value={completedJobs} label="Jobs done" tone="emerald" />
+                  <ProfileStat value={rating ? rating.toFixed(1) : '0.0'} label="Rating" tone="amber" />
+                  <ProfileStat value={primarySkill} label="Skills" tone="brand" />
+                </div>
               </div>
-            </div>
+            ) : null}
 
             {isLabour ? (
               <div className="border-t border-slate-100 px-4 pb-4 sm:px-5">

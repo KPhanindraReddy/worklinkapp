@@ -721,8 +721,8 @@ const ClientDashboardPage = () => {
               initialZoom={12}
               minZoom={9}
               maxZoom={17}
-              className="min-h-[500px] rounded-[18px] border-0 shadow-none sm:min-h-[560px] sm:rounded-[20px]"
-              sheetClassName="bottom-0 left-0 right-0 rounded-b-none rounded-t-[24px] border-x-0 border-b-0 p-4 sm:bottom-4 sm:left-4 sm:right-4 sm:rounded-[22px] sm:border"
+              className="min-h-[620px] rounded-[18px] border-0 shadow-none sm:min-h-[620px] sm:rounded-[20px]"
+              sheetClassName="bottom-4 left-4 right-4 rounded-[24px] p-4 sm:rounded-[22px]"
             >
               <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
                 <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
@@ -960,8 +960,8 @@ const ClientDashboardPage = () => {
             initialZoom={12}
             minZoom={9}
             maxZoom={17}
-            className="-mx-[0.625rem] min-h-[560px] touch-pan-y rounded-none border-x-0 sm:mx-0 sm:min-h-[640px] sm:rounded-[28px] sm:border"
-            sheetClassName="bottom-0 left-0 right-0 rounded-b-none rounded-t-[28px] border-x-0 border-b-0 p-4 sm:bottom-4 sm:left-4 sm:right-4 sm:rounded-[24px] sm:border"
+            className="-mx-[0.625rem] min-h-[620px] touch-pan-y rounded-none border-x-0 sm:mx-0 sm:min-h-[640px] sm:rounded-[28px] sm:border"
+            sheetClassName="bottom-4 left-4 right-4 rounded-[24px] p-4 sm:rounded-[24px] sm:border"
           >
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
               <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
