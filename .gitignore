@@ -9,4 +9,6 @@ dev-dist
 .env
 .env.local
 npm-debug.log*
+firebase-debug.log
+firebase-debug.*.log
 vite-dev*.log

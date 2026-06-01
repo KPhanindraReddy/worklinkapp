@@ -15,6 +15,7 @@ import { isProfileComplete, resolvePostAuthPath } from '../../utils/authFlow';
 import { roles } from '../../utils/constants';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { readRedirectContext } from '../../utils/oauthRedirectContext';
+import { normalizeWhatsAppPhoneNumber } from '../../utils/phone';
 
 const initialFormState = {
   fullName: '',
@@ -272,6 +273,12 @@ const AuthPage = () => {
       ...prev,
       [key]: value,
       ...(key === 'role' ? { role: value } : {})
+    }));
+
+  const normalizePhoneField = () =>
+    setFormValues((prev) => ({
+      ...prev,
+      phoneNumber: normalizeWhatsAppPhoneNumber(prev.phoneNumber)
     }));
 
   const updateAuthUrl = (nextRole = role, nextMode = mode) => {
@@ -537,7 +544,9 @@ const AuthPage = () => {
                     label="Phone number"
                     value={formValues.phoneNumber}
                     onChange={(event) => handleChange('phoneNumber', event.target.value)}
-                    placeholder="+91 98765 43210"
+                    onBlur={normalizePhoneField}
+                    inputMode="tel"
+                    placeholder="919876543210"
                   />
                 </div>
               ) : null}
@@ -615,7 +624,9 @@ const AuthPage = () => {
                         label="Phone number"
                         value={formValues.phoneNumber}
                         onChange={(event) => handleChange('phoneNumber', event.target.value)}
-                        placeholder="+91 98765 43210"
+                        onBlur={normalizePhoneField}
+                        inputMode="tel"
+                        placeholder="919876543210"
                       />
                       <div className="self-end">
                         <Button

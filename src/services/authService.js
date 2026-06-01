@@ -16,6 +16,7 @@ import { isFirebaseConfigured } from '../firebase/env';
 import { db } from '../firebase/firestore';
 import { isHiddenAdminAccount } from '../utils/adminAccount';
 import { normalizeCoordinates } from '../utils/location';
+import { normalizeFirebaseAuthPhoneNumber, normalizeWhatsAppPhoneNumber } from '../utils/phone';
 import {
   clearRedirectContext,
   getCurrentAppPath,
@@ -80,7 +81,7 @@ const buildBaseProfile = (user, formValues = {}, existingProfile = null) => {
   return {
     uid: user.uid,
     fullName,
-    phoneNumber: formValues.phoneNumber || user.phoneNumber || '',
+    phoneNumber: normalizeWhatsAppPhoneNumber(formValues.phoneNumber || user.phoneNumber),
     email: isHiddenAdmin ? 'admin@gmail.com' : formValues.email || user.email || '',
     profilePhoto: profilePhotoUrl,
     role: resolvedRole,
@@ -212,7 +213,7 @@ export const sendPhoneOtp = async (phoneNumber) => {
   }
 
   const verifier = getOrCreateRecaptchaVerifier();
-  return signInWithPhoneNumber(auth, phoneNumber, verifier);
+  return signInWithPhoneNumber(auth, normalizeFirebaseAuthPhoneNumber(phoneNumber), verifier);
 };
 
 export const verifyPhoneOtp = async (confirmationResult, code) => {

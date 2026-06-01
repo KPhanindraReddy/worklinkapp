@@ -11,6 +11,7 @@ import {
 import { isFirebaseConfigured } from '../firebase/env';
 import { db } from '../firebase/firestore';
 import { parseDateValue } from '../utils/formatters';
+import { normalizeWhatsAppPhoneNumber } from '../utils/phone';
 
 const debugBookingService = (message, payload = {}) => {
   console.debug(`[WorkLink booking service] ${message}`, payload);
@@ -62,11 +63,17 @@ export const createBooking = async (payload) => {
 
   const bookingRef = doc(collection(db, 'bookings'));
   const labourRef = doc(db, 'labours', payload.labourId);
+  const normalizedPayload = {
+    ...payload,
+    clientPhoneNumber: normalizeWhatsAppPhoneNumber(payload.clientPhoneNumber),
+    labourPhoneNumber: normalizeWhatsAppPhoneNumber(payload.labourPhoneNumber)
+  };
+
   debugBookingService('create booking transaction started', {
     bookingId: bookingRef.id,
-    clientId: payload.clientId,
-    labourId: payload.labourId,
-    serviceType: payload.serviceType
+    clientId: normalizedPayload.clientId,
+    labourId: normalizedPayload.labourId,
+    serviceType: normalizedPayload.serviceType
   });
 
   await runTransaction(db, async (transaction) => {
@@ -83,9 +90,9 @@ export const createBooking = async (payload) => {
     }
 
     transaction.set(bookingRef, {
-      ...payload,
-      amount: Number(payload.amount || 0),
-      paymentStatus: payload.paymentStatus || 'not_requested',
+      ...normalizedPayload,
+      amount: Number(normalizedPayload.amount || 0),
+      paymentStatus: normalizedPayload.paymentStatus || 'not_requested',
       status: 'pending',
       otpStatus: 'waiting',
       createdAt: serverTimestamp(),

@@ -20,6 +20,7 @@ import {
 } from '../../utils/constants';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { getDisplayLocationText } from '../../utils/location';
+import { normalizeWhatsAppPhoneNumber } from '../../utils/phone';
 
 const toCommaText = (value) => (Array.isArray(value) ? value.join(', ') : value || '');
 
@@ -128,6 +129,12 @@ const CompleteProfilePage = () => {
       ...prev,
       [key]: value,
       ...(key === 'role' ? { role: value } : {})
+    }));
+
+  const normalizePhoneField = () =>
+    setFormValues((prev) => ({
+      ...prev,
+      phoneNumber: normalizeWhatsAppPhoneNumber(prev.phoneNumber)
     }));
 
   const canSaveProfile =
@@ -243,7 +250,9 @@ const CompleteProfilePage = () => {
                   label="Phone number"
                   value={formValues.phoneNumber}
                   onChange={(event) => handleChange('phoneNumber', event.target.value)}
-                  placeholder="+91 98765 43210"
+                  onBlur={normalizePhoneField}
+                  inputMode="tel"
+                  placeholder="919876543210"
                 />
                 <InputField
                   label="Email"
