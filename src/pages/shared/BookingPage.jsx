@@ -702,7 +702,7 @@ const BookingPage = () => {
                     <Button
                       type="button"
                       size="sm"
-                      className="h-11 w-full lg:w-auto"
+                      className="h-11 w-full bg-slate-950 text-white shadow-sm hover:bg-slate-800 lg:w-auto"
                       disabled={completingPaymentId === awaitingPaymentBookings[0].id}
                       onClick={() => handleCompleteClientPayment(awaitingPaymentBookings[0])}
                     >

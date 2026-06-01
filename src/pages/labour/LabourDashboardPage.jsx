@@ -126,6 +126,8 @@ const EmptyDashed = ({ children }) => (
   </div>
 );
 
+const actionButtonClass = 'bg-slate-950 text-white shadow-sm hover:bg-slate-800';
+
 const LabourDashboardPage = () => {
   const { currentUser, userProfile } = useAuth();
   const [profile, setProfile] = useState(null);
@@ -676,7 +678,7 @@ const LabourDashboardPage = () => {
                           </Button>
                         ) : (
                           <>
-                            <Button size="sm" className="w-full sm:w-auto" disabled={Boolean(inProgressBooking)} onClick={() => handleBookingDecision(booking, 'accepted')}>
+                            <Button size="sm" className={`w-full sm:w-auto ${actionButtonClass}`} disabled={Boolean(inProgressBooking)} onClick={() => handleBookingDecision(booking, 'accepted')}>
                               Accept
                             </Button>
                             <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => handleBookingDecision(booking, 'rejected')}>
@@ -693,6 +695,38 @@ const LabourDashboardPage = () => {
                           Chat
                         </Button>
                       </div>
+                      {booking.status === 'accepted' ? (
+                        <div className="mt-4 grid gap-3 rounded-2xl border border-slate-200 bg-white p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                          <InputField
+                            label="Client start OTP"
+                            inputMode="numeric"
+                            maxLength="6"
+                            value={otpValues[booking.id] ?? ''}
+                            onChange={(event) => handleOtpChange(booking.id, event.target.value)}
+                            placeholder="6-digit OTP"
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            className={`h-11 w-full sm:w-auto ${actionButtonClass}`}
+                            disabled={startingBookingId === booking.id}
+                            onClick={() => handleStartWork(booking)}
+                          >
+                            {startingBookingId === booking.id ? 'Verifying...' : 'Start work'}
+                          </Button>
+                        </div>
+                      ) : null}
+                      {booking.status === 'in_progress' ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          className={`mt-4 h-11 w-full ${actionButtonClass}`}
+                          disabled={completingBookingId === booking.id}
+                          onClick={() => handleCompleteWork(booking)}
+                        >
+                          {completingBookingId === booking.id ? 'Updating...' : 'Work finished'}
+                        </Button>
+                      ) : null}
                     </div>
                   );
                 })
@@ -756,12 +790,12 @@ const LabourDashboardPage = () => {
                             onChange={(event) => handleOtpChange(booking.id, event.target.value)}
                             placeholder="6-digit OTP"
                           />
-                          <Button type="button" size="sm" className="h-11" disabled={startingBookingId === booking.id} onClick={() => handleStartWork(booking)}>
+                          <Button type="button" size="sm" className={`h-11 ${actionButtonClass}`} disabled={startingBookingId === booking.id} onClick={() => handleStartWork(booking)}>
                             {startingBookingId === booking.id ? 'Verifying...' : 'Start work'}
                           </Button>
                         </div>
                       ) : booking.status === 'in_progress' ? (
-                        <Button type="button" size="sm" className="col-span-2 h-11" disabled={completingBookingId === booking.id} onClick={() => handleCompleteWork(booking)}>
+                        <Button type="button" size="sm" className={`col-span-2 h-11 ${actionButtonClass}`} disabled={completingBookingId === booking.id} onClick={() => handleCompleteWork(booking)}>
                           {completingBookingId === booking.id ? 'Updating...' : 'Work finished'}
                         </Button>
                       ) : null}

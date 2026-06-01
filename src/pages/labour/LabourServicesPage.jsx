@@ -79,6 +79,8 @@ const buildDirectionsUrl = (booking) => {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(booking.location || '')}`;
 };
 
+const actionButtonClass = 'bg-slate-950 text-white shadow-sm hover:bg-slate-800';
+
 const LabourServicesPage = () => {
   const { currentUser, userProfile } = useAuth();
   const [bookings, setBookings] = useState([]);
@@ -366,7 +368,7 @@ const LabourServicesPage = () => {
                         <Button
                           type="button"
                           size="sm"
-                          className="w-full sm:w-auto"
+                          className={`w-full sm:w-auto ${actionButtonClass}`}
                           disabled={decisionBookingId === booking.id || Boolean(inProgressBooking)}
                           onClick={() => handleBookingDecision(booking, 'accepted')}
                         >
@@ -496,7 +498,7 @@ const LabourServicesPage = () => {
                           <Button
                             type="button"
                             size="sm"
-                            className="h-11 w-full sm:w-auto"
+                            className={`h-11 w-full sm:w-auto ${actionButtonClass}`}
                             disabled={startingBookingId === booking.id}
                             onClick={() => handleStartWork(booking)}
                           >
@@ -514,7 +516,7 @@ const LabourServicesPage = () => {
                             <Button
                               type="button"
                               size="sm"
-                              className="w-full sm:w-auto"
+                              className={`w-full sm:w-auto ${actionButtonClass}`}
                               disabled={completingBookingId === booking.id}
                               onClick={() => handleCompleteWork(booking)}
                             >
