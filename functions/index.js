@@ -37,6 +37,17 @@ const functionOptions = {
   secrets: [whatsappAccessToken]
 };
 
+const eventFunctionOptions = {
+  ...functionOptions,
+  minInstances: 1,
+  maxInstances: 20
+};
+
+const scheduledFunctionOptions = {
+  ...functionOptions,
+  maxInstances: 1
+};
+
 const toText = (value, fallback = '') => {
   const text = String(value ?? '').trim();
   return text || fallback;
@@ -216,6 +227,17 @@ const markBooking = (bookingId, payload) =>
     { merge: true }
   );
 
+const getWhatsAppFailureFields = (prefix, result) => {
+  const error = result?.payload?.error || {};
+
+  return {
+    [`${prefix}FailedAt`]: admin.firestore.FieldValue.serverTimestamp(),
+    [`${prefix}ErrorStatus`]: result?.status || null,
+    [`${prefix}ErrorCode`]: error.code || null,
+    [`${prefix}ErrorMessage`]: error.message || 'WhatsApp send failed'
+  };
+};
+
 const sendNewBookingMessage = async (bookingId, booking) => {
   const isScheduled = booking.requestMode === 'scheduled';
   const templateName = isScheduled
@@ -237,7 +259,7 @@ const sendNewBookingMessage = async (bookingId, booking) => {
         getBookingLocation(booking)
       ];
 
-  await sendWhatsAppTemplate({
+  const result = await sendWhatsAppTemplate({
     to: booking.labourPhoneNumber,
     templateName,
     bodyValues,
@@ -249,15 +271,23 @@ const sendNewBookingMessage = async (bookingId, booking) => {
     }
   });
 
+  if (result.ok) {
+    await markBooking(bookingId, {
+      requestTemplateSentAt: admin.firestore.FieldValue.serverTimestamp(),
+      requestTemplateName: templateName
+    });
+    return;
+  }
+
   await markBooking(bookingId, {
-    requestTemplateSentAt: admin.firestore.FieldValue.serverTimestamp(),
+    ...getWhatsAppFailureFields('requestTemplate', result),
     requestTemplateName: templateName
   });
 };
 
 exports.sendBookingRequestWhatsApp = onDocumentCreated(
   {
-    ...functionOptions,
+    ...eventFunctionOptions,
     document: 'bookings/{bookingId}'
   },
   async (event) => {
@@ -273,7 +303,7 @@ exports.sendBookingRequestWhatsApp = onDocumentCreated(
 
 exports.sendBookingStatusWhatsApp = onDocumentUpdated(
   {
-    ...functionOptions,
+    ...eventFunctionOptions,
     document: 'bookings/{bookingId}'
   },
   async (event) => {
@@ -292,7 +322,7 @@ exports.sendBookingStatusWhatsApp = onDocumentUpdated(
       after.status === 'accepted' &&
       !after.whatsapp?.acceptedClientSentAt
     ) {
-      await sendWhatsAppTemplate({
+      const result = await sendWhatsAppTemplate({
         to: after.clientPhoneNumber,
         templateName: templateJobAcceptedClient.value(),
         bodyValues: [
@@ -307,8 +337,12 @@ exports.sendBookingStatusWhatsApp = onDocumentUpdated(
           url: getBookingUrl(after, 'client')
         }
       });
-      updates.acceptedClientSentAt = admin.firestore.FieldValue.serverTimestamp();
       updates.acceptedClientTemplateName = templateJobAcceptedClient.value();
+      if (result.ok) {
+        updates.acceptedClientSentAt = admin.firestore.FieldValue.serverTimestamp();
+      } else {
+        Object.assign(updates, getWhatsAppFailureFields('acceptedClient', result));
+      }
     }
 
     if (
@@ -317,7 +351,7 @@ exports.sendBookingStatusWhatsApp = onDocumentUpdated(
       before.paymentStatus !== 'paid'
     ) {
       if (!after.whatsapp?.completedClientSentAt) {
-        await sendWhatsAppTemplate({
+        const result = await sendWhatsAppTemplate({
           to: after.clientPhoneNumber,
           templateName: templateJobCompletedClient.value(),
           bodyValues: [
@@ -333,12 +367,16 @@ exports.sendBookingStatusWhatsApp = onDocumentUpdated(
             url: getBookingUrl(after, 'client')
           }
         });
-        updates.completedClientSentAt = admin.firestore.FieldValue.serverTimestamp();
         updates.completedClientTemplateName = templateJobCompletedClient.value();
+        if (result.ok) {
+          updates.completedClientSentAt = admin.firestore.FieldValue.serverTimestamp();
+        } else {
+          Object.assign(updates, getWhatsAppFailureFields('completedClient', result));
+        }
       }
 
       if (!after.whatsapp?.completedLabourSentAt) {
-        await sendWhatsAppTemplate({
+        const result = await sendWhatsAppTemplate({
           to: after.labourPhoneNumber,
           templateName: templateJobCompletedLabour.value(),
           bodyValues: [
@@ -354,8 +392,12 @@ exports.sendBookingStatusWhatsApp = onDocumentUpdated(
             url: getBookingUrl(after, 'earnings')
           }
         });
-        updates.completedLabourSentAt = admin.firestore.FieldValue.serverTimestamp();
         updates.completedLabourTemplateName = templateJobCompletedLabour.value();
+        if (result.ok) {
+          updates.completedLabourSentAt = admin.firestore.FieldValue.serverTimestamp();
+        } else {
+          Object.assign(updates, getWhatsAppFailureFields('completedLabour', result));
+        }
       }
     }
 
@@ -367,7 +409,7 @@ exports.sendBookingStatusWhatsApp = onDocumentUpdated(
 
 exports.sendScheduledJobReminders = onSchedule(
   {
-    ...functionOptions,
+    ...scheduledFunctionOptions,
     schedule: 'every 15 minutes',
     timeZone: 'Asia/Kolkata'
   },
@@ -394,7 +436,7 @@ exports.sendScheduledJobReminders = onSchedule(
         return;
       }
 
-      await sendWhatsAppTemplate({
+      const result = await sendWhatsAppTemplate({
         to: booking.labourPhoneNumber,
         templateName: templateScheduledJobReminder.value(),
         bodyValues: [
@@ -411,8 +453,16 @@ exports.sendScheduledJobReminders = onSchedule(
         }
       });
 
+      if (result.ok) {
+        await markBooking(docSnapshot.id, {
+          scheduledReminderSentAt: admin.firestore.FieldValue.serverTimestamp(),
+          scheduledReminderTemplateName: templateScheduledJobReminder.value()
+        });
+        return;
+      }
+
       await markBooking(docSnapshot.id, {
-        scheduledReminderSentAt: admin.firestore.FieldValue.serverTimestamp(),
+        ...getWhatsAppFailureFields('scheduledReminder', result),
         scheduledReminderTemplateName: templateScheduledJobReminder.value()
       });
     });
