@@ -14,7 +14,7 @@ const whatsappLanguageCode = defineString('WHATSAPP_LANGUAGE_CODE', { default: '
 const appUrl = defineString('APP_URL', { default: 'https://worklink-gold.vercel.app' });
 
 const templateNewServiceRequest = defineString('WHATSAPP_TEMPLATE_NEW_SERVICE_REQUEST', {
-  default: 'new_service_request'
+  default: 'new_booking_request'
 });
 const templateNewScheduledRequest = defineString('WHATSAPP_TEMPLATE_NEW_SCHEDULED_REQUEST', {
   default: 'new_scheduled_request'
@@ -265,7 +265,7 @@ const sendNewBookingMessage = async (bookingId, booking) => {
     bodyValues,
     meta: {
       bookingId,
-      kind: isScheduled ? 'new_scheduled_request' : 'new_service_request',
+      kind: isScheduled ? 'new_scheduled_request' : 'new_booking_request',
       audience: 'labour',
       url: getBookingUrl(booking, 'labour')
     }
