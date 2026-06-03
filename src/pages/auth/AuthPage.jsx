@@ -1,4 +1,16 @@
-import { Apple, BriefcaseBusiness, ChevronDown, ChevronUp, House, UserRound } from 'lucide-react';
+import {
+  Apple,
+  BriefcaseBusiness,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  House,
+  Mail,
+  Phone,
+  ShieldCheck,
+  Sparkles,
+  UserRound
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
@@ -44,6 +56,11 @@ const roleCopy = {
     otherRole: 'client'
   }
 };
+
+const publicRoleOptions = [
+  { label: 'Client', value: 'client' },
+  { label: 'Labour', value: 'labour' }
+];
 
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
@@ -486,21 +503,51 @@ const AuthPage = () => {
         description="Join WorkLink as labour or client using phone OTP, Google login, Apple login, or email and password."
       />
 
-      <section className="bg-slate-50 py-4 sm:py-6">
-        <div className="mx-auto w-full max-w-xl px-3 sm:px-5">
-          <Card className="min-w-0 rounded-2xl p-3 sm:p-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <Button as={Link} to="/" type="button" variant="outline" size="sm">
-                <House size={15} />
-                Home
-              </Button>
-              <div className="grid w-full grid-cols-2 rounded-xl bg-slate-100 p-1 sm:w-auto">
+      <section className="min-h-[calc(100dvh-4rem)] bg-white py-4 sm:py-6 lg:bg-slate-50 lg:py-8">
+        <div className="page-shell grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(420px,1fr)] lg:items-start">
+          <aside className="overflow-hidden rounded-2xl bg-slate-950 p-5 text-white shadow-soft sm:p-6 lg:sticky lg:top-24">
+            <Button as={Link} to="/" type="button" variant="secondary" size="sm" className="bg-white text-slate-950 hover:bg-slate-100">
+              <House size={15} />
+              Home
+            </Button>
+            <div className="mt-8 max-w-lg">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-slate-200">
+                <Sparkles size={14} />
+                WorkLink account
+              </span>
+              <h1 className="mt-4 font-display text-3xl font-bold leading-tight sm:text-4xl">
+                Login fast. Start hiring or earning locally.
+              </h1>
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                Choose client or labour, sign in with email, Google, Apple, or phone OTP, and continue to the right dashboard.
+              </p>
+            </div>
+            <div className="mt-8 grid gap-3">
+              {[
+                ['Verified profiles', ShieldCheck],
+                ['Phone OTP support', Phone],
+                ['Email and social login', Mail]
+              ].map(([label, Icon]) => (
+                <div key={label} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/10 p-3">
+                  <span className="grid h-9 w-9 place-items-center rounded-lg bg-white text-slate-950">
+                    <Icon size={17} />
+                  </span>
+                  <span className="text-sm font-semibold text-slate-100">{label}</span>
+                  <CheckCircle2 size={16} className="ml-auto text-emerald-300" />
+                </div>
+              ))}
+            </div>
+          </aside>
+
+          <Card className="min-w-0 rounded-2xl p-3 shadow-[0_10px_28px_rgba(15,23,42,0.07)] sm:p-5 lg:p-6">
+            <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
+              <div className="grid grid-cols-2 rounded-xl bg-slate-100 p-1">
                 {['login', 'signup'].map((item) => (
                   <button
                     key={item}
                     type="button"
                     className={clsx(
-                      'rounded-lg px-2 py-2 text-sm font-semibold transition sm:px-3',
+                      'rounded-lg px-2 py-2.5 text-sm font-semibold transition sm:px-4',
                       mode === item
                         ? 'bg-white text-slate-950 shadow-sm'
                         : 'text-slate-500 hover:text-slate-900'
@@ -511,18 +558,48 @@ const AuthPage = () => {
                   </button>
                 ))}
               </div>
+              <div className="grid grid-cols-2 rounded-xl border border-slate-200 bg-white p-1">
+                {publicRoleOptions
+                  .map((item) => {
+                    const RoleIcon = item.value === 'client' ? UserRound : BriefcaseBusiness;
+
+                    return (
+                      <button
+                        key={item.value}
+                        type="button"
+                        className={clsx(
+                          'inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-bold transition sm:px-3 sm:text-sm',
+                          role === item.value
+                            ? 'bg-slate-950 text-white'
+                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                        )}
+                        onClick={() => switchAccount(item.value, mode)}
+                      >
+                        <RoleIcon size={15} />
+                        {item.label}
+                      </button>
+                    );
+                  })}
+              </div>
             </div>
 
-            <div className="mt-5 flex items-center gap-3">
-              <div className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-slate-950 text-white sm:h-11 sm:w-11">
-                <ActiveRoleIcon size={18} />
+            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center gap-3">
+                <div className="grid h-11 w-11 flex-none place-items-center rounded-xl bg-slate-950 text-white">
+                  <ActiveRoleIcon size={18} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-600 sm:text-xs">
+                    {activeRole.label}
+                  </p>
+                  <h2 className="text-xl font-bold text-slate-950 sm:text-2xl">{pageTitle}</h2>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-600 sm:text-xs">
-                  {activeRole.label}
-                </p>
-                <h1 className="text-xl font-bold text-slate-950 sm:text-2xl">{pageTitle}</h1>
-              </div>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                {role === 'client'
+                  ? 'Find workers, manage bookings, chat, and track your service history.'
+                  : 'Show your skills, receive bookings, and manage daily work from one place.'}
+              </p>
             </div>
 
             {!isFirebaseConfigured ? (
