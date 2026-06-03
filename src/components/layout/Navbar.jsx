@@ -18,7 +18,6 @@ import { Button } from '../common/Button';
 import { useAuth } from '../../context/AuthContext';
 import { routeByRole } from '../../utils/authFlow';
 import { matchesRoutePath } from '../../utils/routeMatching';
-import { LiveLocationBadge } from './LiveLocationBadge';
 import { BrandLogo } from './BrandLogo';
 
 const linkClassName = ({ isActive }) =>
@@ -209,14 +208,6 @@ export const Navbar = () => {
             showTagline
             className="max-w-[9rem] sm:max-w-none"
           />
-          {currentUser ? (
-            <LiveLocationBadge
-              currentUser={currentUser}
-              userProfile={userProfile}
-              compact
-              className="hidden max-w-[18rem] md:flex"
-            />
-          ) : null}
           <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2 lg:hidden">
             {currentUser ? (
               <>
@@ -322,13 +313,6 @@ export const Navbar = () => {
 
       {isOpen ? (
         <div className="page-shell max-h-[calc(100dvh-4.25rem)] space-y-3 overflow-y-auto border-t border-slate-200 pb-4 pt-3 lg:hidden">
-          {currentUser ? (
-            <LiveLocationBadge
-              currentUser={currentUser}
-              userProfile={userProfile}
-              className="w-full"
-            />
-          ) : null}
           <div className="flex flex-col gap-1">
             {baseLinks.map((link) => {
               const Icon = link.icon;

@@ -139,9 +139,9 @@ const DashboardMetric = ({ label, value, tone = 'slate' }) => {
   }[tone];
 
   return (
-    <div className="rounded-[18px] border border-slate-200 bg-white p-3.5 sm:p-4">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 sm:text-[11px]">{label}</p>
-      <p className={`mt-2 text-3xl font-bold leading-none sm:mt-2.5 sm:text-3xl ${toneClass}`}>{value}</p>
+    <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:px-3 sm:py-2.5">
+      <p className="truncate text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400 sm:text-[10px]">{label}</p>
+      <p className={`mt-1 text-lg font-bold leading-none sm:text-xl ${toneClass}`}>{value}</p>
     </div>
   );
 };
@@ -842,9 +842,9 @@ const ClientDashboardPage = () => {
             </div>
           </LightPanel>
 
-          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
             <DashboardMetric label="Open requests" value={openBookings.length} tone="blue" />
-            <DashboardMetric label="Scheduled visits" value={scheduledVisits} />
+            <DashboardMetric label="Scheduling visits" value={scheduledVisits} />
             <DashboardMetric label="Completed" value={completedServices} tone="emerald" />
             <DashboardMetric label="Payments due" value={paymentsDue} tone="amber" />
           </div>
@@ -869,8 +869,8 @@ const ClientDashboardPage = () => {
               initialZoom={12}
               minZoom={9}
               maxZoom={17}
-              className="min-h-[620px] rounded-[18px] border-0 shadow-none sm:min-h-[620px] sm:rounded-[20px]"
-              sheetClassName="bottom-4 left-4 right-4 rounded-[24px] p-4 sm:rounded-[22px]"
+              className="min-h-[320px] rounded-[18px] border-0 shadow-none sm:min-h-[340px] lg:min-h-[360px] sm:rounded-[20px]"
+              sheetClassName="bottom-2 left-2 right-2 rounded-[14px] p-2.5 sm:rounded-[16px]"
             >
               <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
                 <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
@@ -896,22 +896,22 @@ const ClientDashboardPage = () => {
                     Update GPS
                   </Button>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <Button type="button" size="lg" className="w-full bg-slate-950 hover:bg-slate-800" onClick={handleInstantRequest} disabled={submittingInstant || bookingsLoading}>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button type="button" size="sm" className="h-10 w-full bg-slate-950 hover:bg-slate-800" onClick={handleInstantRequest} disabled={submittingInstant || bookingsLoading}>
                     {submittingInstant ? <LoaderCircle size={16} className="animate-spin" /> : <Send size={16} />}
                     Instant
                   </Button>
-                  <Button type="button" size="lg" variant={requestMode === 'scheduled' ? 'primary' : 'outline'} className="w-full" onClick={handleScheduleMode} disabled={bookingsLoading || Boolean(scheduleSubmittingId)}>
+                  <Button type="button" size="sm" variant={requestMode === 'scheduled' ? 'primary' : 'outline'} className="h-10 w-full" onClick={handleScheduleMode} disabled={bookingsLoading || Boolean(scheduleSubmittingId)}>
                     <CalendarClock size={16} />
-                    {requestMode === 'scheduled' && selectedDate && selectedSlot ? 'Book schedule' : 'Schedule'}
+                    {requestMode === 'scheduled' && selectedDate && selectedSlot ? 'Book' : 'Schedule'}
                   </Button>
                 </div>
               </div>
             </ServiceRequestMap>
           </LightPanel>
 
-          <LightPanel className="p-3.5 sm:p-4">
-            <div className="mb-4 rounded-[16px] border border-slate-200 bg-slate-50 p-3">
+          <LightPanel className="p-2.5 sm:p-3">
+            <div className="mb-3 rounded-[14px] border border-slate-200 bg-slate-50 p-2.5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Service location</p>
@@ -921,18 +921,18 @@ const ClientDashboardPage = () => {
                   {serviceLocationMode === 'manual' ? 'Address' : 'Live GPS'}
                 </Badge>
               </div>
-              <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+              <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
                 <InputField
-                  label="Use another service address"
+                  label="Another address"
                   value={serviceLocationInput}
                   onChange={(event) => setServiceLocationInput(event.target.value)}
                   placeholder="House, area, city, pincode"
                 />
-                <Button type="button" variant="outline" size="sm" className="h-11 w-full sm:w-auto" onClick={handleApplyServiceAddress} disabled={resolvingServiceLocation}>
+                <Button type="button" variant="outline" size="sm" className="h-10 w-full sm:w-auto" onClick={handleApplyServiceAddress} disabled={resolvingServiceLocation}>
                   {resolvingServiceLocation ? <LoaderCircle size={15} className="animate-spin" /> : <Navigation size={15} />}
                   Use address
                 </Button>
-                <Button type="button" variant="outline" size="sm" className="h-11 w-full sm:w-auto" onClick={handleUseLiveServiceLocation}>
+                <Button type="button" variant="outline" size="sm" className="h-10 w-full sm:w-auto" onClick={handleUseLiveServiceLocation}>
                   <LocateFixed size={15} />
                   Live GPS
                 </Button>
@@ -967,14 +967,14 @@ const ClientDashboardPage = () => {
                   Update GPS
                 </Button>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Button type="button" size="lg" className="w-full bg-slate-950 hover:bg-slate-800" onClick={handleInstantRequest} disabled={submittingInstant || bookingsLoading}>
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="button" size="sm" className="h-10 w-full bg-slate-950 hover:bg-slate-800" onClick={handleInstantRequest} disabled={submittingInstant || bookingsLoading}>
                   {submittingInstant ? <LoaderCircle size={16} className="animate-spin" /> : <Send size={16} />}
                   Instant
                 </Button>
-                <Button type="button" size="lg" variant={requestMode === 'scheduled' ? 'primary' : 'outline'} className="w-full" onClick={handleScheduleMode} disabled={bookingsLoading || Boolean(scheduleSubmittingId)}>
+                <Button type="button" size="sm" variant={requestMode === 'scheduled' ? 'primary' : 'outline'} className="h-10 w-full" onClick={handleScheduleMode} disabled={bookingsLoading || Boolean(scheduleSubmittingId)}>
                   <CalendarClock size={16} />
-                  {requestMode === 'scheduled' && selectedDate && selectedSlot ? 'Book schedule' : 'Schedule'}
+                  {requestMode === 'scheduled' && selectedDate && selectedSlot ? 'Book' : 'Schedule'}
                 </Button>
               </div>
             </div>

@@ -109,21 +109,21 @@ const HomePage = () => {
       <PageSEO />
 
       <section className="bg-slate-950 text-white">
-        <div className="page-shell grid min-h-[calc(100dvh-4rem)] gap-6 py-5 sm:py-8 lg:min-h-[620px] lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center lg:py-10">
+        <div className="page-shell grid min-h-[calc(100dvh-4rem)] gap-5 py-4 sm:py-6 lg:min-h-[560px] lg:grid-cols-[minmax(0,1fr)_340px] lg:items-center lg:py-8">
           <div className="min-w-0">
             <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-slate-200">
               <MapPin size={14} />
               <span className="truncate">Workers available near you right now</span>
             </div>
-            <h1 className="mt-4 max-w-3xl break-words font-display text-[2rem] font-bold leading-[1.08] sm:text-5xl lg:text-6xl">
+            <h1 className="mt-4 max-w-3xl break-words font-display text-[1.75rem] font-bold leading-[1.1] sm:text-4xl lg:text-5xl">
               {t('home.title')}
               <span className="block text-sky-300">Hire local. Pay fair.</span>
             </h1>
-            <p className="mt-4 max-w-2xl break-words text-sm leading-6 text-slate-300 sm:text-base">
+            <p className="mt-3 max-w-2xl break-words text-sm leading-6 text-slate-300">
               {t('home.subtitle')}
             </p>
 
-            <div className="mt-5 max-w-3xl">
+            <div className="mt-4 max-w-3xl">
               <HeroSearch
                 query={query}
                 onQueryChange={setQuery}
@@ -137,17 +137,17 @@ const HomePage = () => {
               />
             </div>
 
-            <div className="mt-4 grid grid-cols-3 gap-2 sm:max-w-2xl sm:gap-3">
+            <div className="mt-3 grid grid-cols-3 gap-2 sm:max-w-2xl">
               {heroStats.map((item, index) => (
-                <div key={item.label} className="rounded-xl border border-white/10 bg-white/10 p-3 text-center">
-                  <p className="font-display text-base font-bold text-white sm:text-xl">{item.value}</p>
+                <div key={item.label} className="rounded-xl border border-white/10 bg-white/10 p-2.5 text-center">
+                  <p className="font-display text-sm font-bold text-white sm:text-lg">{item.value}</p>
                   <p className="mt-1 text-[11px] font-medium text-slate-400 sm:text-xs">{statLabels[index]}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <aside className="grid gap-3 lg:gap-4">
+          <aside className="grid gap-3">
             <div className="rounded-2xl border border-white/10 bg-white p-3 text-slate-950 shadow-soft sm:p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -158,7 +158,7 @@ const HomePage = () => {
                   <SearchIcon size={18} />
                 </span>
               </div>
-              <div className="mt-4 grid gap-2">
+              <div className="mt-3 grid gap-2">
                 {homepageCategories.slice(0, 4).map((category) => {
                   const visual = serviceVisuals[category.name] ?? serviceVisuals.Cleaning;
                   const Icon = visual.icon;
@@ -167,7 +167,7 @@ const HomePage = () => {
                     <Link
                       key={category.id}
                       to={`/search?query=${encodeURIComponent(category.name)}`}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 transition hover:border-brand-200 hover:bg-brand-50"
+                      className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 transition hover:border-brand-200 hover:bg-brand-50"
                     >
                       <span className="inline-flex min-w-0 items-center gap-3">
                         <span className={`grid h-9 w-9 flex-none place-items-center rounded-lg ${visual.tint}`}>
@@ -193,7 +193,7 @@ const HomePage = () => {
                   <Link
                     key={item.title}
                     to={item.to}
-                    className={`rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:shadow-soft ${item.className}`}
+                    className={`rounded-2xl border p-3.5 transition hover:-translate-y-0.5 hover:shadow-soft ${item.className}`}
                   >
                     <Icon size={23} />
                     <h2 className="mt-3 text-sm font-bold">{item.title}</h2>
@@ -213,7 +213,7 @@ const HomePage = () => {
       <section className="section-space">
         <div className="page-shell grid gap-3 md:grid-cols-3">
           {steps.map((step, index) => (
-            <div key={step.title} className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_8px_22px_rgba(15,23,42,0.04)]">
+            <div key={step.title} className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-[0_8px_22px_rgba(15,23,42,0.04)]">
               <span className={`grid h-8 w-8 flex-none place-items-center rounded-full text-sm font-bold text-white ${step.color}`}>
                 {index + 1}
               </span>
@@ -243,7 +243,7 @@ const HomePage = () => {
                 <Link
                   key={category.id}
                   to={`/search?query=${encodeURIComponent(category.name)}`}
-                  className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_8px_22px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-soft"
+                  className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-3.5 shadow-[0_8px_22px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-soft"
                 >
                   <span className={`absolute inset-x-0 top-0 h-1 ${visual.accent}`} />
                   <span className={`grid h-11 w-11 place-items-center rounded-xl ${visual.tint}`}>
