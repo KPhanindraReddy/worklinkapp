@@ -33,11 +33,16 @@ export const getIndianLocalPhoneNumber = (value) => {
 export const normalizeIndianPhoneNumber = (value) => {
   const localNumber = getIndianLocalPhoneNumber(value);
 
-  return localNumber ? `91${localNumber}` : '';
+  if (!localNumber) {
+    return '';
+  }
+
+  return localNumber.length === 10 ? `91${localNumber}` : localNumber;
 };
 
 export const normalizeFirebaseAuthPhoneNumber = (value) => {
-  const phoneNumber = normalizeIndianPhoneNumber(value);
+  const localNumber = getIndianLocalPhoneNumber(value);
+  const phoneNumber = localNumber.length === 10 ? `91${localNumber}` : '';
 
   return phoneNumber ? `+${phoneNumber}` : '';
 };
