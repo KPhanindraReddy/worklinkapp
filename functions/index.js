@@ -249,18 +249,22 @@ const syncLabourCompletedJobs = async (uid) => {
     throw new HttpsError('invalid-argument', 'A valid user id is required.');
   }
 
-  const [userSnapshot, labourSnapshot] = await Promise.all([
+  const [userSnapshot, labourSnapshot, bookingsSnapshot] = await Promise.all([
     db.collection('users').doc(uid).get(),
-    db.collection('labours').doc(uid).get()
+    db.collection('labours').doc(uid).get(),
+    db.collection('bookings').where('labourId', '==', uid).get()
   ]);
 
   if (!userSnapshot.exists) {
     throw new HttpsError('not-found', 'User profile not found.');
   }
 
-  const userCompletedJobs = Number(userSnapshot.data()?.completedJobs || 0);
-  const labourCompletedJobs = Number(labourSnapshot.data()?.completedJobs || 0);
-  const resolvedCompletedJobs = Math.max(userCompletedJobs, labourCompletedJobs);
+  const completedJobs = bookingsSnapshot.docs.filter((bookingDoc) => {
+    const booking = bookingDoc.data() || {};
+    return booking.status === 'completed' && booking.paymentStatus === 'paid';
+  }).length;
+
+  const resolvedCompletedJobs = Number(completedJobs) || 0;
 
   const updates = {
     completedJobs: resolvedCompletedJobs,

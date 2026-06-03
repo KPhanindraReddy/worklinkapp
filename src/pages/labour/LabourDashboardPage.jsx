@@ -193,6 +193,11 @@ const LabourDashboardPage = () => {
     () => bookings.find((booking) => booking.status === 'in_progress') ?? null,
     [bookings]
   );
+  const paidBookings = useMemo(
+    () => bookings.filter((booking) => booking.status === 'completed' && booking.paymentStatus === 'paid'),
+    [bookings]
+  );
+  const completedJobs = paidBookings.length;
 
   useEffect(() => {
     if (
@@ -205,9 +210,7 @@ const LabourDashboardPage = () => {
     }
 
     const profileCompletedJobs = Number(profile.completedJobs) || 0;
-    const accountCompletedJobs = Number(userProfile?.completedJobs) || 0;
-
-    if (!accountCompletedJobs || profileCompletedJobs >= accountCompletedJobs) {
+    if (profileCompletedJobs === completedJobs) {
       return undefined;
     }
 
@@ -222,7 +225,7 @@ const LabourDashboardPage = () => {
       });
 
     return undefined;
-  }, [currentUser?.uid, profile, userProfile?.completedJobs, userProfile?.role]);
+  }, [completedJobs, currentUser?.uid, profile, userProfile?.role]);
 
   useEffect(() => {
     if (!currentUser?.uid) {
@@ -298,7 +301,6 @@ const LabourDashboardPage = () => {
   }, [currentUser?.uid]);
 
   const metrics = useMemo(() => {
-    const completedJobs = dashboardProfile.completedJobs;
     const pendingRequests = bookings.filter((item) => item.status === 'pending').length;
     const activeWork = bookings.filter((item) => ['accepted', 'in_progress'].includes(item.status)).length;
     const earnings = bookings
@@ -603,7 +605,6 @@ const LabourDashboardPage = () => {
     );
   }
 
-  const completedJobs = dashboardProfile.completedJobs;
   const pendingRequests = bookings.filter((item) => item.status === 'pending').length;
   const todaySummary = financialSummary.find((item) => item.label === 'Today earned')?.value ?? formatCurrency(0);
   const paidSummary = financialSummary.find((item) => item.label === 'Paid earnings')?.value ?? formatCurrency(0);
