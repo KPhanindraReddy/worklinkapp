@@ -62,6 +62,8 @@ export const ProfilePhotoUploader = ({
         name={fullName}
         className={`${compact ? 'h-16 w-16 rounded-2xl shadow-sm' : 'h-16 w-16 rounded-2xl shadow-sm'} ${avatarClassName}`.trim()}
         loading="eager"
+        decoding="sync"
+        fetchPriority="high"
       />
       {!compact ? (
         <div className="min-w-0 flex-1">

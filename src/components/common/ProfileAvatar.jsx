@@ -9,7 +9,8 @@ export const ProfileAvatar = ({
   imgClassName = 'h-full w-full object-cover',
   fallback = 'U',
   loading = 'lazy',
-  decoding = 'async'
+  decoding = 'async',
+  fetchPriority = 'auto'
 }) => {
   const [imageError, setImageError] = useState(false);
   const hasImage = Boolean(src && !imageError);
@@ -30,6 +31,7 @@ export const ProfileAvatar = ({
           height="160"
           loading={loading}
           decoding={decoding}
+          fetchPriority={fetchPriority}
           onError={() => setImageError(true)}
         />
       ) : (
@@ -41,6 +43,7 @@ export const ProfileAvatar = ({
           height="160"
           loading={loading}
           decoding={decoding}
+          fetchPriority={fetchPriority}
         />
       )}
     </div>

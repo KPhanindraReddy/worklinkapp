@@ -181,8 +181,8 @@ const SettingsPage = () => {
     [currentUser?.displayName, formValues.fullName, userProfile?.fullName]
   );
   const profilePhotoUrl =
-    formValues.profilePhotoUrl ||
     userProfile?.profilePhoto ||
+    formValues.profilePhotoUrl ||
     buildProfileAvatarDataUrl(formValues.fullName || userProfile?.fullName || currentUser?.displayName || 'Profile');
   const canSaveProfile = isLabour
     ? Boolean(
