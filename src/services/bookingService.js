@@ -56,6 +56,26 @@ export const subscribeBookingsForUser = ({ userId, role }, onNext, onError) => {
   );
 };
 
+export const subscribeBookingById = (bookingId, onNext, onError) => {
+  if (!bookingId) {
+    onNext(null);
+    return () => {};
+  }
+
+  if (!isFirebaseConfigured || !db) {
+    onNext(null);
+    return () => {};
+  }
+
+  return onSnapshot(
+    doc(db, 'bookings', bookingId),
+    (snapshot) => {
+      onNext(snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null);
+    },
+    onError
+  );
+};
+
 export const createBooking = async (payload) => {
   if (!isFirebaseConfigured || !db) {
     throw new Error('Firebase must be configured before creating bookings.');

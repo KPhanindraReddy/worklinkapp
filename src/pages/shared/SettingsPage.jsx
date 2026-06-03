@@ -263,10 +263,7 @@ const SettingsPage = () => {
     ? formValues.location || 'Location not set'
     : formValues.currentLocation || 'Location not set';
   const primarySkill = formValues.category || 'Skill';
-  const completedJobs =
-    labourBookings.filter((booking) => booking.status === 'completed').length ||
-    Number(userProfile?.completedJobs) ||
-    0;
+  const completedJobs = Number(userProfile?.completedJobs) || 0;
   const rating = labourReviews.length
     ? labourReviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / labourReviews.length
     : Number(userProfile?.rating) || 0;

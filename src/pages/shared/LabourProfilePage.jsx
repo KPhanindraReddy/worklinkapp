@@ -71,11 +71,7 @@ const LabourProfilePage = () => {
       ? 'Labour verification required'
       : 'Client account required';
   const profileReviews = reviews.length ? reviews : labour?.reviews ?? [];
-  const completedBookings = useMemo(
-    () => bookings.filter((booking) => booking.status === 'completed'),
-    [bookings]
-  );
-  const completedJobs = Math.max(Number(labour?.completedJobs || 0), completedBookings.length);
+  const completedJobs = Number(labour?.completedJobs || 0);
   const canEditPhoto = Boolean(currentUser?.uid && labour?.id && currentUser.uid === labour.id);
   const ratingSummary = useMemo(() => {
     if (!profileReviews.length) {
@@ -178,19 +174,6 @@ const LabourProfilePage = () => {
                   ) : (
                     <Button as={Link} to="/auth?role=client&mode=signup" className="w-full sm:w-auto">
                       Sign up as client to book
-                    </Button>
-                  )}
-                  {isClient ? (
-                    <Button as={Link} to={`/chat?target=${labour.id}`} variant="outline" className="w-full sm:w-auto">
-                      Chat now
-                    </Button>
-                  ) : currentUser ? (
-                    <Button type="button" variant="outline" className="w-full sm:w-auto" disabled>
-                      Client account required
-                    </Button>
-                  ) : (
-                    <Button as={Link} to="/auth?role=client&mode=login" variant="outline" className="w-full sm:w-auto">
-                      Login as client
                     </Button>
                   )}
                   <Button

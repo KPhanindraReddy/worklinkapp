@@ -9,10 +9,12 @@ import { useAuth } from '../../context/AuthContext';
 import {
   ensureConversation,
   getMessages,
+  markConversationAsRead,
   sendMessage,
   subscribeConversations,
   subscribeMessages
 } from '../../services/chatService';
+import { subscribeBookingById } from '../../services/bookingService';
 import { getLabourById } from '../../services/labourService';
 import { createNotification } from '../../services/notificationService';
 import { getUserProfile } from '../../services/userService';
@@ -44,6 +46,7 @@ const ChatPage = () => {
   const [conversations, setConversations] = useState([]);
   const [activeConversation, setActiveConversation] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [activeBooking, setActiveBooking] = useState(null);
   const [accessError, setAccessError] = useState('');
 
   const handleChatError = (error) => {
@@ -72,6 +75,10 @@ const ChatPage = () => {
 
   useEffect(() => {
     if (!currentUser || !targetUserId) {
+      return undefined;
+    }
+
+    if (!bookingId) {
       return undefined;
     }
 
@@ -133,6 +140,46 @@ const ChatPage = () => {
   ]);
 
   useEffect(() => {
+    if (!activeConversation?.bookingId) {
+      setActiveBooking(null);
+      return undefined;
+    }
+
+    return subscribeBookingById(
+      activeConversation.bookingId,
+      setActiveBooking,
+      () => setActiveBooking(null)
+    );
+  }, [activeConversation?.bookingId]);
+
+  useEffect(() => {
+    if (currentUser?.uid && activeConversation?.id) {
+      markConversationAsRead(activeConversation.id, currentUser.uid).catch(() => {});
+    }
+  }, [activeConversation?.id, currentUser?.uid, messages.length]);
+
+  useEffect(() => {
+    if (!targetUserId || bookingId || targetConversationId) {
+      return undefined;
+    }
+
+    const matchingConversation = conversations.find((item) =>
+      item.participantIds?.includes(targetUserId)
+    );
+
+    if (matchingConversation) {
+      setAccessError('');
+      return undefined;
+    }
+
+    setAccessError('Chat is only available after a service booking.');
+    return undefined;
+  }, [bookingId, conversations, targetConversationId, targetUserId]);
+
+  const chatLocked = activeBooking?.status === 'completed';
+  const chatLockedMessage = chatLocked ? 'Chat is closed after the service is completed.' : '';
+
+  useEffect(() => {
     setActiveConversation((prev) => {
       if (!conversations.length) {
         return null;
@@ -178,7 +225,7 @@ const ChatPage = () => {
   }, [activeConversation?.id]);
 
   const handleSend = async (text) => {
-    if (!activeConversation || !currentUser) {
+    if (!activeConversation || !currentUser || chatLocked) {
       return;
     }
 
@@ -251,7 +298,10 @@ const ChatPage = () => {
               conversation={activeConversation}
               messages={messages}
               currentUserId={currentUser?.uid}
+              currentUserRole={userProfile?.role}
               onSend={handleSend}
+              canSend={!chatLocked}
+              lockedMessage={chatLockedMessage}
             />
           </div>
         </div>

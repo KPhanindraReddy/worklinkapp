@@ -275,3 +275,20 @@ export const sendMessage = async (conversationId, payload) => {
 
   await update(ref(rtdb), updates);
 };
+
+export const markConversationAsRead = async (conversationId, userId) => {
+  if (!conversationId || !userId) {
+    return;
+  }
+
+  if (!isFirebaseConfigured || !rtdb) {
+    return;
+  }
+
+  const updates = {
+    [`conversations/${conversationId}/readBy/${userId}`]: true,
+    [`userConversations/${userId}/${conversationId}/readBy/${userId}`]: true
+  };
+
+  await update(ref(rtdb), updates);
+};

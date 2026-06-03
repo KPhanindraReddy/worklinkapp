@@ -18,6 +18,8 @@ import clsx from 'clsx';
 import { Button } from '../common/Button';
 import { ProfileAvatar } from '../common/ProfileAvatar';
 import { useAuth } from '../../context/AuthContext';
+import { subscribeNotifications } from '../../services/notificationService';
+import { subscribeConversations } from '../../services/chatService';
 import { routeByRole } from '../../utils/authFlow';
 import { matchesRoutePath } from '../../utils/routeMatching';
 import { buildProfileAvatarDataUrl } from '../../utils/profileAvatar';
@@ -33,9 +35,12 @@ const linkClassName = ({ isActive }) =>
 
 const actionButtonClass = (isActive) =>
   clsx(
-    'grid h-10 w-10 touch-manipulation place-items-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-brand-200 hover:text-brand-700',
+    'relative grid h-10 w-10 touch-manipulation place-items-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-brand-200 hover:text-brand-700',
     isActive && 'border-brand-200 bg-brand-50 text-brand-700'
   );
+
+const unreadBadgeClass =
+  'absolute -right-1 -top-1 min-w-5 rounded-full border-2 border-white bg-rose-500 px-1 text-[10px] font-bold leading-4 text-white shadow-sm';
 
 const ProfileMenu = ({
   compact = false,
@@ -155,6 +160,8 @@ export const Navbar = () => {
   const navigate = useNavigate();
   const { currentUser, userProfile, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [unreadChats, setUnreadChats] = useState(0);
   const primaryPath = currentUser ? routeByRole(userProfile?.role) : '/';
   const profileLabel = userProfile?.role === 'admin' ? 'Admin profile' : 'Profile';
   const profilePhoto = userProfile?.profilePhoto || currentUser?.photoURL || '';
@@ -185,6 +192,40 @@ export const Navbar = () => {
   useEffect(() => {
     setIsOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!currentUser?.uid) {
+      setUnreadNotifications(0);
+      return undefined;
+    }
+
+    return subscribeNotifications(
+      currentUser.uid,
+      (items) => {
+        setUnreadNotifications(items.filter((item) => !item.read).length);
+      },
+      () => setUnreadNotifications(0)
+    );
+  }, [currentUser?.uid]);
+
+  useEffect(() => {
+    if (!currentUser?.uid) {
+      setUnreadChats(0);
+      return undefined;
+    }
+
+    return subscribeConversations(
+      currentUser.uid,
+      (items) => {
+        setUnreadChats(
+          items.filter(
+            (item) => item.lastMessage && item.readBy?.[currentUser.uid] === false
+          ).length
+        );
+      },
+      () => setUnreadChats(0)
+    );
+  }, [currentUser?.uid]);
 
   const baseLinks = currentUser
     ? [
@@ -273,13 +314,13 @@ export const Navbar = () => {
             showTagline
             className="max-w-[9rem] sm:max-w-none"
           />
-          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2 lg:hidden">
             {currentUser ? (
               <>
                 {quickLinks.map((link) => {
                   const Icon = link.icon;
 
-                  return (
+                return (
                     <Link
                       key={link.to}
                       to={link.to}
@@ -289,6 +330,12 @@ export const Navbar = () => {
                       onClick={() => setIsOpen(false)}
                     >
                       <Icon size={16} />
+                      {link.label === 'Notifications' && unreadNotifications ? (
+                        <span className={unreadBadgeClass}>{unreadNotifications > 99 ? '99+' : unreadNotifications}</span>
+                      ) : null}
+                      {link.label === 'Chat' && unreadChats ? (
+                        <span className={unreadBadgeClass}>{unreadChats > 99 ? '99+' : unreadChats}</span>
+                      ) : null}
                     </Link>
                   );
                 })}
@@ -350,6 +397,12 @@ export const Navbar = () => {
                     title={link.label}
                   >
                     <Icon size={16} />
+                    {link.label === 'Notifications' && unreadNotifications ? (
+                      <span className={unreadBadgeClass}>{unreadNotifications > 99 ? '99+' : unreadNotifications}</span>
+                    ) : null}
+                    {link.label === 'Chat' && unreadChats ? (
+                      <span className={unreadBadgeClass}>{unreadChats > 99 ? '99+' : unreadChats}</span>
+                    ) : null}
                   </Link>
                 );
               })}
