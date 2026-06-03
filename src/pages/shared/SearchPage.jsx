@@ -219,7 +219,7 @@ const SearchPage = () => {
 
               <div className={filtersOpen ? 'space-y-4 lg:block' : 'hidden space-y-4 lg:block'}>
                 <InputField
-                  label="Search by skill"
+                  label="Search by service or skill"
                   value={filters.query}
                   placeholder="Electrician, painter, plumbing..."
                   onChange={(event) => setFilters((prev) => ({ ...prev, query: event.target.value }))}

@@ -20,6 +20,7 @@ import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { InputField } from '../../components/common/InputField';
 import { ProfileAvatar } from '../../components/common/ProfileAvatar';
+import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUploader';
 import { PageSEO } from '../../components/common/PageSEO';
 import { Skeleton } from '../../components/common/Skeleton';
 import { AppShell } from '../../components/layout/AppShell';
@@ -600,10 +601,15 @@ const LabourDashboardPage = () => {
 
           <LightPanel id="labour-home" className="p-3.5 sm:p-5">
             <div className="flex items-center gap-3 sm:gap-4">
-              <ProfileAvatar
-                src={dashboardProfile.profilePhoto}
-                name={dashboardProfile.fullName}
-                className="h-16 w-16 rounded-[18px] sm:h-[4.5rem] sm:w-[4.5rem] sm:rounded-[20px]"
+              <ProfilePhotoUploader
+                compact
+                persistOnUpload
+                uid={currentUser?.uid}
+                role={userProfile?.role || 'labour'}
+                value={dashboardProfile.profilePhoto}
+                fullName={dashboardProfile.fullName}
+                disabled={!currentUser}
+                onError={(error) => toast.error(getFirebaseErrorMessage(error))}
               />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-start justify-between gap-3">

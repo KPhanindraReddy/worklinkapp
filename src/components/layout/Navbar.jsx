@@ -3,6 +3,7 @@ import {
   Bell,
   CircleHelp,
   ClipboardList,
+  ChevronDown,
   IndianRupee,
   LayoutDashboard,
   LogOut,
@@ -15,9 +16,11 @@ import {
 import { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { Button } from '../common/Button';
+import { ProfileAvatar } from '../common/ProfileAvatar';
 import { useAuth } from '../../context/AuthContext';
 import { routeByRole } from '../../utils/authFlow';
 import { matchesRoutePath } from '../../utils/routeMatching';
+import { buildProfileAvatarDataUrl } from '../../utils/profileAvatar';
 import { BrandLogo } from './BrandLogo';
 
 const linkClassName = ({ isActive }) =>
@@ -28,9 +31,6 @@ const linkClassName = ({ isActive }) =>
       : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
   );
 
-const getProfileInitial = (userProfile, currentUser) =>
-  (userProfile?.fullName || currentUser?.displayName || 'U').trim().charAt(0).toUpperCase();
-
 const actionButtonClass = (isActive) =>
   clsx(
     'grid h-10 w-10 touch-manipulation place-items-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-brand-200 hover:text-brand-700',
@@ -40,12 +40,18 @@ const actionButtonClass = (isActive) =>
 const ProfileMenu = ({
   compact = false,
   isActive,
+  onDashboard,
   onLogout,
-  profileInitial,
+  onSettings,
+  profilePhoto,
   profileLabel,
-  profileName
+  profileName,
+  role
 }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const avatarSrc = profilePhoto || buildProfileAvatarDataUrl(profileName || profileLabel || 'Profile');
+  const dashboardLabel =
+    role === 'client' ? 'Dashboard' : role === 'labour' ? 'Dashboard' : role === 'admin' ? 'Dashboard' : 'Dashboard';
 
   return (
     <div className="relative">
@@ -53,7 +59,7 @@ const ProfileMenu = ({
         type="button"
         className={clsx(
           compact
-            ? 'grid h-10 w-10 place-items-center rounded-full bg-brand-600 text-sm font-bold text-white shadow-glow'
+            ? 'grid h-10 w-10 place-items-center rounded-full border border-slate-200 bg-white p-0 shadow-sm transition hover:border-brand-200'
             : 'inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white p-1.5 pr-3 shadow-sm transition hover:border-brand-200',
           isActive && (compact ? 'ring-2 ring-brand-200 ring-offset-2' : 'border-brand-200 bg-brand-50')
         )}
@@ -61,31 +67,72 @@ const ProfileMenu = ({
         aria-label={`Open ${profileLabel.toLowerCase()} menu`}
         aria-expanded={isProfileOpen}
       >
-        <span
-          className={clsx(
-            'grid place-items-center rounded-full bg-brand-600 text-sm font-bold text-white',
-            compact ? 'h-10 w-10' : 'h-8 w-8'
-          )}
-        >
-          {profileInitial}
-        </span>
+        <ProfileAvatar
+          src={avatarSrc}
+          name={profileName || profileLabel}
+          className={compact ? 'h-10 w-10 rounded-full' : 'h-8 w-8 rounded-full'}
+        />
         {!compact ? (
           <span className="hidden max-w-[104px] truncate text-sm font-semibold text-slate-700 xl:block">
             {profileName || profileLabel}
           </span>
         ) : null}
+        <ChevronDown size={14} className={clsx('hidden text-slate-400 xl:block', compact ? 'ml-0' : 'ml-0.5')} />
       </button>
 
       {isProfileOpen ? (
-        <div className="absolute right-0 top-12 z-50 w-48 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-soft">
-          <Link
-            to="/settings"
-            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-950"
-            onClick={() => setIsProfileOpen(false)}
+        <div className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-soft">
+          <div className="border-b border-slate-100 px-3 py-3">
+            <div className="flex items-center gap-3">
+              <ProfileAvatar src={avatarSrc} name={profileName || profileLabel} className="h-10 w-10 rounded-full" />
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold text-slate-950">{profileName || profileLabel}</div>
+                <div className="truncate text-xs text-slate-500">{role ? role.charAt(0).toUpperCase() + role.slice(1) : ''}</div>
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-950"
+            onClick={() => {
+              setIsProfileOpen(false);
+              onDashboard?.();
+            }}
+          >
+            <LayoutDashboard size={16} />
+            {dashboardLabel}
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-950"
+            onClick={() => {
+              setIsProfileOpen(false);
+              onSettings?.();
+            }}
           >
             <UserRound size={16} />
-            Profile
-          </Link>
+            Settings
+          </button>
+          {role === 'labour' ? (
+            <Link
+              to="/labour/earnings"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-950"
+              onClick={() => setIsProfileOpen(false)}
+            >
+              <IndianRupee size={16} />
+              Earnings
+            </Link>
+          ) : null}
+          {role === 'client' ? (
+            <Link
+              to="/recent-services"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-950"
+              onClick={() => setIsProfileOpen(false)}
+            >
+              <ClipboardList size={16} />
+              Recent services
+            </Link>
+          ) : null}
           <button
             type="button"
             className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-semibold text-rose-600 hover:bg-rose-50"
@@ -109,12 +156,30 @@ export const Navbar = () => {
   const { currentUser, userProfile, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const primaryPath = currentUser ? routeByRole(userProfile?.role) : '/';
-  const profileInitial = getProfileInitial(userProfile, currentUser);
   const profileLabel = userProfile?.role === 'admin' ? 'Admin profile' : 'Profile';
+  const profilePhoto = userProfile?.profilePhoto || currentUser?.photoURL || '';
   const handleLogout = async () => {
     await logout();
     setIsOpen(false);
     navigate('/auth', { replace: true });
+  };
+  const handleDashboard = () => {
+    if (userProfile?.role === 'labour') {
+      navigate('/labour/dashboard');
+      return;
+    }
+
+    if (userProfile?.role === 'client') {
+      navigate('/client/dashboard');
+      return;
+    }
+
+    if (userProfile?.role === 'admin') {
+      navigate('/admin');
+    }
+  };
+  const handleSettings = () => {
+    navigate('/settings');
   };
 
   useEffect(() => {
@@ -227,14 +292,17 @@ export const Navbar = () => {
                     </Link>
                   );
                 })}
-                <ProfileMenu
-                  compact
-                  isActive={matchesRoutePath(pathname, ['/settings', '/complete-profile*'])}
-                  onLogout={handleLogout}
-                  profileInitial={profileInitial}
-                  profileLabel={profileLabel}
-                  profileName={userProfile?.fullName}
-                />
+              <ProfileMenu
+                compact
+                isActive={matchesRoutePath(pathname, ['/settings', '/complete-profile*'])}
+                onDashboard={handleDashboard}
+                onSettings={handleSettings}
+                onLogout={handleLogout}
+                profileLabel={profileLabel}
+                profilePhoto={profilePhoto}
+                profileName={userProfile?.fullName}
+                role={userProfile?.role}
+              />
               </>
             ) : (
               <Button
@@ -296,10 +364,13 @@ export const Navbar = () => {
               })}
               <ProfileMenu
                 isActive={matchesRoutePath(pathname, ['/settings', '/complete-profile*'])}
+                onDashboard={handleDashboard}
+                onSettings={handleSettings}
                 onLogout={handleLogout}
-                profileInitial={profileInitial}
                 profileLabel={profileLabel}
+                profilePhoto={profilePhoto}
                 profileName={userProfile?.fullName}
+                role={userProfile?.role}
               />
             </>
           ) : (

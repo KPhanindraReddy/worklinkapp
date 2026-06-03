@@ -19,6 +19,7 @@ import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { EmptyState } from '../../components/common/EmptyState';
 import { InputField } from '../../components/common/InputField';
+import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUploader';
 import { PageSEO } from '../../components/common/PageSEO';
 import { SelectField } from '../../components/common/SelectField';
 import { Skeleton } from '../../components/common/Skeleton';
@@ -817,13 +818,16 @@ const ClientDashboardPage = () => {
         <div className="page-shell max-w-5xl space-y-3.5 sm:space-y-4">
           <LightPanel className="p-3.5 sm:p-5">
             <div className="flex items-center gap-3 sm:gap-4">
-              {clientAvatar ? (
-                <img src={clientAvatar} alt={clientName} className="h-16 w-16 flex-none rounded-[18px] object-cover sm:h-[4.5rem] sm:w-[4.5rem] sm:rounded-[20px]" />
-              ) : (
-                <span className="grid h-16 w-16 flex-none place-items-center rounded-[18px] bg-brand-600 text-xl font-bold text-white sm:h-[4.5rem] sm:w-[4.5rem] sm:rounded-[20px] sm:text-2xl">
-                  {getInitials(clientName)}
-                </span>
-              )}
+              <ProfilePhotoUploader
+                compact
+                persistOnUpload
+                uid={currentUser?.uid}
+                role={userProfile?.role || 'client'}
+                value={clientAvatar}
+                fullName={clientName}
+                disabled={!currentUser}
+                onError={(error) => toast.error(getFirebaseErrorMessage(error))}
+              />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">

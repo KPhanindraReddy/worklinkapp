@@ -61,6 +61,23 @@ export const updateUserSettings = async (uid, settings) => {
   );
 };
 
+export const updateUserProfilePhoto = async (uid, role, profilePhoto) => {
+  if (!uid || !isFirebaseConfigured || !db) {
+    throw new Error('Firebase must be configured before updating profile photo.');
+  }
+
+  const payload = {
+    profilePhoto,
+    updatedAt: serverTimestamp()
+  };
+
+  await Promise.all([
+    setDoc(doc(db, 'users', uid), payload, { merge: true }),
+    ...(role === 'labour' ? [setDoc(doc(db, 'labours', uid), payload, { merge: true })] : []),
+    ...(role === 'client' ? [setDoc(doc(db, 'clients', uid), payload, { merge: true })] : [])
+  ]);
+};
+
 export const updateLiveUserLocation = async ({ uid, role, coordinates }) => {
   const normalizedCoordinates = normalizeCoordinates(coordinates);
 

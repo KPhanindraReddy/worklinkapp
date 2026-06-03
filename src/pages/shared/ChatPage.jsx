@@ -19,7 +19,10 @@ import { getUserProfile } from '../../services/userService';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 
 const decorateConversationForUser = (conversation, currentUserId) => {
-  const otherUserId = conversation.participantIds?.find((id) => id !== currentUserId);
+  const participantIds = Array.isArray(conversation.participantIds)
+    ? conversation.participantIds
+    : Object.keys(conversation.participantIds || {});
+  const otherUserId = participantIds.find((id) => id !== currentUserId);
   const otherProfile = otherUserId ? conversation.participantProfiles?.[otherUserId] : null;
 
   return {
@@ -53,12 +56,14 @@ const ChatPage = () => {
     if (!currentUser) {
       setConversations([]);
       setActiveConversation(null);
+      setAccessError('');
       return undefined;
     }
 
     return subscribeConversations(
       currentUser.uid,
       (items) => {
+        setAccessError('');
         setConversations(items.map((item) => decorateConversationForUser(item, currentUser.uid)));
       },
       handleChatError
@@ -110,6 +115,7 @@ const ChatPage = () => {
         if (!isActive) {
           return;
         }
+        setAccessError('');
       })
       .catch((error) => handleChatError(error));
 
@@ -152,6 +158,7 @@ const ChatPage = () => {
 
       return conversations.find((item) => item.id === prev?.id) ?? conversations[0];
     });
+    setAccessError('');
   }, [conversations, targetConversationId, targetUserId]);
 
   useEffect(() => {
@@ -162,7 +169,10 @@ const ChatPage = () => {
 
     return subscribeMessages(
       activeConversation.id,
-      setMessages,
+      (items) => {
+        setAccessError('');
+        setMessages(items);
+      },
       handleChatError
     );
   }, [activeConversation?.id]);
@@ -194,15 +204,19 @@ const ChatPage = () => {
       });
 
       if (recipientId && activeConversation.bookingId) {
-        await createNotification({
-          userId: recipientId,
-          senderId: currentUser.uid,
-          bookingId: activeConversation.bookingId,
-          type: 'chat',
-          title: `New message from ${userProfile?.fullName || 'WorkLink user'}`,
-          body: text.length > 120 ? `${text.slice(0, 117)}...` : text,
-          conversationId: activeConversation.id
-        });
+        try {
+          await createNotification({
+            userId: recipientId,
+            senderId: currentUser.uid,
+            bookingId: activeConversation.bookingId,
+            type: 'chat',
+            title: `New message from ${userProfile?.fullName || 'WorkLink user'}`,
+            body: text.length > 120 ? `${text.slice(0, 117)}...` : text,
+            conversationId: activeConversation.id
+          });
+        } catch (notificationError) {
+          console.warn('[WorkLink chat] notification write skipped', notificationError);
+        }
       }
 
       const nextMessages = await getMessages(activeConversation.id);
@@ -226,10 +240,10 @@ const ChatPage = () => {
           <div className="space-y-4">
             {accessError ? (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
-                <p className="font-semibold">Chat is blocked by Firestore rules or indexes right now.</p>
+                <p className="font-semibold">Chat is blocked by Realtime Database rules right now.</p>
                 <p className="mt-2">
-                  Deploy the WorkLink Firestore rules and indexes, then refresh the page. Chat and notifications
-                  will start working once Firestore allows the required reads/writes.
+                  Deploy the WorkLink Realtime Database rules, then refresh the page. Chat will work once RTDB
+                  allows the required reads and writes.
                 </p>
               </div>
             ) : null}

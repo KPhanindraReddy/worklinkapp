@@ -42,7 +42,14 @@ export const labourMatchesServiceQuery = (labour, serviceQuery = '') => {
     normalizeValue(labour.category),
     normalizeValue(labour.about),
     normalizeValue(labour.fullName),
+    normalizeValue(labour.serviceType),
+    normalizeValue(labour.service),
     ...toSearchableList(labour.skills),
+    ...toSearchableList(labour.services),
+    ...toSearchableList(labour.serviceTypes),
+    ...toSearchableList(labour.serviceCategories),
+    ...toSearchableList(labour.specialties),
+    ...toSearchableList(labour.additionalServices),
     ...toSearchableList(labour.previousWorkHistory)
   ].filter(Boolean);
 

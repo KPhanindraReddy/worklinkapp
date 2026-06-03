@@ -6,6 +6,7 @@ import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { EmptyState } from '../../components/common/EmptyState';
+import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUploader';
 import { PageSEO } from '../../components/common/PageSEO';
 import { VerificationBadge } from '../../components/common/VerificationBadge';
 import { AppShell } from '../../components/layout/AppShell';
@@ -75,6 +76,7 @@ const LabourProfilePage = () => {
     [bookings]
   );
   const completedJobs = Math.max(Number(labour?.completedJobs || 0), completedBookings.length);
+  const canEditPhoto = Boolean(currentUser?.uid && labour?.id && currentUser.uid === labour.id);
   const ratingSummary = useMemo(() => {
     if (!profileReviews.length) {
       return {
@@ -114,11 +116,24 @@ const LabourProfilePage = () => {
         <div className="page-shell grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
           <Card className="overflow-hidden rounded-[28px] p-0 sm:rounded-[36px]">
             <div className="grid gap-5 p-4 sm:p-6 md:grid-cols-[144px_1fr] md:p-8">
-              <img
-                src={labour.profilePhoto}
-                alt={labour.fullName}
-                className="h-28 w-28 rounded-2xl object-cover shadow-[0_16px_32px_rgba(15,23,42,0.16)] sm:h-32 sm:w-32 md:h-36 md:w-36"
-              />
+              {canEditPhoto ? (
+                <ProfilePhotoUploader
+                  compact
+                  persistOnUpload
+                  uid={currentUser?.uid}
+                  role={labour?.role || 'labour'}
+                  value={labour.profilePhoto}
+                  fullName={labour.fullName}
+                  avatarClassName="h-28 w-28 sm:h-32 sm:w-32 md:h-36 md:w-36"
+                  onError={(error) => console.warn('[WorkLink labour photo] upload failed', error)}
+                />
+              ) : (
+                <img
+                  src={labour.profilePhoto}
+                  alt={labour.fullName}
+                  className="h-28 w-28 rounded-2xl object-cover shadow-[0_16px_32px_rgba(15,23,42,0.16)] sm:h-32 sm:w-32 md:h-36 md:w-36"
+                />
+              )}
               <div>
                 <div className="flex flex-wrap items-center gap-3">
                   <Badge tone="blue">{labour.category}</Badge>

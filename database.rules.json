@@ -1,0 +1,26 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "conversations": {
+      "$conversationId": {
+        ".read": "auth != null && data.child('participantIds/' + auth.uid).val() === true",
+        ".write": "auth != null && newData.child('participantIds/' + auth.uid).val() === true"
+      }
+    },
+    "messages": {
+      "$conversationId": {
+        ".read": "auth != null && root.child('conversations/' + $conversationId + '/participantIds/' + auth.uid).val() === true",
+        "$messageId": {
+          ".write": "auth != null && root.child('conversations/' + $conversationId + '/participantIds/' + auth.uid).val() === true && newData.child('senderId').val() === auth.uid"
+        }
+      }
+    },
+    "userConversations": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    }
+  }
+}
