@@ -353,25 +353,22 @@ const SearchPage = () => {
               ) : null}
 
               <div>
-                <h3 className="text-xl font-semibold text-slate-950 dark:text-white">Nearest available labour</h3>
+                <h3 className="text-xl font-semibold text-slate-950 dark:text-white">Selected labour</h3>
                 <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                  Pick one worker from this service. Results are limited to {NEARBY_LABOUR_RADIUS_KM} km and sorted by distance when GPS is active.
+                  We keep one clear match on screen so the client can book quickly without a long nearby list.
                 </p>
-                <div className="mt-4 space-y-2.5">
-                  {availableResults.length ? (
-                    availableResults.map((labour) => (
-                      <LabourCard
-                        key={labour.id}
-                        labour={labour}
-                        compact
-                        showMatchScore
-                        onQuickBook={handleQuickBook}
-                      />
-                    ))
+                <div className="mt-4">
+                  {selectedLabour ? (
+                    <LabourCard
+                      labour={selectedLabour}
+                      compact
+                      showMatchScore
+                      onQuickBook={handleQuickBook}
+                    />
                   ) : (
                     <EmptyState
-                      title="Service not available in this locality"
-                      description={`Try another service or allow live location so WorkLink can search labour within ${NEARBY_LABOUR_RADIUS_KM} km.`}
+                      title="No labour selected yet"
+                      description="Type a service name or choose a category to load the best match."
                     />
                   )}
                 </div>

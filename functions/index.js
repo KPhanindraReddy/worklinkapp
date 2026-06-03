@@ -1,6 +1,7 @@
 const admin = require('firebase-admin');
 const { logger } = require('firebase-functions');
 const { defineSecret, defineString } = require('firebase-functions/params');
+const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 
@@ -243,6 +244,39 @@ const incrementLabourCompletedJobs = async (labourId) => {
   ]);
 };
 
+const syncLabourCompletedJobs = async (uid) => {
+  if (!uid) {
+    throw new HttpsError('invalid-argument', 'A valid user id is required.');
+  }
+
+  const [userSnapshot, labourSnapshot] = await Promise.all([
+    db.collection('users').doc(uid).get(),
+    db.collection('labours').doc(uid).get()
+  ]);
+
+  if (!userSnapshot.exists) {
+    throw new HttpsError('not-found', 'User profile not found.');
+  }
+
+  const userCompletedJobs = Number(userSnapshot.data()?.completedJobs || 0);
+  const labourCompletedJobs = Number(labourSnapshot.data()?.completedJobs || 0);
+  const resolvedCompletedJobs = Math.max(userCompletedJobs, labourCompletedJobs);
+
+  const updates = {
+    completedJobs: resolvedCompletedJobs,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+  };
+
+  await Promise.all([
+    db.collection('users').doc(uid).set(updates, { merge: true }),
+    db.collection('labours').doc(uid).set(updates, { merge: true })
+  ]);
+
+  return {
+    completedJobs: resolvedCompletedJobs
+  };
+};
+
 const getWhatsAppFailureFields = (prefix, result) => {
   const error = result?.payload?.error || {};
 
@@ -314,6 +348,28 @@ exports.sendBookingRequestWhatsApp = onDocumentCreated(
     }
 
     await sendNewBookingMessage(event.params.bookingId, booking);
+  }
+);
+
+exports.syncLabourProfileCompletedJobs = onCall(
+  {
+    ...functionOptions
+  },
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new HttpsError('unauthenticated', 'You must be signed in to sync your profile.');
+    }
+
+    const requestedUid = String(request.data?.uid || '').trim();
+    if (!requestedUid) {
+      throw new HttpsError('invalid-argument', 'A valid user id is required.');
+    }
+
+    if (requestedUid !== request.auth.uid) {
+      throw new HttpsError('permission-denied', 'You can only sync your own labour profile.');
+    }
+
+    return syncLabourCompletedJobs(requestedUid);
   }
 );
 

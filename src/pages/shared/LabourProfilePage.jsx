@@ -37,13 +37,26 @@ const LabourProfilePage = () => {
   const { labourId } = useParams();
   const { currentUser, userProfile } = useAuth();
   const [labour, setLabour] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [selectedQuickBookLabour, setSelectedQuickBookLabour] = useState(null);
   const resolvedLabourLocationName = useLocationName(labour?.coordinates);
 
   useEffect(() => {
-    return subscribeLabourById(labourId, setLabour, () => setLabour(null));
+    setLoading(true);
+
+    return subscribeLabourById(
+      labourId,
+      (nextLabour) => {
+        setLabour(nextLabour);
+        setLoading(false);
+      },
+      () => {
+        setLabour(null);
+        setLoading(false);
+      }
+    );
   }, [labourId]);
 
   useEffect(() => {
@@ -90,6 +103,24 @@ const LabourProfilePage = () => {
       count: profileReviews.length
     };
   }, [labour?.rating, labour?.reviewsCount, profileReviews]);
+
+  if (loading) {
+    return (
+      <AppShell>
+        <div className="page-shell section-space">
+          <Card className="overflow-hidden rounded-[28px] p-6 sm:rounded-[36px]">
+            <div className="animate-pulse space-y-5">
+              <div className="h-48 rounded-[24px] bg-slate-100" />
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="h-36 rounded-[24px] bg-slate-100" />
+                <div className="h-36 rounded-[24px] bg-slate-100" />
+              </div>
+            </div>
+          </Card>
+        </div>
+      </AppShell>
+    );
+  }
 
   if (!labour) {
     return (

@@ -12,7 +12,7 @@ import {
   UserRound,
   WalletCards
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Badge } from '../../components/common/Badge';
@@ -36,6 +36,7 @@ import {
 import { ensureConversation } from '../../services/chatService';
 import { subscribeLabourById, updateAvailability } from '../../services/labourService';
 import { createNotification } from '../../services/notificationService';
+import { syncLabourCompletedJobs } from '../../services/labourSyncService';
 import { formatCurrency, formatDate, parseDateValue } from '../../utils/formatters';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { getDisplayLocationText, getLocationLabel } from '../../utils/location';
@@ -128,6 +129,7 @@ const LabourDashboardPage = () => {
   const [otpValues, setOtpValues] = useState({});
   const [startingBookingId, setStartingBookingId] = useState('');
   const [completingBookingId, setCompletingBookingId] = useState('');
+  const completedJobsSyncInFlight = useRef(false);
 
   const ownProfile = useMemo(
     () => buildOwnLabourProfile({ currentUser, userProfile }),
@@ -191,6 +193,36 @@ const LabourDashboardPage = () => {
     () => bookings.find((booking) => booking.status === 'in_progress') ?? null,
     [bookings]
   );
+
+  useEffect(() => {
+    if (
+      !currentUser?.uid ||
+      userProfile?.role !== 'labour' ||
+      !profile ||
+      completedJobsSyncInFlight.current
+    ) {
+      return undefined;
+    }
+
+    const profileCompletedJobs = Number(profile.completedJobs) || 0;
+    const accountCompletedJobs = Number(userProfile?.completedJobs) || 0;
+
+    if (!accountCompletedJobs || profileCompletedJobs >= accountCompletedJobs) {
+      return undefined;
+    }
+
+    completedJobsSyncInFlight.current = true;
+
+    syncLabourCompletedJobs(currentUser.uid)
+      .catch((error) => {
+        console.warn('WorkLink completed jobs sync skipped:', error);
+      })
+      .finally(() => {
+        completedJobsSyncInFlight.current = false;
+      });
+
+    return undefined;
+  }, [currentUser?.uid, profile, userProfile?.completedJobs, userProfile?.role]);
 
   useEffect(() => {
     if (!currentUser?.uid) {
