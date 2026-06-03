@@ -1,5 +1,5 @@
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { isFirebaseConfigured } from '../firebase/env';
+import { isFirebaseConfigured, isFirebaseStorageConfigured } from '../firebase/env';
 import { storage } from '../firebase/storage';
 
 const MAX_PROFILE_IMAGE_SIZE = 384;
@@ -52,7 +52,7 @@ const resizeImageFile = (file) =>
   });
 
 export const uploadProfilePhoto = async ({ uid, role, file }) => {
-  if (!isFirebaseConfigured || !storage) {
+  if (!isFirebaseConfigured || !isFirebaseStorageConfigured || !storage) {
     throw new Error('Firebase Storage must be configured before uploading profile photos.');
   }
 

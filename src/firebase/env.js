@@ -9,9 +9,9 @@ export const firebaseConfig = {
 const requiredKeys = [
   firebaseConfig.apiKey,
   firebaseConfig.authDomain,
-  firebaseConfig.storageBucket,
   firebaseConfig.projectId,
   firebaseConfig.appId
 ];
 
 export const isFirebaseConfigured = requiredKeys.every(Boolean);
+export const isFirebaseStorageConfigured = Boolean(firebaseConfig.storageBucket);
