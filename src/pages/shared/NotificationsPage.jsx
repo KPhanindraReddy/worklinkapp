@@ -7,7 +7,11 @@ import { EmptyState } from '../../components/common/EmptyState';
 import { PageSEO } from '../../components/common/PageSEO';
 import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
-import { markNotificationRead, subscribeNotifications } from '../../services/notificationService';
+import {
+  markAllNotificationsRead,
+  markNotificationRead,
+  subscribeNotifications
+} from '../../services/notificationService';
 import { formatDate } from '../../utils/formatters';
 
 const getNotificationTarget = (notification) => {
@@ -33,6 +37,15 @@ const NotificationsPage = () => {
   useEffect(() => {
     return subscribeNotifications(currentUser?.uid, setNotifications);
   }, [currentUser?.uid]);
+
+  useEffect(() => {
+    if (!notifications.length) {
+      return undefined;
+    }
+
+    markAllNotificationsRead(notifications).catch(() => {});
+    return undefined;
+  }, [notifications]);
 
   return (
     <AppShell>

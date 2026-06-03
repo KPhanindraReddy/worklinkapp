@@ -91,3 +91,19 @@ export const markNotificationRead = async (notificationId) => {
     read: true
   });
 };
+
+export const markAllNotificationsRead = async (notifications = []) => {
+  if (!isFirebaseConfigured || !db) {
+    return;
+  }
+
+  const unreadNotifications = notifications.filter((notification) => notification?.id && !notification.read);
+
+  await Promise.all(
+    unreadNotifications.map((notification) =>
+      updateDoc(doc(db, 'notifications', notification.id), {
+        read: true
+      })
+    )
+  );
+};
