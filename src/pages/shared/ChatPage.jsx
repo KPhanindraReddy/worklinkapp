@@ -14,6 +14,8 @@ import {
   subscribeMessages
 } from '../../services/chatService';
 import { getLabourById } from '../../services/labourService';
+import { createNotification } from '../../services/notificationService';
+import { getUserProfile } from '../../services/userService';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 
 const decorateConversationForUser = (conversation, currentUserId) => {
@@ -32,7 +34,9 @@ const decorateConversationForUser = (conversation, currentUserId) => {
 
 const ChatPage = () => {
   const [searchParams] = useSearchParams();
-  const targetLabourId = searchParams.get('target');
+  const targetUserId = searchParams.get('target');
+  const bookingId = searchParams.get('booking');
+  const targetConversationId = searchParams.get('conversation');
   const { currentUser, userProfile } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [activeConversation, setActiveConversation] = useState(null);
@@ -55,34 +59,46 @@ const ChatPage = () => {
   }, [currentUser?.uid]);
 
   useEffect(() => {
-    if (!currentUser || !targetLabourId) {
+    if (!currentUser || !targetUserId) {
       return undefined;
     }
 
     let isActive = true;
 
-    getLabourById(targetLabourId)
-      .then((labour) =>
+    Promise.all([
+      getUserProfile(targetUserId),
+      getLabourById(targetUserId).catch(() => null)
+    ])
+      .then(([profile, labour]) => {
+        const otherProfile = profile || labour || {};
+
+        if (!profile && !labour) {
+          return null;
+        }
+
+        return (
         ensureConversation({
           currentUserId: currentUser.uid,
-          otherUserId: targetLabourId,
+          otherUserId: targetUserId,
           metadata: {
+            bookingId: bookingId || '',
             currentUserProfile: {
               fullName: userProfile?.fullName,
               role: userProfile?.role,
               phoneNumber: userProfile?.phoneNumber || currentUser.phoneNumber || ''
             },
             otherUserProfile: {
-              fullName: labour?.fullName,
-              role: labour?.category || 'labour',
-              phoneNumber: labour?.phoneNumber || '',
-              whatsAppLink: labour?.phoneNumber
-                ? `https://wa.me/${labour.phoneNumber.replace(/\D/g, '')}`
+              fullName: otherProfile?.fullName,
+              role: otherProfile?.role || otherProfile?.category || 'WorkLink user',
+              phoneNumber: otherProfile?.phoneNumber || '',
+              whatsAppLink: otherProfile?.phoneNumber
+                ? `https://wa.me/${otherProfile.phoneNumber.replace(/\D/g, '')}`
                 : ''
             }
           }
         })
-      )
+        );
+      })
       .then(() => {
         if (!isActive) {
           return;
@@ -96,7 +112,8 @@ const ChatPage = () => {
   }, [
     currentUser?.phoneNumber,
     currentUser?.uid,
-    targetLabourId,
+    bookingId,
+    targetUserId,
     userProfile?.fullName,
     userProfile?.phoneNumber,
     userProfile?.role
@@ -108,9 +125,17 @@ const ChatPage = () => {
         return null;
       }
 
-      if (targetLabourId) {
+      if (targetConversationId) {
+        const conversation = conversations.find((item) => item.id === targetConversationId);
+
+        if (conversation) {
+          return conversation;
+        }
+      }
+
+      if (targetUserId) {
         const targetedConversation = conversations.find((item) =>
-          item.participantIds?.includes(targetLabourId)
+          item.participantIds?.includes(targetUserId)
         );
 
         if (targetedConversation) {
@@ -120,7 +145,7 @@ const ChatPage = () => {
 
       return conversations.find((item) => item.id === prev?.id) ?? conversations[0];
     });
-  }, [conversations, targetLabourId]);
+  }, [conversations, targetConversationId, targetUserId]);
 
   useEffect(() => {
     if (!activeConversation?.id) {
@@ -151,12 +176,27 @@ const ChatPage = () => {
     setMessages((prev) => [...prev, optimisticMessage]);
 
     try {
+      const recipientId = activeConversation.otherUserId;
+
       await sendMessage(activeConversation.id, {
         senderId: currentUser.uid,
+        recipientId,
         senderRole: userProfile?.role ?? 'client',
         text,
         type: 'text'
       });
+
+      if (recipientId && activeConversation.bookingId) {
+        await createNotification({
+          userId: recipientId,
+          senderId: currentUser.uid,
+          bookingId: activeConversation.bookingId,
+          type: 'chat',
+          title: `New message from ${userProfile?.fullName || 'WorkLink user'}`,
+          body: text.length > 120 ? `${text.slice(0, 117)}...` : text,
+          conversationId: activeConversation.id
+        });
+      }
 
       const nextMessages = await getMessages(activeConversation.id);
       setMessages(nextMessages);

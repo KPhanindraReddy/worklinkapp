@@ -162,6 +162,7 @@ const LabourServicesPage = () => {
         currentUserId: currentUser.uid,
         otherUserId: booking.clientId,
         metadata: {
+          bookingId: booking.id,
           currentUserProfile: {
             fullName: profileName,
             role: 'labour',
@@ -474,7 +475,7 @@ const LabourServicesPage = () => {
                         </Button>
                         <Button
                           as={Link}
-                          to="/chat"
+                          to={`/chat?target=${encodeURIComponent(booking.clientId)}&booking=${encodeURIComponent(booking.id)}`}
                           size="sm"
                           variant="outline"
                           className="w-full sm:w-auto"

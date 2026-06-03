@@ -16,6 +16,7 @@ import { isFirebaseConfigured } from '../firebase/env';
 import { db } from '../firebase/firestore';
 import { isHiddenAdminAccount } from '../utils/adminAccount';
 import { normalizeCoordinates } from '../utils/location';
+import { buildProfileAvatarDataUrl } from '../utils/profileAvatar';
 import { normalizeFirebaseAuthPhoneNumber, normalizeWhatsAppPhoneNumber } from '../utils/phone';
 import {
   clearRedirectContext,
@@ -27,8 +28,6 @@ import {
 let recaptchaVerifier = null;
 
 const shouldUseRedirectAuth = () => false;
-const buildAvatarUrl = (fullName) =>
-  `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName || 'WorkLink User')}&background=1d4ed8&color=ffffff`;
 const getCreatedAtValue = (user) =>
   user?.metadata?.creationTime ? new Date(user.metadata.creationTime) : serverTimestamp();
 
@@ -76,7 +75,11 @@ const buildBaseProfile = (user, formValues = {}, existingProfile = null) => {
   const fullName = isHiddenAdmin
     ? 'admin'
     : formValues.fullName || existingProfile?.fullName || user.displayName || 'WorkLink User';
-  const profilePhotoUrl = formValues.profilePhotoUrl || user.photoURL || buildAvatarUrl(fullName);
+  const profilePhotoUrl =
+    formValues.profilePhotoUrl ||
+    formValues.profilePhoto ||
+    existingProfile?.profilePhoto ||
+    buildProfileAvatarDataUrl(fullName);
 
   return {
     uid: user.uid,

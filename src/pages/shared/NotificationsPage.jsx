@@ -1,13 +1,26 @@
 import { BellRing } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Badge } from '../../components/common/Badge';
 import { Card } from '../../components/common/Card';
 import { EmptyState } from '../../components/common/EmptyState';
 import { PageSEO } from '../../components/common/PageSEO';
 import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
-import { subscribeNotifications } from '../../services/notificationService';
+import { markNotificationRead, subscribeNotifications } from '../../services/notificationService';
 import { formatDate } from '../../utils/formatters';
+
+const getNotificationTarget = (notification) => {
+  if (notification.type === 'chat' && notification.conversationId) {
+    return `/chat?conversation=${encodeURIComponent(notification.conversationId)}`;
+  }
+
+  if (notification.type === 'booking' && notification.bookingId) {
+    return notification.bookingId ? '/recent-services' : '/notifications';
+  }
+
+  return '';
+};
 
 const NotificationsPage = () => {
   const { currentUser } = useAuth();
@@ -46,8 +59,19 @@ const NotificationsPage = () => {
 
           {notifications.length ? (
             <div className="space-y-3">
-              {notifications.map((notification) => (
-                <Card key={notification.id} className="flex items-start gap-4 rounded-[28px]">
+              {notifications.map((notification) => {
+                const target = getNotificationTarget(notification);
+                const Wrapper = target ? Link : 'button';
+
+                return (
+                <Wrapper
+                  key={notification.id}
+                  to={target || undefined}
+                  type={target ? undefined : 'button'}
+                  className="block text-left"
+                  onClick={() => markNotificationRead(notification.id)}
+                >
+                <Card className="flex items-start gap-4 rounded-[28px] transition hover:border-brand-200 hover:bg-brand-50/40">
                   <div className="grid h-10 w-10 place-items-center rounded-2xl bg-brand-100 text-brand-700 dark:bg-brand-500/10 dark:text-brand-200">
                     <BellRing size={16} />
                   </div>
@@ -66,7 +90,9 @@ const NotificationsPage = () => {
                     </p>
                   </div>
                 </Card>
-              ))}
+                </Wrapper>
+              );
+              })}
             </div>
           ) : (
             <EmptyState

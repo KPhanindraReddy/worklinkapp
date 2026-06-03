@@ -1,9 +1,11 @@
 import {
   addDoc,
   collection,
+  doc,
   onSnapshot,
   query,
   serverTimestamp,
+  updateDoc,
   where
 } from 'firebase/firestore';
 import { isFirebaseConfigured } from '../firebase/env';
@@ -78,4 +80,14 @@ export const createNotification = async (payload) => {
   });
 
   return reference.id;
+};
+
+export const markNotificationRead = async (notificationId) => {
+  if (!notificationId || !isFirebaseConfigured || !db) {
+    return;
+  }
+
+  await updateDoc(doc(db, 'notifications', notificationId), {
+    read: true
+  });
 };

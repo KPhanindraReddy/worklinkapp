@@ -7,6 +7,7 @@ import { Card } from '../../components/common/Card';
 import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
 import { PhoneInputField } from '../../components/common/PhoneInputField';
+import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUploader';
 import { SelectField } from '../../components/common/SelectField';
 import { TextAreaField } from '../../components/common/TextAreaField';
 import { ProfileLocationPanel } from '../../components/location/ProfileLocationPanel';
@@ -21,6 +22,7 @@ import {
 } from '../../utils/constants';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { getDisplayLocationText } from '../../utils/location';
+import { buildProfileAvatarDataUrl } from '../../utils/profileAvatar';
 
 const toCommaText = (value) => (Array.isArray(value) ? value.join(', ') : value || '');
 
@@ -38,6 +40,7 @@ const initialFormState = {
   currentLocation: '',
   location: '',
   coordinates: null,
+  profilePhotoUrl: '',
   about: '',
   availability: 'Available',
   dailyWage: '',
@@ -87,6 +90,10 @@ const CompleteProfilePage = () => {
         getDisplayLocationText(prev.location, '') ||
         getDisplayLocationText(userProfile?.location || userProfile?.currentLocation, ''),
       coordinates: prev.coordinates || userProfile?.coordinates || null,
+      profilePhotoUrl:
+        prev.profilePhotoUrl ||
+        userProfile?.profilePhoto ||
+        buildProfileAvatarDataUrl(prev.fullName || userProfile?.fullName || currentUser?.displayName || 'Profile'),
       gender: prev.gender || userProfile?.gender || '',
       age: prev.age || userProfile?.age || '',
       education: prev.education || userProfile?.education || '',
@@ -109,6 +116,7 @@ const CompleteProfilePage = () => {
     userProfile?.location,
     userProfile?.phoneNumber,
     userProfile?.coordinates,
+    userProfile?.profilePhoto,
     userProfile?.gender,
     userProfile?.age,
     userProfile?.education,
@@ -244,6 +252,15 @@ const CompleteProfilePage = () => {
                   label="Phone number"
                   value={formValues.phoneNumber}
                   onChange={(event) => handleChange('phoneNumber', event.target.value)}
+                />
+                <ProfilePhotoUploader
+                  uid={currentUser?.uid}
+                  role={role}
+                  value={formValues.profilePhotoUrl}
+                  fullName={formValues.fullName}
+                  disabled={!currentUser || submitting}
+                  onChange={(url) => handleChange('profilePhotoUrl', url)}
+                  onError={(error) => toast.error(getFirebaseErrorMessage(error))}
                 />
                 <InputField
                   label="Email"

@@ -52,6 +52,7 @@ import {
   normalizeCoordinates
 } from '../../utils/location';
 import { fetchMapboxCoordinatesForAddress } from '../../utils/mapbox';
+import { buildProfileAvatarDataUrl } from '../../utils/profileAvatar';
 import { createRouteGroupId } from '../../utils/requestRouting';
 
 const openRequestStatuses = ['pending', 'accepted', 'in_progress', 'awaiting_payment'];
@@ -539,10 +540,15 @@ const ClientDashboardPage = () => {
     const bookingId = await createBooking({
       clientId: currentUser.uid,
       clientName: userProfile?.fullName || currentUser.displayName || 'Client',
+      clientProfilePhoto:
+        userProfile?.profilePhoto ||
+        buildProfileAvatarDataUrl(userProfile?.fullName || currentUser.displayName || 'Client'),
       clientPhoneNumber: userProfile?.phoneNumber || currentUser.phoneNumber || '',
       clientEmail: userProfile?.email || currentUser.email || '',
       labourId: labour.id,
       labourName: labour.fullName,
+      labourProfilePhoto:
+        labour.profilePhoto || buildProfileAvatarDataUrl(labour.fullName || 'Labour'),
       labourPhoneNumber: labour.phoneNumber || '',
       serviceType: selectedService,
       serviceDetails:
@@ -800,7 +806,8 @@ const ClientDashboardPage = () => {
   const scheduledVisits = bookings.filter((item) => item.requestMode === 'scheduled').length;
   const paymentsDue = awaitingPaymentBookings.length;
   const clientName = userProfile?.fullName || currentUser?.displayName || 'Client';
-  const clientAvatar = userProfile?.profilePhoto || currentUser?.photoURL || '';
+  const clientAvatar =
+    userProfile?.profilePhoto || buildProfileAvatarDataUrl(clientName || 'Client');
 
   return (
     <AppShell hideFooter>
@@ -1110,6 +1117,18 @@ const ClientDashboardPage = () => {
                         <span className="inline-flex items-center gap-1.5"><Clock3 size={13} />{booking.requestMode === 'scheduled' ? 'Scheduled' : 'Instant'}</span>
                         <span className="inline-flex items-center gap-1.5 text-brand-700"><WalletCards size={13} />{booking.status === 'completed' && Number(booking.amount) > 0 ? formatCurrency(booking.amount) : booking.status === 'awaiting_payment' ? 'Payment due' : 'Pending'}</span>
                       </div>
+                      {booking.labourId ? (
+                        <Button
+                          as={Link}
+                          to={`/chat?target=${encodeURIComponent(booking.labourId)}&booking=${encodeURIComponent(booking.id)}`}
+                          size="sm"
+                          variant="outline"
+                          className="mt-3 w-full sm:w-auto"
+                        >
+                          <MessageCircle size={15} />
+                          Chat labour
+                        </Button>
+                      ) : null}
                     </div>
                   ))
                 ) : (
@@ -1319,6 +1338,17 @@ const ClientDashboardPage = () => {
                 </div>
                 <Badge tone="emerald">{activeBookings[0].status}</Badge>
               </div>
+              <div className="mt-4 flex items-center gap-3">
+                <img
+                  src={activeBookings[0].labourProfilePhoto || buildProfileAvatarDataUrl(activeBookings[0].labourName || 'Labour')}
+                  alt={activeBookings[0].labourName}
+                  className="h-12 w-12 rounded-xl object-cover"
+                />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-950">{activeBookings[0].labourName}</p>
+                  <p className="truncate text-xs font-medium text-slate-600">{activeBookings[0].serviceType}</p>
+                </div>
+              </div>
               {activeBookings[0].startOtp ? (
                 <div className="mt-4 rounded-2xl border border-emerald-200 bg-white p-4">
                   <p className="text-xs font-bold uppercase text-emerald-700">Start OTP</p>
@@ -1520,11 +1550,21 @@ const ClientDashboardPage = () => {
                   trackedBookings.map((booking) => (
                     <div key={booking.id} className="rounded-2xl border border-slate-200 bg-white p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <h3 className="font-semibold text-slate-950">{booking.serviceType}</h3>
-                          <p className="mt-1 break-words text-sm text-slate-600">
-                            {booking.labourName} - {getDisplayLocationText(booking.location, 'Live location shared')}
-                          </p>
+                        <div className="flex min-w-0 items-center gap-3">
+                          <img
+                            src={
+                              booking.labourProfilePhoto ||
+                              buildProfileAvatarDataUrl(booking.labourName || 'Labour')
+                            }
+                            alt={booking.labourName}
+                            className="h-11 w-11 flex-none rounded-xl object-cover"
+                          />
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-slate-950">{booking.serviceType}</h3>
+                            <p className="mt-1 break-words text-sm text-slate-600">
+                              {booking.labourName} - {getDisplayLocationText(booking.location, 'Live location shared')}
+                            </p>
+                          </div>
                         </div>
                         <Badge tone={getBookingTone(booking.status)}>{booking.status}</Badge>
                       </div>

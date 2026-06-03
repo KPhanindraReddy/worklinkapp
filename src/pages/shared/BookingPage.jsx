@@ -46,6 +46,7 @@ import {
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { getDisplayLocationText, getLocationLabel, normalizeCoordinates } from '../../utils/location';
 import { fetchMapboxLocationName } from '../../utils/mapbox';
+import { buildProfileAvatarDataUrl } from '../../utils/profileAvatar';
 import { createRouteGroupId } from '../../utils/requestRouting';
 
 const activeWorkStatuses = ['accepted', 'in_progress'];
@@ -439,10 +440,15 @@ const BookingPage = () => {
       const bookingId = await createBooking({
         clientId: currentUser.uid,
         clientName: userProfile.fullName,
+        clientProfilePhoto:
+          userProfile.profilePhoto ||
+          buildProfileAvatarDataUrl(userProfile.fullName || currentUser.displayName || 'Client'),
         clientPhoneNumber: userProfile.phoneNumber || currentUser.phoneNumber || '',
         clientEmail: userProfile.email || currentUser.email || '',
         labourId: selectedLabour.id,
         labourName: selectedLabour.fullName,
+        labourProfilePhoto:
+          selectedLabour.profilePhoto || buildProfileAvatarDataUrl(selectedLabour.fullName || 'Labour'),
         labourPhoneNumber: selectedLabour.phoneNumber || '',
         serviceType: formValues.serviceName,
         serviceDetails: formValues.serviceDetails,
@@ -882,9 +888,19 @@ const BookingPage = () => {
                     activeBookings.map((booking) => (
                       <div key={booking.id} className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
                         <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-semibold text-slate-950">{booking.labourName}</p>
-                            <p className="mt-1 text-sm font-medium text-slate-700">{booking.serviceType}</p>
+                          <div className="flex min-w-0 items-center gap-3">
+                            <img
+                              src={
+                                booking.labourProfilePhoto ||
+                                buildProfileAvatarDataUrl(booking.labourName || 'Labour')
+                              }
+                              alt={booking.labourName}
+                              className="h-12 w-12 flex-none rounded-2xl object-cover"
+                            />
+                            <div className="min-w-0">
+                              <p className="truncate font-semibold text-slate-950">{booking.labourName}</p>
+                              <p className="mt-1 text-sm font-medium text-slate-700">{booking.serviceType}</p>
+                            </div>
                           </div>
                           <Badge tone={booking.status === 'in_progress' ? 'blue' : 'emerald'}>
                             {booking.status === 'in_progress' ? 'Working' : 'Accepted'}
@@ -987,16 +1003,26 @@ const BookingPage = () => {
                 <div className="mt-5 space-y-4">
                   {bookings.length ? (
                     bookings.map((booking) => (
-                      <div key={booking.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div key={booking.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <img
+                            src={
+                              booking.labourProfilePhoto ||
+                              buildProfileAvatarDataUrl(booking.labourName || 'Labour')
+                            }
+                            alt={booking.labourName}
+                            className="h-11 w-11 flex-none rounded-2xl object-cover"
+                          />
                           <div className="min-w-0">
                             <h3 className="font-semibold text-slate-950">{booking.serviceType}</h3>
                             <p className="break-words text-sm font-medium text-slate-600">
-                            {booking.labourName} - {getDisplayLocationText(booking.location, 'Live location shared')}
+                              {booking.labourName} - {getDisplayLocationText(booking.location, 'Live location shared')}
                             </p>
                           </div>
-                          <Badge tone={booking.status === 'accepted' ? 'emerald' : booking.status === 'completed' ? 'blue' : booking.status === 'rejected' ? 'rose' : booking.status === 'timed_out' ? 'slate' : 'amber'}>
-                            {booking.status}
+                        </div>
+                        <Badge tone={booking.status === 'accepted' ? 'emerald' : booking.status === 'completed' ? 'blue' : booking.status === 'rejected' ? 'rose' : booking.status === 'timed_out' ? 'slate' : 'amber'}>
+                          {booking.status}
                           </Badge>
                         </div>
                         <p className="mt-3 text-sm font-medium text-slate-700">{getBookingTime(booking)}</p>

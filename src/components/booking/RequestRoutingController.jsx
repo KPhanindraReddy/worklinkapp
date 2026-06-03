@@ -10,6 +10,7 @@ import { searchLabours } from '../../services/labourService';
 import { createNotification } from '../../services/notificationService';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { normalizeCoordinates } from '../../utils/location';
+import { buildProfileAvatarDataUrl } from '../../utils/profileAvatar';
 import {
   QUICK_REROUTE_TIMEOUT_MS,
   SINGLE_LABOUR_TIMEOUT_MS,
@@ -28,10 +29,16 @@ const generateStartOtp = () => String(Math.floor(100000 + Math.random() * 900000
 const buildNextBookingPayload = ({ booking, currentUser, nextLabour, userProfile }) => ({
   clientId: currentUser.uid,
   clientName: booking.clientName || userProfile?.fullName || currentUser.displayName || 'Client',
+  clientProfilePhoto:
+    booking.clientProfilePhoto ||
+    userProfile?.profilePhoto ||
+    buildProfileAvatarDataUrl(userProfile?.fullName || currentUser.displayName || 'Client'),
   clientPhoneNumber: booking.clientPhoneNumber || userProfile?.phoneNumber || currentUser.phoneNumber || '',
   clientEmail: booking.clientEmail || userProfile?.email || currentUser.email || '',
   labourId: nextLabour.id,
   labourName: nextLabour.fullName,
+  labourProfilePhoto:
+    nextLabour.profilePhoto || buildProfileAvatarDataUrl(nextLabour.fullName || 'Labour'),
   labourPhoneNumber: nextLabour.phoneNumber || '',
   serviceType: booking.serviceType || nextLabour.category || '',
   serviceDetails: booking.serviceDetails || booking.notes || '',

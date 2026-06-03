@@ -7,7 +7,6 @@ import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { EmptyState } from '../../components/common/EmptyState';
 import { PageSEO } from '../../components/common/PageSEO';
-import { SectionHeading } from '../../components/common/SectionHeading';
 import { VerificationBadge } from '../../components/common/VerificationBadge';
 import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
@@ -15,7 +14,7 @@ import { useLocationName } from '../../hooks/useLocationName';
 import { subscribeBookingsForUser } from '../../services/bookingService';
 import { subscribeLabourById } from '../../services/labourService';
 import { subscribeReviewsForLabour } from '../../services/reviewService';
-import { formatCurrency, formatDate } from '../../utils/formatters';
+import { formatCurrency } from '../../utils/formatters';
 import { getDisplayLocationText } from '../../utils/location';
 
 const ProfileStat = ({ value, label, tone = 'slate' }) => {
@@ -77,19 +76,6 @@ const LabourProfilePage = () => {
     [bookings]
   );
   const completedJobs = completedBookings.length || Number(labour?.completedJobs || 0);
-  const totalEarnings =
-    completedBookings.length
-      ? completedBookings.reduce((sum, booking) => sum + Number(booking.amount || 0), 0)
-      : Number(labour?.totalEarnings || 0);
-  const workHistory = completedBookings.length
-    ? completedBookings.slice(0, 6).map((booking) => ({
-        id: booking.id,
-        title: booking.serviceType || 'Completed service',
-        amountPaid: booking.amount || booking.finalAmount || 0,
-        location: booking.location,
-        date: formatDate(booking.paidAt || booking.completedAt || booking.appointmentAt)
-      }))
-    : labour?.previousWorkHistory ?? [];
   const ratingSummary = useMemo(() => {
     if (!profileReviews.length) {
       return {
@@ -128,11 +114,11 @@ const LabourProfilePage = () => {
       <section className="section-space">
         <div className="page-shell grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
           <Card className="overflow-hidden rounded-[28px] p-0 sm:rounded-[36px]">
-            <div className="grid gap-5 p-4 sm:p-6 md:grid-cols-[220px_1fr] md:p-8">
+            <div className="grid gap-5 p-4 sm:p-6 md:grid-cols-[144px_1fr] md:p-8">
               <img
                 src={labour.profilePhoto}
                 alt={labour.fullName}
-                className="h-56 w-full rounded-[28px] object-cover md:h-full"
+                className="h-28 w-28 rounded-2xl object-cover shadow-[0_16px_32px_rgba(15,23,42,0.16)] sm:h-32 sm:w-32 md:h-36 md:w-36"
               />
               <div>
                 <div className="flex flex-wrap items-center gap-3">
@@ -242,7 +228,7 @@ const LabourProfilePage = () => {
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <ProfileStat value={labour.category || 'Service'} label="Service" tone="brand" />
                 <ProfileStat value={formatCurrency(labour.dailyWage || 0)} label="Daily wage" tone="emerald" />
-                <ProfileStat value={totalEarnings ? formatCurrency(totalEarnings) : '0'} label="Earnings" tone="amber" />
+                <ProfileStat value={`${Number(labour.experienceYears || 0)} yrs`} label="Experience" tone="amber" />
                 <ProfileStat value={labour.responseTime || 'Fast'} label="Response" tone="slate" />
               </div>
               <div className="mt-5 grid gap-3 text-sm text-slate-600 dark:text-slate-300">
@@ -251,84 +237,6 @@ const LabourProfilePage = () => {
                 <p>Education: {labour.education || 'Not added'}</p>
               </div>
             </Card>
-          </div>
-        </div>
-      </section>
-
-      <section className="section-space">
-        <div className="page-shell grid gap-6 xl:grid-cols-[1fr_1fr]">
-          <Card>
-            <SectionHeading
-              eyebrow="Portfolio"
-              title="Work photos"
-              description="Recent work samples and client-facing proof of craftsmanship."
-            />
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              {(labour.portfolio ?? []).map((item) => (
-                <img key={item} src={item} alt="Work sample" className="h-52 w-full rounded-3xl object-cover" />
-              ))}
-            </div>
-          </Card>
-
-          <Card>
-            <SectionHeading
-              eyebrow="Work history"
-              title="Completed jobs"
-              description="Recent jobs with payment and location details."
-            />
-            <div className="mt-6 space-y-4">
-              {workHistory.length ? workHistory.map((job) => (
-                <div key={job.id || `${job.title}-${job.date}`} className="rounded-3xl bg-slate-50 p-5 dark:bg-slate-800/50">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <h3 className="min-w-0 break-words font-semibold text-slate-950 dark:text-white">{job.title}</h3>
-                    <p className="text-sm font-semibold text-brand-700 dark:text-brand-200">
-                      {formatCurrency(job.amountPaid)}
-                    </p>
-                  </div>
-                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                    {getDisplayLocationText(job.location, 'Location shared')} - {job.date}
-                  </p>
-                </div>
-              )) : (
-                <EmptyState
-                  title="No completed jobs yet"
-                  description="Finished services will appear here after client payment is completed."
-                />
-              )}
-            </div>
-          </Card>
-        </div>
-      </section>
-
-      <section className="section-space">
-        <div className="page-shell">
-          <SectionHeading
-            eyebrow="Reviews"
-            title="Client feedback and ratings"
-            description="Ratings and comments from recent clients."
-          />
-          <div className="mt-8 grid gap-4 lg:grid-cols-2">
-            {profileReviews.length ? profileReviews.map((review) => (
-              <Card key={review.id}>
-                <div className="flex items-center gap-2 text-amber-500">
-                  <Star size={16} fill="currentColor" />
-                  <span className="font-semibold text-slate-900 dark:text-white">{review.rating}</span>
-                </div>
-                {review.comment ? (
-                  <p className="mt-4 text-base text-slate-700 dark:text-slate-200">
-                    {review.comment}
-                  </p>
-                ) : null}
-                <p className="mt-4 text-sm font-semibold text-slate-500 dark:text-slate-400">
-                  {review.clientName}
-                </p>
-              </Card>
-            )) : (
-              <EmptyState
-                title="No reviews yet"
-                description="Client ratings and comments will appear after completed services are reviewed."
-              />
-            )}
           </div>
         </div>
       </section>

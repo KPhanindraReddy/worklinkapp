@@ -17,6 +17,7 @@ import { buildAppointmentDateTime } from '../../utils/formatters';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { getDisplayLocationText, getLocationLabel, normalizeCoordinates } from '../../utils/location';
 import { fetchMapboxLocationName } from '../../utils/mapbox';
+import { buildProfileAvatarDataUrl } from '../../utils/profileAvatar';
 import { createRouteGroupId } from '../../utils/requestRouting';
 
 const activeWorkStatuses = ['accepted', 'in_progress'];
@@ -200,10 +201,15 @@ export const QuickBookingDialog = ({
       const bookingId = await createBooking({
         clientId: currentUser.uid,
         clientName: userProfile.fullName || currentUser.displayName || 'Client',
+        clientProfilePhoto:
+          userProfile?.profilePhoto ||
+          buildProfileAvatarDataUrl(userProfile.fullName || currentUser.displayName || 'Client'),
         clientPhoneNumber: userProfile.phoneNumber || currentUser.phoneNumber || '',
         clientEmail: userProfile.email || currentUser.email || '',
         labourId: targetLabour.id,
         labourName: targetLabour.fullName,
+        labourProfilePhoto:
+          targetLabour.profilePhoto || buildProfileAvatarDataUrl(targetLabour.fullName || 'Labour'),
         labourPhoneNumber: targetLabour.phoneNumber || '',
         serviceType: serviceName,
         serviceDetails: formValues.serviceDetails.trim(),

@@ -21,6 +21,7 @@ import { Card } from '../../components/common/Card';
 import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
 import { PhoneInputField } from '../../components/common/PhoneInputField';
+import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUploader';
 import { SelectField } from '../../components/common/SelectField';
 import { TextAreaField } from '../../components/common/TextAreaField';
 import { VerificationBadge } from '../../components/common/VerificationBadge';
@@ -33,6 +34,7 @@ import { subscribeReviewsForLabour } from '../../services/reviewService';
 import { availabilityOptions, languageOptions, workCategories } from '../../utils/constants';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { getDisplayLocationText } from '../../utils/location';
+import { buildProfileAvatarDataUrl } from '../../utils/profileAvatar';
 
 const toCommaText = (value) => (Array.isArray(value) ? value.join(', ') : value || '');
 
@@ -43,6 +45,7 @@ const buildProfileForm = (profile, currentUser) => ({
   location: getDisplayLocationText(profile?.location, ''),
   currentLocation: getDisplayLocationText(profile?.currentLocation || profile?.location, ''),
   coordinates: profile?.coordinates || null,
+  profilePhotoUrl: profile?.profilePhoto || buildProfileAvatarDataUrl(profile?.fullName || currentUser?.displayName || 'Profile'),
   category: profile?.category || '',
   skills: toCommaText(profile?.skills),
   languages: toCommaText(profile?.languages),
@@ -164,9 +167,13 @@ const SettingsPage = () => {
     [userProfile?.role]
   );
   const profileInitial = useMemo(
-    () => (userProfile?.fullName || currentUser?.displayName || 'U').trim().charAt(0).toUpperCase(),
-    [currentUser?.displayName, userProfile?.fullName]
+    () => (formValues.fullName || userProfile?.fullName || currentUser?.displayName || 'U').trim().charAt(0).toUpperCase(),
+    [currentUser?.displayName, formValues.fullName, userProfile?.fullName]
   );
+  const profilePhotoUrl =
+    formValues.profilePhotoUrl ||
+    userProfile?.profilePhoto ||
+    buildProfileAvatarDataUrl(formValues.fullName || userProfile?.fullName || currentUser?.displayName || 'Profile');
   const canSaveProfile = isLabour
     ? Boolean(
         formValues.fullName.trim() &&
@@ -285,8 +292,18 @@ const SettingsPage = () => {
                 {isEditing ? <X size={18} /> : <Pencil size={17} />}
               </Button>
               <div className="flex min-w-0 items-center gap-3 pr-12 sm:gap-4">
-                <div className="grid h-16 w-16 shrink-0 place-items-center rounded-[18px] bg-brand-600 text-2xl font-bold shadow-glow sm:h-20 sm:w-20">
-                  {profileInitial}
+                <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-[18px] bg-brand-600 text-2xl font-bold shadow-glow sm:h-20 sm:w-20">
+                  {profilePhotoUrl ? (
+                    <img
+                      src={profilePhotoUrl}
+                      alt={formValues.fullName ? `${formValues.fullName} profile` : 'Profile'}
+                      className="h-full w-full object-cover"
+                      loading="eager"
+                      decoding="async"
+                    />
+                  ) : (
+                    profileInitial
+                  )}
                 </div>
                 <div className="min-w-0">
                   <h1 className="truncate text-[1.65rem] font-extrabold leading-tight tracking-normal sm:text-3xl">
@@ -359,6 +376,17 @@ const SettingsPage = () => {
           <Card className="space-y-4 rounded-[18px] p-4 sm:p-5">
             <FieldSectionTitle icon={UserRound}>Personal details</FieldSectionTitle>
             <div className="grid gap-3 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <ProfilePhotoUploader
+                  uid={currentUser?.uid}
+                  role={userProfile?.role}
+                  value={formValues.profilePhotoUrl}
+                  fullName={formValues.fullName}
+                  disabled={!isEditing || savingProfile}
+                  onChange={(url) => updateFormValue('profilePhotoUrl', url)}
+                  onError={(error) => toast.error(getFirebaseErrorMessage(error))}
+                />
+              </div>
               <InputField
                 label="Full name"
                 disabled={profileFieldsDisabled}

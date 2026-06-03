@@ -19,6 +19,7 @@ import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { InputField } from '../../components/common/InputField';
+import { ProfileAvatar } from '../../components/common/ProfileAvatar';
 import { PageSEO } from '../../components/common/PageSEO';
 import { Skeleton } from '../../components/common/Skeleton';
 import { AppShell } from '../../components/layout/AppShell';
@@ -38,9 +39,7 @@ import { createNotification } from '../../services/notificationService';
 import { formatCurrency, formatDate, parseDateValue } from '../../utils/formatters';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { getDisplayLocationText, getLocationLabel } from '../../utils/location';
-
-const buildAvatarUrl = (fullName) =>
-  `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName || 'WorkLink Labour')}&background=1d4ed8&color=ffffff`;
+import { buildProfileAvatarDataUrl } from '../../utils/profileAvatar';
 
 const labourDashboardNavItems = [
   { label: 'Home', href: '#labour-home', icon: House },
@@ -76,7 +75,7 @@ const buildOwnLabourProfile = ({ currentUser, userProfile }) => {
     category: userProfile?.category || 'Labour professional',
     currentLocation,
     coordinates: userProfile?.coordinates || null,
-    profilePhoto: userProfile?.profilePhoto || currentUser?.photoURL || buildAvatarUrl(fullName),
+    profilePhoto: userProfile?.profilePhoto || buildProfileAvatarDataUrl(fullName),
     phoneNumber: userProfile?.phoneNumber || currentUser?.phoneNumber || '',
     availability: userProfile?.availability || 'Available',
     rating: Number(userProfile?.rating) || 0,
@@ -86,14 +85,6 @@ const buildOwnLabourProfile = ({ currentUser, userProfile }) => {
     reviews: []
   };
 };
-
-const getInitials = (value) =>
-  String(value || 'WL')
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((item) => item.charAt(0).toUpperCase())
-    .join('') || 'WL';
 
 const LightPanel = ({ id, className = '', children }) => (
   <section
@@ -143,7 +134,6 @@ const LabourDashboardPage = () => {
     [
       currentUser?.displayName,
       currentUser?.phoneNumber,
-      currentUser?.photoURL,
       currentUser?.uid,
       userProfile?.availability,
       userProfile?.category,
@@ -375,6 +365,7 @@ const LabourDashboardPage = () => {
         currentUserId: currentUser.uid,
         otherUserId: booking.clientId,
         metadata: {
+          bookingId: booking.id,
           currentUserProfile: {
             fullName: dashboardProfile.fullName,
             role: 'labour',
@@ -609,10 +600,10 @@ const LabourDashboardPage = () => {
 
           <LightPanel id="labour-home" className="p-3.5 sm:p-5">
             <div className="flex items-center gap-3 sm:gap-4">
-              <img
+              <ProfileAvatar
                 src={dashboardProfile.profilePhoto}
-                alt={dashboardProfile.fullName}
-                className="h-16 w-16 flex-none rounded-[18px] object-cover sm:h-[4.5rem] sm:w-[4.5rem] sm:rounded-[20px]"
+                name={dashboardProfile.fullName}
+                className="h-16 w-16 rounded-[18px] sm:h-[4.5rem] sm:w-[4.5rem] sm:rounded-[20px]"
               />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -663,10 +654,17 @@ const LabourDashboardPage = () => {
                   return (
                     <div key={booking.id} className="rounded-[18px] border border-slate-200 bg-slate-50 p-4">
                       <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-base font-bold text-slate-950 sm:text-lg">{booking.clientName}</p>
-                          <p className="mt-1 text-sm font-medium text-slate-500">{booking.serviceType}</p>
-                          <p className="mt-2 text-sm text-slate-500">{formatDate(booking.appointmentAt)}</p>
+                        <div className="flex min-w-0 items-center gap-3">
+                          <ProfileAvatar
+                            src={booking.clientProfilePhoto}
+                            name={booking.clientName}
+                            className="h-12 w-12 rounded-xl"
+                          />
+                          <div className="min-w-0">
+                            <p className="truncate text-base font-bold text-slate-950 sm:text-lg">{booking.clientName}</p>
+                            <p className="mt-1 text-sm font-medium text-slate-500">{booking.serviceType}</p>
+                            <p className="mt-2 text-sm text-slate-500">{formatDate(booking.appointmentAt)}</p>
+                          </div>
                         </div>
                         <Badge tone={booking.status === 'pending' ? 'amber' : 'emerald'}>{booking.status}</Badge>
                       </div>
@@ -690,7 +688,7 @@ const LabourDashboardPage = () => {
                           <Phone size={15} />
                           Call
                         </Button>
-                        <Button as={Link} to="/chat" size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => handleOpenClientChat(booking)}>
+                        <Button as={Link} to={`/chat?target=${encodeURIComponent(booking.clientId)}&booking=${encodeURIComponent(booking.id)}`} size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => handleOpenClientChat(booking)}>
                           <MessageCircle size={15} />
                           Chat
                         </Button>
@@ -764,9 +762,11 @@ const LabourDashboardPage = () => {
                   .map((booking) => (
                     <div key={booking.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-3 first:pt-0 last:pb-0 sm:py-4">
                       <div className="flex min-w-0 items-center gap-3">
-                        <span className="grid h-11 w-11 flex-none place-items-center rounded-xl bg-brand-50 text-sm font-bold text-brand-700 sm:h-14 sm:w-14 sm:rounded-2xl sm:text-base">
-                          {getInitials(booking.clientName)}
-                        </span>
+                        <ProfileAvatar
+                          src={booking.clientProfilePhoto}
+                          name={booking.clientName}
+                          className="h-11 w-11 rounded-xl sm:h-14 sm:w-14 sm:rounded-2xl"
+                        />
                         <span className="min-w-0">
                           <span className="block truncate text-base font-bold text-slate-950 sm:text-lg">{booking.clientName || 'Client'}</span>
                           <span className="mt-0.5 block truncate text-sm text-slate-500 sm:mt-1 sm:text-base">{booking.serviceType}</span>

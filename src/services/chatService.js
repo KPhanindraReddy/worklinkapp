@@ -145,6 +145,7 @@ export const ensureConversation = async ({ currentUserId, otherUserId, metadata 
       conversationRef,
       {
         participantProfiles,
+        ...restMetadata,
         updatedAt: serverTimestamp()
       },
       { merge: true }
@@ -171,6 +172,7 @@ export const sendMessage = async (conversationId, payload) => {
   await updateDoc(doc(db, 'conversations', conversationId), {
     lastMessage: payload.text || 'Image',
     lastMessageAt: serverTimestamp(),
-    [`readBy.${payload.senderId}`]: true
+    [`readBy.${payload.senderId}`]: true,
+    [`readBy.${payload.recipientId}`]: false
   });
 };
