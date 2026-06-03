@@ -8,10 +8,12 @@ import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { AppErrorBoundary } from './components/common/AppErrorBoundary';
 import { installRuntimeRecovery } from './utils/runtimeRecovery';
+import { registerServiceWorker } from './utils/registerServiceWorker';
 import './i18n';
 import './styles/index.css';
 
 installRuntimeRecovery();
+registerServiceWorker();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
