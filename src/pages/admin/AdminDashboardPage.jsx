@@ -1,11 +1,17 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
+  AlertTriangle,
+  CircleOff,
+  ExternalLink,
   LoaderCircle,
   Mail,
   MapPin,
+  MessageSquareWarning,
+  Pencil,
   Phone,
   Search,
+  ShieldAlert,
   UserRound
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -14,19 +20,24 @@ import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
+import { SelectField } from '../../components/common/SelectField';
 import { Skeleton } from '../../components/common/Skeleton';
 import { VerificationBadge } from '../../components/common/VerificationBadge';
 import { AppShell } from '../../components/layout/AppShell';
 import { MetricsGrid } from '../../components/dashboard/MetricsGrid';
 import {
   banUser,
+  getAdminDiagnostics,
   getAdminOverview,
   listAdminProfiles,
+  updateAdminUserProfile,
   verifyLabourAccount
 } from '../../services/adminService';
+import { firebaseConfig } from '../../firebase/env';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, fromNow } from '../../utils/formatters';
 import { getLocationLabel } from '../../utils/location';
+import { availabilityOptions, workCategories } from '../../utils/constants';
 
 const AdminDashboardPage = () => {
   const [overview, setOverview] = useState({
@@ -36,6 +47,13 @@ const AdminDashboardPage = () => {
     demandByLocation: []
   });
   const [overviewLoading, setOverviewLoading] = useState(true);
+  const [diagnostics, setDiagnostics] = useState({
+    failedNotifications: [],
+    functionErrors: [],
+    stuckBookings: [],
+    messageFailures: []
+  });
+  const [diagnosticsLoading, setDiagnosticsLoading] = useState(true);
   const [labourDirectory, setLabourDirectory] = useState({
     items: [],
     cursor: null,
@@ -52,6 +70,8 @@ const AdminDashboardPage = () => {
     labour: '',
     client: ''
   });
+  const [editingProfile, setEditingProfile] = useState(null);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const loadOverview = async () => {
     setOverviewLoading(true);
@@ -62,6 +82,18 @@ const AdminDashboardPage = () => {
       toast.error(getFirebaseErrorMessage(error));
     } finally {
       setOverviewLoading(false);
+    }
+  };
+
+  const loadDiagnostics = async () => {
+    setDiagnosticsLoading(true);
+    try {
+      const response = await getAdminDiagnostics();
+      setDiagnostics(response);
+    } catch (error) {
+      toast.error(getFirebaseErrorMessage(error));
+    } finally {
+      setDiagnosticsLoading(false);
     }
   };
 
@@ -104,6 +136,7 @@ const AdminDashboardPage = () => {
 
   useEffect(() => {
     loadOverview();
+    loadDiagnostics();
     loadDirectory('labour', { reset: true });
     loadDirectory('client', { reset: true });
   }, []);
@@ -143,6 +176,7 @@ const AdminDashboardPage = () => {
         )
       }));
       await loadOverview();
+      await loadDiagnostics();
     } catch (error) {
       toast.error(getFirebaseErrorMessage(error));
     }
@@ -165,6 +199,7 @@ const AdminDashboardPage = () => {
         )
       }));
       await loadOverview();
+      await loadDiagnostics();
     } catch (error) {
       toast.error(getFirebaseErrorMessage(error));
     }
@@ -210,6 +245,93 @@ const AdminDashboardPage = () => {
         .includes(query)
     );
   }, [clientDirectory.items, filters.client]);
+
+  const formatStuckDuration = (ageMs) => {
+    const totalMinutes = Math.max(0, Math.round(Number(ageMs || 0) / 60000));
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return hours ? `${hours}h ${minutes}m` : `${minutes}m`;
+  };
+  const firebaseProjectId = firebaseConfig.projectId || 'worklink-labour';
+  const functionsLogsUrl = `https://console.cloud.google.com/functions/list?project=${encodeURIComponent(
+    firebaseProjectId
+  )}`;
+  const firestoreLogsUrl = `https://console.firebase.google.com/project/${encodeURIComponent(
+    firebaseProjectId
+  )}/firestore/data/~2FwhatsappLogs`;
+
+  const openProfileEditor = (item, role) => {
+    setEditingProfile({
+      userId: item.id,
+      role,
+      fullName: item.fullName || '',
+      phoneNumber: item.phoneNumber || '',
+      email: item.email || '',
+      location: item.location || '',
+      currentLocation: item.currentLocation || '',
+      accountStatus: item.accountStatus || 'active',
+      category: item.category || '',
+      availability: item.availability || 'Available',
+      experienceYears: Number(item.experienceYears || 0),
+      skills: Array.isArray(item.skills) ? item.skills.join(', ') : item.skills || '',
+      about: item.about || ''
+    });
+  };
+
+  const updateEditField = (key, value) => {
+    setEditingProfile((prev) => (prev ? { ...prev, [key]: value } : prev));
+  };
+
+  const closeProfileEditor = () => {
+    if (!savingEdit) {
+      setEditingProfile(null);
+    }
+  };
+
+  const saveEditedProfile = async () => {
+    if (!editingProfile?.userId || !editingProfile?.role) {
+      return;
+    }
+
+    setSavingEdit(true);
+
+    try {
+      await updateAdminUserProfile({
+        userId: editingProfile.userId,
+        role: editingProfile.role,
+        payload: editingProfile
+      });
+
+      const setState = editingProfile.role === 'client' ? setClientDirectory : setLabourDirectory;
+      setState((prev) => ({
+        ...prev,
+        items: prev.items.map((item) =>
+          item.id === editingProfile.userId
+            ? {
+                ...item,
+                ...editingProfile,
+                skills:
+                  editingProfile.role === 'labour'
+                    ? String(editingProfile.skills || '')
+                        .split(',')
+                        .map((value) => value.trim())
+                        .filter(Boolean)
+                    : item.skills
+              }
+            : item
+        )
+      }));
+
+      toast.success('Profile details updated.');
+      setEditingProfile(null);
+      await loadOverview();
+      await loadDiagnostics();
+    } catch (error) {
+      toast.error(getFirebaseErrorMessage(error));
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   return (
     <AppShell>
@@ -310,6 +432,133 @@ const AdminDashboardPage = () => {
                 </div>
               </Card>
             </div>
+
+            <Card>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Diagnostics</h2>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    Track failed notifications, function errors, stuck bookings, and message delivery issues.
+                  </p>
+                </div>
+                <div className="grid w-full gap-2 sm:w-auto sm:grid-cols-3">
+                  <Button as="a" href={functionsLogsUrl} target="_blank" rel="noreferrer" type="button" size="sm" variant="outline">
+                    <ExternalLink size={15} />
+                    Functions logs
+                  </Button>
+                  <Button as="a" href={firestoreLogsUrl} target="_blank" rel="noreferrer" type="button" size="sm" variant="outline">
+                    <ExternalLink size={15} />
+                    WhatsApp logs
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" onClick={loadDiagnostics} disabled={diagnosticsLoading}>
+                    {diagnosticsLoading ? <LoaderCircle size={15} className="animate-spin" /> : <Search size={15} />}
+                    Refresh
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid gap-5 md:grid-cols-2">
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
+                  <div className="flex items-center gap-2 text-amber-800">
+                    <AlertTriangle size={16} />
+                    <h3 className="font-semibold">Failed notifications</h3>
+                  </div>
+                  <div className="mt-3 space-y-3">
+                    {diagnosticsLoading ? (
+                      <Skeleton className="h-24 w-full rounded-xl" />
+                    ) : diagnostics.failedNotifications.length ? (
+                      diagnostics.failedNotifications.slice(0, 3).map((item) => (
+                        <div key={item.id} className="rounded-xl border border-amber-200 bg-white p-3 text-sm">
+                          <p className="font-semibold text-slate-900">
+                            {item.serviceType || 'Service'} • {item.status || 'unknown'}
+                          </p>
+                          <p className="mt-1 text-slate-600">
+                            {item.labourName || 'Labour'} / {item.clientName || 'Client'}
+                          </p>
+                          <p className="mt-1 text-amber-700">{item.lastErrorMessage}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-amber-900">No failed notifications in recent records.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4">
+                  <div className="flex items-center gap-2 text-rose-800">
+                    <ShieldAlert size={16} />
+                    <h3 className="font-semibold">Function errors</h3>
+                  </div>
+                  <div className="mt-3 space-y-3">
+                    {diagnosticsLoading ? (
+                      <Skeleton className="h-24 w-full rounded-xl" />
+                    ) : diagnostics.functionErrors.length ? (
+                      diagnostics.functionErrors.slice(0, 3).map((item) => (
+                        <div key={item.id} className="rounded-xl border border-rose-200 bg-white p-3 text-sm">
+                          <p className="font-semibold text-slate-900">
+                            {item.kind || 'unknown'} • HTTP {item.status || 0}
+                          </p>
+                          <p className="mt-1 text-slate-600">{item.bookingId ? `Booking ${item.bookingId}` : 'No booking id'}</p>
+                          <p className="mt-1 text-rose-700">{item.errorMessage}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-rose-900">No recent function errors.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-4">
+                  <div className="flex items-center gap-2 text-blue-800">
+                    <CircleOff size={16} />
+                    <h3 className="font-semibold">Stuck bookings</h3>
+                  </div>
+                  <div className="mt-3 space-y-3">
+                    {diagnosticsLoading ? (
+                      <Skeleton className="h-24 w-full rounded-xl" />
+                    ) : diagnostics.stuckBookings.length ? (
+                      diagnostics.stuckBookings.slice(0, 3).map((item) => (
+                        <div key={item.id} className="rounded-xl border border-blue-200 bg-white p-3 text-sm">
+                          <p className="font-semibold text-slate-900">
+                            {item.status} • stuck {formatStuckDuration(item.ageMs)}
+                          </p>
+                          <p className="mt-1 text-slate-600">
+                            {item.serviceType || 'Service'} • {item.labourName || 'Labour'}
+                          </p>
+                          <p className="mt-1 text-blue-700">{fromNow(item.updatedAt)}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-blue-900">No stuck bookings detected.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-violet-200 bg-violet-50/70 p-4">
+                  <div className="flex items-center gap-2 text-violet-800">
+                    <MessageSquareWarning size={16} />
+                    <h3 className="font-semibold">Message failures</h3>
+                  </div>
+                  <div className="mt-3 space-y-3">
+                    {diagnosticsLoading ? (
+                      <Skeleton className="h-24 w-full rounded-xl" />
+                    ) : diagnostics.messageFailures.length ? (
+                      diagnostics.messageFailures.slice(0, 3).map((item) => (
+                        <div key={item.id} className="rounded-xl border border-violet-200 bg-white p-3 text-sm">
+                          <p className="font-semibold text-slate-900">
+                            {item.kind || 'message'} • HTTP {item.status || 0}
+                          </p>
+                          <p className="mt-1 text-slate-600">{item.to || 'No phone'}</p>
+                          <p className="mt-1 text-violet-700">{item.errorMessage}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-violet-900">No recent message failures.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </Card>
 
             <Card>
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -419,6 +668,16 @@ const AdminDashboardPage = () => {
                               Approve ID
                             </Button>
                           ) : null}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="w-full sm:w-auto"
+                            onClick={() => openProfileEditor(labour, 'labour')}
+                          >
+                            <Pencil size={15} />
+                            Edit details
+                          </Button>
                           <Button as={Link} to={`/labour/${labour.id}`} size="sm" variant="outline" className="w-full sm:w-auto">
                             Open profile
                           </Button>
@@ -521,6 +780,16 @@ const AdminDashboardPage = () => {
                         </div>
                         <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap sm:gap-3">
                           <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="w-full sm:w-auto"
+                            onClick={() => openProfileEditor(client, 'client')}
+                          >
+                            <Pencil size={15} />
+                            Edit details
+                          </Button>
+                          <Button
                             size="sm"
                             variant="outline"
                             className="w-full sm:w-auto"
@@ -561,6 +830,98 @@ const AdminDashboardPage = () => {
           </div>
         </div>
       </section>
+
+      {editingProfile ? (
+        <div className="fixed inset-0 z-[60] grid place-items-end bg-slate-950/40 p-3 sm:place-items-center sm:p-5">
+          <Card className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-xl font-semibold text-slate-950">Edit {editingProfile.role} profile</h3>
+              <Badge tone="blue">{editingProfile.userId}</Badge>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <InputField
+                label="Full name"
+                value={editingProfile.fullName}
+                onChange={(event) => updateEditField('fullName', event.target.value)}
+              />
+              <InputField
+                label="Phone"
+                value={editingProfile.phoneNumber}
+                onChange={(event) => updateEditField('phoneNumber', event.target.value)}
+              />
+              <InputField
+                label="Email"
+                value={editingProfile.email}
+                onChange={(event) => updateEditField('email', event.target.value)}
+              />
+              <SelectField
+                label="Account status"
+                options={['active', 'banned']}
+                value={editingProfile.accountStatus}
+                onChange={(event) => updateEditField('accountStatus', event.target.value)}
+              />
+              <InputField
+                label="Location"
+                value={editingProfile.location}
+                onChange={(event) => updateEditField('location', event.target.value)}
+              />
+              {editingProfile.role === 'labour' ? (
+                <InputField
+                  label="Current location"
+                  value={editingProfile.currentLocation}
+                  onChange={(event) => updateEditField('currentLocation', event.target.value)}
+                />
+              ) : null}
+            </div>
+
+            {editingProfile.role === 'labour' ? (
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <SelectField
+                  label="Category"
+                  options={workCategories}
+                  value={editingProfile.category}
+                  onChange={(event) => updateEditField('category', event.target.value)}
+                />
+                <SelectField
+                  label="Availability"
+                  options={availabilityOptions}
+                  value={editingProfile.availability}
+                  onChange={(event) => updateEditField('availability', event.target.value)}
+                />
+                <InputField
+                  label="Experience years"
+                  type="number"
+                  min="0"
+                  value={editingProfile.experienceYears}
+                  onChange={(event) => updateEditField('experienceYears', event.target.value)}
+                />
+                <InputField
+                  label="Skills (comma separated)"
+                  value={editingProfile.skills}
+                  onChange={(event) => updateEditField('skills', event.target.value)}
+                />
+                <InputField
+                  label="About"
+                  value={editingProfile.about}
+                  onChange={(event) => updateEditField('about', event.target.value)}
+                  className="sm:col-span-2"
+                />
+              </div>
+            ) : null}
+
+            <div className="mt-6 grid gap-2 sm:flex sm:justify-end">
+              <Button type="button" variant="outline" onClick={closeProfileEditor} disabled={savingEdit}>
+                Cancel
+              </Button>
+              <Button type="button" onClick={saveEditedProfile} disabled={savingEdit}>
+                {savingEdit ? <LoaderCircle size={15} className="animate-spin" /> : null}
+                Save changes
+              </Button>
+            </div>
+          </Card>
+        </div>
+      ) : null}
     </AppShell>
   );
 };

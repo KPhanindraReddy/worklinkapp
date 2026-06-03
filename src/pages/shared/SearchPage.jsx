@@ -66,6 +66,9 @@ const SearchPage = () => {
   );
   const searchOrigin = useMemo(() => liveOrigin || savedOrigin, [liveOrigin, savedOrigin]);
   const resolvedLocationName = useLocationName(searchOrigin);
+  const locationPermissionDenied =
+    geolocation.permission === 'denied' ||
+    /permission denied/i.test(String(geolocation.error || ''));
   const activeLocationLabel = useMemo(() => {
     if (searchOrigin) {
       return savedLocationLabel || resolvedLocationName || 'Live location captured';
@@ -285,6 +288,11 @@ const SearchPage = () => {
                     {geolocation.loading ? <LoaderCircle size={15} className="animate-spin" /> : <LocateFixed size={15} />}
                     {searchOrigin ? 'Update live location' : 'Use live location'}
                   </Button>
+                  {locationPermissionDenied ? (
+                    <p className="mt-2 text-xs font-semibold text-rose-700">
+                      Location permission denied. Enable location access for this site in browser settings, then try again.
+                    </p>
+                  ) : null}
                 </div>
               </div>
             </Card>

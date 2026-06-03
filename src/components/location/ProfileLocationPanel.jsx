@@ -39,6 +39,9 @@ export const ProfileLocationPanel = ({
     locationValue,
     hasCoordinates(savedCoordinates) ? savedLocationName || 'Live location captured' : ''
   );
+  const locationPermissionDenied =
+    geolocation.permission === 'denied' ||
+    /permission denied/i.test(String(geolocation.error || ''));
 
   const handleApplyLiveLocation = async () => {
     const coordinates = await geolocation.requestLocation({ force: true });
@@ -75,6 +78,11 @@ export const ProfileLocationPanel = ({
                   ? savedLabel
                   : geolocation.error || 'Save location once, then update it only when you move.'}
           </p>
+          {locationPermissionDenied ? (
+            <p className="mt-1 break-words text-xs font-semibold text-rose-700">
+              Location permission denied. Open browser settings and allow location for this site.
+            </p>
+          ) : null}
         </div>
         <div className="grid w-full gap-2 sm:w-auto sm:grid-cols-2">
           <Button

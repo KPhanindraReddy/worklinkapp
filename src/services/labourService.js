@@ -36,6 +36,7 @@ const normalizeAvailabilityValue = (value) => {
 const buildSearchCacheKey = (filters, resolvedCategory, origin, maxDistanceKm) =>
   JSON.stringify({
     skill: String(filters.skill ?? '').trim().toLowerCase(),
+    keywords: String(filters.keywords ?? '').trim().toLowerCase(),
     category: String(filters.category ?? '').trim().toLowerCase(),
     resolvedCategory: String(resolvedCategory ?? '').trim().toLowerCase(),
     availability: String(filters.availability ?? '').trim().toLowerCase(),
@@ -195,6 +196,7 @@ export const fetchFeaturedLabours = async (count = 6) => {
 export const searchLabours = async (filters = {}, origin) => {
   const resolvedCategory = filters.category || resolveCategoryFromSkill(filters.skill);
   const availability = normalizeAvailabilityValue(filters.availability);
+  const keywordQuery = [filters.skill, filters.keywords].filter(Boolean).join(' ').trim();
   const normalizedOrigin = normalizeCoordinates(origin);
   const maxDistanceKm = resolveMaxDistanceKm(filters, normalizedOrigin);
   const cacheKey = buildSearchCacheKey(filters, resolvedCategory, normalizedOrigin, maxDistanceKm);
@@ -228,14 +230,13 @@ export const searchLabours = async (filters = {}, origin) => {
 
     return recommendLabours(items, filters, normalizedOrigin)
       .filter((labour) => {
-        const matchesSkill = filters.skill ? labourMatchesServiceQuery(labour, filters.skill) : true;
+        const matchesKeywords = keywordQuery
+          ? labourMatchesServiceQuery(labour, keywordQuery)
+          : true;
         const matchesCategory = filters.category
           ? labourMatchesCategory(labour, filters.category)
           : true;
-        const matchesService =
-          filters.skill && filters.category
-            ? matchesSkill || matchesCategory
-            : matchesSkill && matchesCategory;
+        const matchesService = matchesKeywords && matchesCategory;
         const matchesPrice = filters.maxPrice ? labour.dailyWage <= Number(filters.maxPrice) : true;
         const matchesExperience = filters.minExperience
           ? labour.experienceYears >= Number(filters.minExperience)

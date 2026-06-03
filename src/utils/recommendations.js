@@ -1,6 +1,12 @@
 import { clamp } from './formatters';
 
-const normalizeValue = (value) => String(value ?? '').trim().toLowerCase();
+const normalizeValue = (value) =>
+  String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 const toSearchableString = (value) => {
   if (typeof value === 'string' || typeof value === 'number') {
@@ -31,14 +37,14 @@ const toSearchableList = (value) => {
   return [];
 };
 
-export const labourMatchesServiceQuery = (labour, serviceQuery = '') => {
-  const normalizedQuery = normalizeValue(serviceQuery);
+const tokenizeValue = (value) =>
+  normalizeValue(value)
+    .split(' ')
+    .map((token) => token.trim())
+    .filter(Boolean);
 
-  if (!normalizedQuery) {
-    return true;
-  }
-
-  const searchableValues = [
+const buildLabourSearchValues = (labour) =>
+  [
     normalizeValue(labour.category),
     normalizeValue(labour.about),
     normalizeValue(labour.fullName),
@@ -53,8 +59,34 @@ export const labourMatchesServiceQuery = (labour, serviceQuery = '') => {
     ...toSearchableList(labour.previousWorkHistory)
   ].filter(Boolean);
 
-  return searchableValues.some(
-    (value) => value.includes(normalizedQuery) || normalizedQuery.includes(value)
+const buildLabourSearchTokens = (labour) =>
+  Array.from(
+    new Set(
+      buildLabourSearchValues(labour)
+        .flatMap((value) => tokenizeValue(value))
+        .filter(Boolean)
+    )
+  );
+
+export const labourMatchesServiceQuery = (labour, serviceQuery = '') => {
+  const normalizedQuery = normalizeValue(serviceQuery);
+  const queryTokens = tokenizeValue(serviceQuery);
+
+  if (!normalizedQuery || !queryTokens.length) {
+    return true;
+  }
+
+  const searchableValues = buildLabourSearchValues(labour);
+  const searchTokens = buildLabourSearchTokens(labour);
+
+  return queryTokens.every(
+    (queryToken) =>
+      searchTokens.some(
+        (token) => token.includes(queryToken) || queryToken.includes(token)
+      ) ||
+      searchableValues.some(
+        (value) => value.includes(queryToken) || queryToken.includes(value)
+      )
   );
 };
 

@@ -182,6 +182,7 @@ const ClientDashboardPage = () => {
   const [resolvingServiceLocation, setResolvingServiceLocation] = useState(false);
   const [coverageMessage, setCoverageMessage] = useState('');
   const lastDemandKeyRef = useRef('');
+  const lastLocationErrorRef = useRef('');
 
   useEffect(() => {
     let isActive = true;
@@ -189,17 +190,18 @@ const ClientDashboardPage = () => {
     geolocation.requestLocation({ force: true }).then((coordinates) => {
       if (isActive && coordinates) {
         setLiveCoordinates(coordinates);
-        setRequestCoordinates((prev) => (serviceLocationMode === 'live' ? coordinates : prev));
+        setRequestCoordinates((prev) => prev || coordinates);
       }
     });
 
     return () => {
       isActive = false;
     };
-  }, [geolocation.requestLocation, serviceLocationMode]);
+  }, [geolocation.requestLocation]);
 
   useEffect(() => {
-    if (geolocation.error) {
+    if (geolocation.error && geolocation.error !== lastLocationErrorRef.current) {
+      lastLocationErrorRef.current = geolocation.error;
       toast.error(`Location error: ${geolocation.error}`);
     }
   }, [geolocation.error]);
