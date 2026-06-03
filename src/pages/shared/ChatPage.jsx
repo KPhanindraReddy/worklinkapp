@@ -41,6 +41,13 @@ const ChatPage = () => {
   const [conversations, setConversations] = useState([]);
   const [activeConversation, setActiveConversation] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [accessError, setAccessError] = useState('');
+
+  const handleChatError = (error) => {
+    const message = getFirebaseErrorMessage(error);
+    setAccessError(message);
+    toast.error(message);
+  };
 
   useEffect(() => {
     if (!currentUser) {
@@ -54,7 +61,7 @@ const ChatPage = () => {
       (items) => {
         setConversations(items.map((item) => decorateConversationForUser(item, currentUser.uid)));
       },
-      (error) => toast.error(getFirebaseErrorMessage(error))
+      handleChatError
     );
   }, [currentUser?.uid]);
 
@@ -104,7 +111,7 @@ const ChatPage = () => {
           return;
         }
       })
-      .catch((error) => toast.error(getFirebaseErrorMessage(error)));
+      .catch((error) => handleChatError(error));
 
     return () => {
       isActive = false;
@@ -156,7 +163,7 @@ const ChatPage = () => {
     return subscribeMessages(
       activeConversation.id,
       setMessages,
-      (error) => toast.error(getFirebaseErrorMessage(error))
+      handleChatError
     );
   }, [activeConversation?.id]);
 
@@ -216,12 +223,23 @@ const ChatPage = () => {
             activeConversationId={activeConversation?.id}
             onSelect={setActiveConversation}
           />
-          <ChatWindow
-            conversation={activeConversation}
-            messages={messages}
-            currentUserId={currentUser?.uid}
-            onSend={handleSend}
-          />
+          <div className="space-y-4">
+            {accessError ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+                <p className="font-semibold">Chat is blocked by Firestore rules or indexes right now.</p>
+                <p className="mt-2">
+                  Deploy the WorkLink Firestore rules and indexes, then refresh the page. Chat and notifications
+                  will start working once Firestore allows the required reads/writes.
+                </p>
+              </div>
+            ) : null}
+            <ChatWindow
+              conversation={activeConversation}
+              messages={messages}
+              currentUserId={currentUser?.uid}
+              onSend={handleSend}
+            />
+          </div>
         </div>
       </section>
     </AppShell>

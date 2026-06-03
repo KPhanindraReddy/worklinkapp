@@ -14,7 +14,6 @@ import { useLocationName } from '../../hooks/useLocationName';
 import { subscribeBookingsForUser } from '../../services/bookingService';
 import { subscribeLabourById } from '../../services/labourService';
 import { subscribeReviewsForLabour } from '../../services/reviewService';
-import { formatCurrency } from '../../utils/formatters';
 import { getDisplayLocationText } from '../../utils/location';
 
 const ProfileStat = ({ value, label, tone = 'slate' }) => {
@@ -75,7 +74,7 @@ const LabourProfilePage = () => {
     () => bookings.filter((booking) => booking.status === 'completed'),
     [bookings]
   );
-  const completedJobs = completedBookings.length || Number(labour?.completedJobs || 0);
+  const completedJobs = Math.max(Number(labour?.completedJobs || 0), completedBookings.length);
   const ratingSummary = useMemo(() => {
     if (!profileReviews.length) {
       return {
@@ -227,7 +226,6 @@ const LabourProfilePage = () => {
               <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Profile details</h2>
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <ProfileStat value={labour.category || 'Service'} label="Service" tone="brand" />
-                <ProfileStat value={formatCurrency(labour.dailyWage || 0)} label="Daily wage" tone="emerald" />
                 <ProfileStat value={`${Number(labour.experienceYears || 0)} yrs`} label="Experience" tone="amber" />
                 <ProfileStat value={labour.responseTime || 'Fast'} label="Response" tone="slate" />
               </div>

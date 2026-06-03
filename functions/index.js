@@ -227,6 +227,22 @@ const markBooking = (bookingId, payload) =>
     { merge: true }
   );
 
+const incrementLabourCompletedJobs = async (labourId) => {
+  if (!labourId) {
+    return;
+  }
+
+  const updates = {
+    completedJobs: admin.firestore.FieldValue.increment(1),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+  };
+
+  await Promise.all([
+    db.collection('labours').doc(labourId).set(updates, { merge: true }),
+    db.collection('users').doc(labourId).set(updates, { merge: true })
+  ]);
+};
+
 const getWhatsAppFailureFields = (prefix, result) => {
   const error = result?.payload?.error || {};
 
@@ -399,6 +415,8 @@ exports.sendBookingStatusWhatsApp = onDocumentUpdated(
           Object.assign(updates, getWhatsAppFailureFields('completedLabour', result));
         }
       }
+
+      await incrementLabourCompletedJobs(after.labourId);
     }
 
     if (Object.keys(updates).length) {
