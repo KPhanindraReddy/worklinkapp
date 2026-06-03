@@ -119,6 +119,7 @@ const SettingsPage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [availabilityOverride, setAvailabilityOverride] = useState('');
   const [labourBookings, setLabourBookings] = useState([]);
+  const [labourBookingsLoaded, setLabourBookingsLoaded] = useState(false);
   const [labourReviews, setLabourReviews] = useState([]);
 
   useEffect(() => {
@@ -139,14 +140,23 @@ const SettingsPage = () => {
   useEffect(() => {
     if (!currentUser?.uid || userProfile?.role !== 'labour') {
       setLabourBookings([]);
+      setLabourBookingsLoaded(false);
       setLabourReviews([]);
       return undefined;
     }
 
+    setLabourBookingsLoaded(false);
+
     const unsubscribeBookings = subscribeBookingsForUser(
       { userId: currentUser.uid, role: 'labour' },
-      setLabourBookings,
-      () => setLabourBookings([])
+      (nextBookings) => {
+        setLabourBookings(nextBookings);
+        setLabourBookingsLoaded(true);
+      },
+      () => {
+        setLabourBookings([]);
+        setLabourBookingsLoaded(true);
+      }
     );
     const unsubscribeReviews = subscribeReviewsForLabour(
       currentUser.uid,
@@ -266,6 +276,7 @@ const SettingsPage = () => {
   const completedJobs = labourBookings.filter(
     (booking) => booking.status === 'completed' && booking.paymentStatus === 'paid'
   ).length;
+  const completedJobsDisplay = labourBookingsLoaded ? completedJobs : '...';
   const rating = labourReviews.length
     ? labourReviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / labourReviews.length
     : Number(userProfile?.rating) || 0;
@@ -328,7 +339,7 @@ const SettingsPage = () => {
             {isLabour ? (
               <div className="px-4 py-3 sm:px-5">
                 <div className="flex items-stretch divide-x divide-slate-100 rounded-[16px] border border-slate-200 bg-white px-1 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.08)]">
-                  <ProfileStat value={completedJobs} label="Jobs done" tone="emerald" />
+                  <ProfileStat value={completedJobsDisplay} label="Jobs done" tone="emerald" />
                   <ProfileStat value={rating ? rating.toFixed(1) : '0.0'} label="Rating" tone="amber" />
                   <ProfileStat value={primarySkill} label="Skills" tone="brand" />
                 </div>
