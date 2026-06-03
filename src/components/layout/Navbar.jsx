@@ -273,7 +273,7 @@ export const Navbar = () => {
             showTagline
             className="max-w-[9rem] sm:max-w-none"
           />
-          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2 lg:hidden">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
             {currentUser ? (
               <>
                 {quickLinks.map((link) => {
@@ -315,15 +315,6 @@ export const Navbar = () => {
                 Login
               </Button>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-10 w-10 rounded-full p-0 shadow-sm"
-              onClick={() => setIsOpen((prev) => !prev)}
-              aria-label="Toggle navigation"
-            >
-              {isOpen ? <X size={18} /> : <Menu size={18} />}
-            </Button>
           </div>
         </div>
 

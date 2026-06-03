@@ -19,7 +19,6 @@ import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { EmptyState } from '../../components/common/EmptyState';
 import { InputField } from '../../components/common/InputField';
-import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUploader';
 import { PageSEO } from '../../components/common/PageSEO';
 import { SelectField } from '../../components/common/SelectField';
 import { Skeleton } from '../../components/common/Skeleton';
@@ -807,8 +806,7 @@ const ClientDashboardPage = () => {
   const scheduledVisits = bookings.filter((item) => item.requestMode === 'scheduled').length;
   const paymentsDue = awaitingPaymentBookings.length;
   const clientName = userProfile?.fullName || currentUser?.displayName || 'Client';
-  const clientAvatar =
-    userProfile?.profilePhoto || buildProfileAvatarDataUrl(clientName || 'Client');
+  const clientAvatar = userProfile?.profilePhoto || buildProfileAvatarDataUrl(clientName || 'Client');
 
   return (
     <AppShell hideFooter>
@@ -818,37 +816,17 @@ const ClientDashboardPage = () => {
         <div className="page-shell max-w-5xl space-y-3.5 sm:space-y-4">
           <LightPanel className="p-3.5 sm:p-5">
             <div className="flex items-center gap-3 sm:gap-4">
-              <ProfilePhotoUploader
-                compact
-                persistOnUpload
-                uid={currentUser?.uid}
-                role={userProfile?.role || 'client'}
-                value={clientAvatar}
-                fullName={clientName}
-                disabled={!currentUser}
-                onError={(error) => toast.error(getFirebaseErrorMessage(error))}
-              />
+              <img src={clientAvatar} alt={clientName} className="h-16 w-16 flex-none rounded-[18px] object-cover sm:h-[4.5rem] sm:w-[4.5rem] sm:rounded-[20px]" />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h1 className="truncate text-xl font-bold text-slate-950 sm:text-2xl">{clientName}</h1>
-                    <p className="mt-1 truncate text-sm font-medium text-slate-500 sm:mt-2 sm:text-base">Client · Nearby service requests</p>
                   </div>
-                  <Badge tone={clientOrigin ? 'emerald' : 'amber'}>
-                    {clientOrigin ? (serviceLocationMode === 'manual' ? 'Address set' : 'GPS active') : 'GPS pending'}
-                  </Badge>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2 sm:mt-4">
-                  <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700 sm:gap-2 sm:px-3 sm:py-1.5 sm:text-sm">
-                    <LocateFixed size={13} className="flex-none text-brand-600 sm:size-[15px]" />
-                    <span className="truncate">{clientLocationLabel}</span>
-                  </span>
-                  {selectedService ? (
-                    <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700 sm:px-3 sm:py-1.5 sm:text-sm">
-                      {selectedService}
-                    </span>
-                  ) : null}
-                </div>
+                <p className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700 sm:mt-4 sm:gap-2 sm:px-3 sm:py-1.5 sm:text-sm">
+                  <LocateFixed size={13} className="flex-none text-brand-600 sm:size-[15px]" />
+                  <span className="truncate">{clientLocationLabel}</span>
+                </p>
               </div>
             </div>
           </LightPanel>

@@ -292,19 +292,18 @@ const SettingsPage = () => {
                 {isEditing ? <X size={18} /> : <Pencil size={17} />}
               </Button>
               <div className="flex min-w-0 items-center gap-3 pr-12 sm:gap-4">
-                <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-[18px] bg-brand-600 text-2xl font-bold shadow-glow sm:h-20 sm:w-20">
-                  {profilePhotoUrl ? (
-                    <img
-                      src={profilePhotoUrl}
-                      alt={formValues.fullName ? `${formValues.fullName} profile` : 'Profile'}
-                      className="h-full w-full object-cover"
-                      loading="eager"
-                      decoding="async"
-                    />
-                  ) : (
-                    profileInitial
-                  )}
-                </div>
+                <ProfilePhotoUploader
+                  compact
+                  persistOnUpload
+                  uid={currentUser?.uid}
+                  role={userProfile?.role}
+                  value={profilePhotoUrl}
+                  fullName={formValues.fullName || userProfile?.fullName || currentUser?.displayName || 'Profile'}
+                  avatarClassName="h-16 w-16 sm:h-20 sm:w-20"
+                  disabled={!isEditing || savingProfile}
+                  onChange={(url) => updateFormValue('profilePhotoUrl', url)}
+                  onError={(error) => toast.error(getFirebaseErrorMessage(error))}
+                />
                 <div className="min-w-0">
                   <h1 className="truncate text-[1.65rem] font-extrabold leading-tight tracking-normal sm:text-3xl">
                     {formValues.fullName.trim() || 'Profile'}
@@ -376,17 +375,6 @@ const SettingsPage = () => {
           <Card className="space-y-4 rounded-[18px] p-4 sm:p-5">
             <FieldSectionTitle icon={UserRound}>Personal details</FieldSectionTitle>
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <ProfilePhotoUploader
-                  uid={currentUser?.uid}
-                  role={userProfile?.role}
-                  value={formValues.profilePhotoUrl}
-                  fullName={formValues.fullName}
-                  disabled={!isEditing || savingProfile}
-                  onChange={(url) => updateFormValue('profilePhotoUrl', url)}
-                  onError={(error) => toast.error(getFirebaseErrorMessage(error))}
-                />
-              </div>
               <InputField
                 label="Full name"
                 disabled={profileFieldsDisabled}

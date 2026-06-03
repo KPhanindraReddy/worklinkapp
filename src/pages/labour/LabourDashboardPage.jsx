@@ -20,7 +20,6 @@ import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { InputField } from '../../components/common/InputField';
 import { ProfileAvatar } from '../../components/common/ProfileAvatar';
-import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUploader';
 import { PageSEO } from '../../components/common/PageSEO';
 import { Skeleton } from '../../components/common/Skeleton';
 import { AppShell } from '../../components/layout/AppShell';
@@ -601,15 +600,10 @@ const LabourDashboardPage = () => {
 
           <LightPanel id="labour-home" className="p-3.5 sm:p-5">
             <div className="flex items-center gap-3 sm:gap-4">
-              <ProfilePhotoUploader
-                compact
-                persistOnUpload
-                uid={currentUser?.uid}
-                role={userProfile?.role || 'labour'}
-                value={dashboardProfile.profilePhoto}
-                fullName={dashboardProfile.fullName}
-                disabled={!currentUser}
-                onError={(error) => toast.error(getFirebaseErrorMessage(error))}
+              <img
+                src={dashboardProfile.profilePhoto}
+                alt={dashboardProfile.fullName}
+                className="h-16 w-16 flex-none rounded-[18px] object-cover sm:h-[4.5rem] sm:w-[4.5rem] sm:rounded-[20px]"
               />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -617,23 +611,15 @@ const LabourDashboardPage = () => {
                     <h1 className="truncate text-xl font-bold text-slate-950 sm:text-2xl">
                       {dashboardProfile.fullName}
                     </h1>
-                    <p className="mt-1 truncate text-sm font-medium text-slate-500 sm:mt-2 sm:text-base">
-                      Field worker · {dashboardProfile.category}
-                    </p>
                   </div>
                   <Badge tone={dashboardProfile.availability === 'Available' ? 'emerald' : 'amber'} className="mt-1">
                     {updatingAvailability ? 'Updating' : dashboardProfile.availability}
                   </Badge>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2 sm:mt-4">
-                  <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700 sm:px-3 sm:py-1.5 sm:text-sm">
-                    {dashboardProfile.category}
-                  </span>
-                  <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700 sm:gap-2 sm:px-3 sm:py-1.5 sm:text-sm">
-                    <MapPin size={13} className="flex-none text-rose-500 sm:size-[15px]" />
-                    <span className="truncate">{dashboardLocationLabel}</span>
-                  </span>
-                </div>
+                <p className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700 sm:mt-4 sm:gap-2 sm:px-3 sm:py-1.5 sm:text-sm">
+                  <MapPin size={13} className="flex-none text-rose-500 sm:size-[15px]" />
+                  <span className="truncate">{dashboardLocationLabel}</span>
+                </p>
               </div>
             </div>
           </LightPanel>
