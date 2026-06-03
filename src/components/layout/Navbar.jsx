@@ -76,6 +76,8 @@ const ProfileMenu = ({
           src={avatarSrc}
           name={profileName || profileLabel}
           className={compact ? 'h-10 w-10 rounded-full' : 'h-8 w-8 rounded-full'}
+          loading="eager"
+          decoding="sync"
         />
         {!compact ? (
           <span className="hidden max-w-[104px] truncate text-sm font-semibold text-slate-700 xl:block">
@@ -89,7 +91,13 @@ const ProfileMenu = ({
         <div className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-soft">
           <div className="border-b border-slate-100 px-3 py-3">
             <div className="flex items-center gap-3">
-              <ProfileAvatar src={avatarSrc} name={profileName || profileLabel} className="h-10 w-10 rounded-full" />
+              <ProfileAvatar
+                src={avatarSrc}
+                name={profileName || profileLabel}
+                className="h-10 w-10 rounded-full"
+                loading="eager"
+                decoding="sync"
+              />
               <div className="min-w-0">
                 <div className="truncate text-sm font-semibold text-slate-950">{profileName || profileLabel}</div>
                 <div className="truncate text-xs text-slate-500">{role ? role.charAt(0).toUpperCase() + role.slice(1) : ''}</div>

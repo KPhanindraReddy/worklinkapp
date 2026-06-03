@@ -26,6 +26,8 @@ export const ProfileAvatar = ({
           src={src}
           alt={alt || (name ? `${name} profile` : 'Profile')}
           className={imgClassName}
+          width="160"
+          height="160"
           loading={loading}
           decoding={decoding}
           onError={() => setImageError(true)}
@@ -35,6 +37,8 @@ export const ProfileAvatar = ({
           src={fallbackSrc}
           alt={alt || (name ? `${name} profile` : 'Profile')}
           className={imgClassName}
+          width="160"
+          height="160"
           loading={loading}
           decoding={decoding}
         />

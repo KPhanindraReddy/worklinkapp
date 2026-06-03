@@ -634,6 +634,10 @@ const LabourDashboardPage = () => {
               <img
                 src={dashboardProfile.profilePhoto}
                 alt={dashboardProfile.fullName}
+                width="72"
+                height="72"
+                loading="eager"
+                decoding="sync"
                 className="h-16 w-16 flex-none rounded-[18px] object-cover sm:h-[4.5rem] sm:w-[4.5rem] sm:rounded-[20px]"
               />
               <div className="min-w-0 flex-1">

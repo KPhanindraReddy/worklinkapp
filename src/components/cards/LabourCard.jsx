@@ -36,6 +36,10 @@ export const LabourCard = ({ labour, showMatchScore = false, onQuickBook, compac
             <img
               src={labour.profilePhoto}
               alt={labour.fullName}
+              width="48"
+              height="48"
+              loading="lazy"
+              decoding="async"
               className="h-12 w-12 flex-none rounded-xl object-cover"
             />
             <div className="min-w-0 flex-1">
@@ -104,6 +108,10 @@ export const LabourCard = ({ labour, showMatchScore = false, onQuickBook, compac
         <img
           src={labour.profilePhoto}
           alt={labour.fullName}
+          width="64"
+          height="64"
+          loading="lazy"
+          decoding="async"
           className="h-16 w-16 rounded-2xl object-cover"
         />
         <div className="min-w-0 flex-1">

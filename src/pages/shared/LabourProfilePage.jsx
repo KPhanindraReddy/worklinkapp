@@ -158,6 +158,10 @@ const LabourProfilePage = () => {
                 <img
                   src={labour.profilePhoto}
                   alt={labour.fullName}
+                  width="144"
+                  height="144"
+                  loading="eager"
+                  decoding="sync"
                   className="h-28 w-28 rounded-2xl object-cover shadow-[0_16px_32px_rgba(15,23,42,0.16)] sm:h-32 sm:w-32 md:h-36 md:w-36"
                 />
               )}

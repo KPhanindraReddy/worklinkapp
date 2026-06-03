@@ -97,6 +97,10 @@ export const ChatWindow = ({
                   <img
                     src={message.imageUrl}
                     alt="Chat attachment"
+                    width="640"
+                    height="360"
+                    loading="lazy"
+                    decoding="async"
                     className="mb-3 max-h-56 w-full rounded-2xl object-cover"
                   />
                 ) : null}

@@ -5,7 +5,17 @@ export const BrandLogo = ({ className, onClick, to = '/', showTagline = false })
   const content = (
     <>
       <span className="grid h-9 w-9 flex-none place-items-center overflow-hidden rounded-2xl bg-slate-950 shadow-glow sm:h-10 sm:w-10">
-        <img src="/favicon.svg" alt="" className="h-full w-full object-cover" aria-hidden="true" />
+        <img
+          src="/favicon.svg"
+          alt=""
+          width="40"
+          height="40"
+          loading="eager"
+          decoding="sync"
+          fetchPriority="high"
+          className="h-full w-full object-cover"
+          aria-hidden="true"
+        />
       </span>
       <span className="min-w-0">
         <span className="block truncate font-display text-base font-bold leading-tight text-slate-950 sm:text-lg">

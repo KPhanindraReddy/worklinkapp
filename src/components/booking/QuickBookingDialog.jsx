@@ -286,6 +286,10 @@ export const QuickBookingDialog = ({
                 <img
                   src={labour.profilePhoto}
                   alt={labour.fullName}
+                  width="64"
+                  height="64"
+                  loading="eager"
+                  decoding="sync"
                   className="h-14 w-14 flex-none rounded-2xl object-cover sm:h-16 sm:w-16"
                 />
                 <div className="min-w-0">

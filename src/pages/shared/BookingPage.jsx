@@ -850,6 +850,10 @@ const BookingPage = () => {
                           <img
                             src={labour.profilePhoto}
                             alt={labour.fullName}
+                            width="56"
+                            height="56"
+                            loading="lazy"
+                            decoding="async"
                             className="h-14 w-14 rounded-2xl object-cover"
                           />
                           <div className="min-w-0 flex-1">
@@ -895,6 +899,10 @@ const BookingPage = () => {
                                 buildProfileAvatarDataUrl(booking.labourName || 'Labour')
                               }
                               alt={booking.labourName}
+                              width="48"
+                              height="48"
+                              loading="lazy"
+                              decoding="async"
                               className="h-12 w-12 flex-none rounded-2xl object-cover"
                             />
                             <div className="min-w-0">
@@ -1012,6 +1020,10 @@ const BookingPage = () => {
                               buildProfileAvatarDataUrl(booking.labourName || 'Labour')
                             }
                             alt={booking.labourName}
+                            width="44"
+                            height="44"
+                            loading="lazy"
+                            decoding="async"
                             className="h-11 w-11 flex-none rounded-2xl object-cover"
                           />
                           <div className="min-w-0">

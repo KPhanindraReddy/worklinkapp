@@ -816,7 +816,15 @@ const ClientDashboardPage = () => {
         <div className="page-shell max-w-5xl space-y-3.5 sm:space-y-4">
           <LightPanel className="p-3.5 sm:p-5">
             <div className="flex items-center gap-3 sm:gap-4">
-              <img src={clientAvatar} alt={clientName} className="h-16 w-16 flex-none rounded-[18px] object-cover sm:h-[4.5rem] sm:w-[4.5rem] sm:rounded-[20px]" />
+              <img
+                src={clientAvatar}
+                alt={clientName}
+                width="72"
+                height="72"
+                loading="eager"
+                decoding="sync"
+                className="h-16 w-16 flex-none rounded-[18px] object-cover sm:h-[4.5rem] sm:w-[4.5rem] sm:rounded-[20px]"
+              />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -983,7 +991,7 @@ const ClientDashboardPage = () => {
                       <button key={labour.id} type="button" className={`w-full rounded-[16px] border p-3 text-left transition ${selectedLabourId === labour.id ? 'border-brand-400 bg-brand-50' : 'border-slate-200 bg-white hover:border-brand-300'}`} onClick={() => handleScheduleLabour(labour)} disabled={Boolean(scheduleSubmittingId)}>
                         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                           <div className="flex min-w-0 items-center gap-3">
-                            <img src={labour.profilePhoto} alt={labour.fullName} className="h-11 w-11 flex-none rounded-xl object-cover" />
+                            <img src={labour.profilePhoto} alt={labour.fullName} width="44" height="44" loading="lazy" decoding="async" className="h-11 w-11 flex-none rounded-xl object-cover" />
                             <div className="min-w-0">
                               <p className="truncate text-sm font-bold text-slate-950 sm:text-base">{labour.fullName}</p>
                               <p className="mt-0.5 text-xs font-medium text-slate-500 sm:text-sm">{labour.category} - {formatDistanceKm(labour.distanceKm)}</p>
@@ -1134,7 +1142,7 @@ const ClientDashboardPage = () => {
                   serviceLabours.slice(0, 4).map((labour) => (
                     <button key={labour.id} type="button" className={`w-full rounded-[18px] border p-3 text-left transition ${selectedLabourId === labour.id ? 'border-brand-400 bg-brand-50' : 'border-slate-200 bg-white hover:border-brand-300'}`} onClick={() => setSelectedLabourId(labour.id)}>
                       <div className="flex min-w-0 items-center gap-3">
-                        <img src={labour.profilePhoto} alt={labour.fullName} className="h-12 w-12 flex-none rounded-2xl object-cover" />
+                        <img src={labour.profilePhoto} alt={labour.fullName} width="48" height="48" loading="lazy" decoding="async" className="h-12 w-12 flex-none rounded-2xl object-cover" />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-bold text-slate-950 sm:text-base">{labour.fullName}</p>
                           <p className="mt-1 truncate text-sm font-medium text-slate-500">{formatDistanceKm(labour.distanceKm)}</p>
@@ -1168,7 +1176,7 @@ const ClientDashboardPage = () => {
                       <button key={labour.id} type="button" className={`w-full rounded-[18px] border p-3 text-left transition ${selectedLabourId === labour.id ? 'border-brand-400 bg-brand-50' : 'border-slate-200 bg-white hover:border-brand-300'}`} onClick={() => handleScheduleLabour(labour)} disabled={Boolean(scheduleSubmittingId)}>
                         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                           <div className="flex min-w-0 items-center gap-3">
-                            <img src={labour.profilePhoto} alt={labour.fullName} className="h-12 w-12 flex-none rounded-2xl object-cover" />
+                            <img src={labour.profilePhoto} alt={labour.fullName} width="48" height="48" loading="lazy" decoding="async" className="h-12 w-12 flex-none rounded-2xl object-cover" />
                             <div className="min-w-0">
                               <p className="truncate text-sm font-bold text-slate-950 sm:text-base">{labour.fullName}</p>
                               <p className="mt-1 text-sm font-medium text-slate-500">{labour.category} · {formatDistanceKm(labour.distanceKm)}</p>
@@ -1324,6 +1332,10 @@ const ClientDashboardPage = () => {
                 <img
                   src={activeBookings[0].labourProfilePhoto || buildProfileAvatarDataUrl(activeBookings[0].labourName || 'Labour')}
                   alt={activeBookings[0].labourName}
+                  width="48"
+                  height="48"
+                  loading="eager"
+                  decoding="sync"
                   className="h-12 w-12 rounded-xl object-cover"
                 />
                 <div className="min-w-0">
@@ -1446,6 +1458,10 @@ const ClientDashboardPage = () => {
                               <img
                                 src={labour.profilePhoto}
                                 alt={labour.fullName}
+                                width="48"
+                                height="48"
+                                loading="lazy"
+                                decoding="async"
                                 className="h-12 w-12 flex-none rounded-xl object-cover"
                               />
                               <div className="min-w-0">
@@ -1539,6 +1555,10 @@ const ClientDashboardPage = () => {
                               buildProfileAvatarDataUrl(booking.labourName || 'Labour')
                             }
                             alt={booking.labourName}
+                            width="44"
+                            height="44"
+                            loading="lazy"
+                            decoding="async"
                             className="h-11 w-11 flex-none rounded-xl object-cover"
                           />
                           <div className="min-w-0">
@@ -1670,6 +1690,10 @@ const ClientDashboardPage = () => {
                         <img
                           src={labour.profilePhoto}
                           alt={labour.fullName}
+                          width="44"
+                          height="44"
+                          loading="lazy"
+                          decoding="async"
                           className="h-11 w-11 flex-none rounded-xl object-cover"
                         />
                         <div className="min-w-0 flex-1">
