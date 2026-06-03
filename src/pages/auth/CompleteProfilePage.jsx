@@ -6,6 +6,7 @@ import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
+import { PhoneInputField } from '../../components/common/PhoneInputField';
 import { SelectField } from '../../components/common/SelectField';
 import { TextAreaField } from '../../components/common/TextAreaField';
 import { ProfileLocationPanel } from '../../components/location/ProfileLocationPanel';
@@ -20,7 +21,6 @@ import {
 } from '../../utils/constants';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { getDisplayLocationText } from '../../utils/location';
-import { normalizeWhatsAppPhoneNumber } from '../../utils/phone';
 
 const toCommaText = (value) => (Array.isArray(value) ? value.join(', ') : value || '');
 
@@ -129,12 +129,6 @@ const CompleteProfilePage = () => {
       ...prev,
       [key]: value,
       ...(key === 'role' ? { role: value } : {})
-    }));
-
-  const normalizePhoneField = () =>
-    setFormValues((prev) => ({
-      ...prev,
-      phoneNumber: normalizeWhatsAppPhoneNumber(prev.phoneNumber)
     }));
 
   const canSaveProfile =
@@ -246,13 +240,10 @@ const CompleteProfilePage = () => {
                   onChange={(event) => handleChange('fullName', event.target.value)}
                   placeholder="Your full name"
                 />
-                <InputField
+                <PhoneInputField
                   label="Phone number"
                   value={formValues.phoneNumber}
                   onChange={(event) => handleChange('phoneNumber', event.target.value)}
-                  onBlur={normalizePhoneField}
-                  inputMode="tel"
-                  placeholder="919876543210"
                 />
                 <InputField
                   label="Email"

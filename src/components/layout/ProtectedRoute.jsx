@@ -1,19 +1,14 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getCompleteProfilePath, isProfileComplete, routeByRole } from '../../utils/authFlow';
-import { Skeleton } from '../common/Skeleton';
+import { AppLoadingState } from '../common/AppLoadingState';
 
 export const ProtectedRoute = ({ children, allowedRoles = [], allowIncompleteProfile = false }) => {
   const { currentUser, userProfile, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
-    return (
-      <div className="page-shell py-16">
-        <Skeleton className="h-12 w-48" />
-        <Skeleton className="mt-4 h-64 w-full" />
-      </div>
-    );
+    return <AppLoadingState title="Checking account" description="Verifying your login and profile..." />;
   }
 
   if (!currentUser) {

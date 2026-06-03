@@ -20,6 +20,7 @@ import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
+import { PhoneInputField } from '../../components/common/PhoneInputField';
 import { SelectField } from '../../components/common/SelectField';
 import { TextAreaField } from '../../components/common/TextAreaField';
 import { VerificationBadge } from '../../components/common/VerificationBadge';
@@ -32,7 +33,6 @@ import { subscribeReviewsForLabour } from '../../services/reviewService';
 import { availabilityOptions, languageOptions, workCategories } from '../../utils/constants';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { getDisplayLocationText } from '../../utils/location';
-import { normalizeWhatsAppPhoneNumber } from '../../utils/phone';
 
 const toCommaText = (value) => (Array.isArray(value) ? value.join(', ') : value || '');
 
@@ -188,12 +188,6 @@ const SettingsPage = () => {
     setFormValues((prev) => ({
       ...prev,
       [key]: value
-    }));
-
-  const normalizePhoneField = () =>
-    setFormValues((prev) => ({
-      ...prev,
-      phoneNumber: normalizeWhatsAppPhoneNumber(prev.phoneNumber)
     }));
 
   const saveProfile = async () => {
@@ -372,14 +366,11 @@ const SettingsPage = () => {
                 onChange={(event) => updateFormValue('fullName', event.target.value)}
                 placeholder="Your full name"
               />
-              <InputField
+              <PhoneInputField
                 label="Phone number"
                 disabled={profileFieldsDisabled}
                 value={formValues.phoneNumber}
                 onChange={(event) => updateFormValue('phoneNumber', event.target.value)}
-                onBlur={normalizePhoneField}
-                inputMode="tel"
-                placeholder="919876543210"
               />
               <InputField
                 label="Email"

@@ -16,10 +16,11 @@ import toast from 'react-hot-toast';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import clsx from 'clsx';
 import { Button } from '../../components/common/Button';
+import { AppLoadingState } from '../../components/common/AppLoadingState';
 import { Card } from '../../components/common/Card';
 import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
-import { Skeleton } from '../../components/common/Skeleton';
+import { PhoneInputField } from '../../components/common/PhoneInputField';
 import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
 import { isHiddenAdminAccount } from '../../utils/adminAccount';
@@ -27,7 +28,6 @@ import { isProfileComplete, resolvePostAuthPath } from '../../utils/authFlow';
 import { roles } from '../../utils/constants';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { readRedirectContext } from '../../utils/oauthRedirectContext';
-import { normalizeWhatsAppPhoneNumber } from '../../utils/phone';
 
 const initialFormState = {
   fullName: '',
@@ -292,12 +292,6 @@ const AuthPage = () => {
       ...(key === 'role' ? { role: value } : {})
     }));
 
-  const normalizePhoneField = () =>
-    setFormValues((prev) => ({
-      ...prev,
-      phoneNumber: normalizeWhatsAppPhoneNumber(prev.phoneNumber)
-    }));
-
   const updateAuthUrl = (nextRole = role, nextMode = mode) => {
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set('role', nextRole);
@@ -483,15 +477,7 @@ const AuthPage = () => {
           title="Login / Signup"
           description="Join WorkLink as labour or client using phone OTP, Google login, Apple login, or email and password."
         />
-        <section className="bg-slate-50 py-6 sm:py-8">
-          <div className="mx-auto w-full max-w-xl px-3 sm:px-5">
-            <Card className="min-w-0 rounded-2xl p-3 sm:p-5">
-              <Skeleton className="h-9 w-40" />
-              <Skeleton className="mt-4 h-11 w-full" />
-              <Skeleton className="mt-3 h-11 w-full" />
-            </Card>
-          </div>
-        </section>
+        <AppLoadingState title="Finishing sign in" description="Completing the secure redirect..." />
       </AppShell>
     );
   }
@@ -617,13 +603,10 @@ const AuthPage = () => {
                     onChange={(event) => handleChange('fullName', event.target.value)}
                     placeholder="Your full name"
                   />
-                  <InputField
+                  <PhoneInputField
                     label="Phone number"
                     value={formValues.phoneNumber}
                     onChange={(event) => handleChange('phoneNumber', event.target.value)}
-                    onBlur={normalizePhoneField}
-                    inputMode="tel"
-                    placeholder="919876543210"
                   />
                 </div>
               ) : null}
@@ -697,13 +680,10 @@ const AuthPage = () => {
                 {showOtpOptions || confirmationResult ? (
                   <div className="mt-3 grid gap-3 px-1 pb-1">
                     <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-                      <InputField
+                      <PhoneInputField
                         label="Phone number"
                         value={formValues.phoneNumber}
                         onChange={(event) => handleChange('phoneNumber', event.target.value)}
-                        onBlur={normalizePhoneField}
-                        inputMode="tel"
-                        placeholder="919876543210"
                       />
                       <div className="self-end">
                         <Button

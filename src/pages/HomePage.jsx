@@ -17,10 +17,10 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { LabourCard } from '../components/cards/LabourCard';
+import { AppLoadingState } from '../components/common/AppLoadingState';
 import { Button } from '../components/common/Button';
 import { PageSEO } from '../components/common/PageSEO';
 import { SectionHeading } from '../components/common/SectionHeading';
-import { Skeleton } from '../components/common/Skeleton';
 import { HeroSearch } from '../components/home/HeroSearch';
 import { AppShell } from '../components/layout/AppShell';
 import { useAuth } from '../context/AuthContext';
@@ -130,10 +130,7 @@ const HomePage = () => {
     if (loading) {
       return (
         <AppShell>
-          <div className="page-shell py-10">
-            <Skeleton className="h-10 w-48" />
-            <Skeleton className="mt-4 h-72 w-full" />
-          </div>
+          <AppLoadingState title="Opening your dashboard" description="Checking your WorkLink profile..." />
         </AppShell>
       );
     }
