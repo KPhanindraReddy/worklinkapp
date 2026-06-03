@@ -2,7 +2,7 @@ import { Suspense, lazy } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { OAuthRedirectBridge } from './components/layout/OAuthRedirectBridge';
-import { AppLoadingState } from './components/common/AppLoadingState';
+import { Skeleton } from './components/common/Skeleton';
 
 const HomePage = lazy(() => import('./pages/HomePage'));
 const AuthPage = lazy(() => import('./pages/auth/AuthPage'));
@@ -23,7 +23,10 @@ const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage')
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 const RouteFallback = () => (
-  <AppLoadingState title="Opening page" description="Loading the next WorkLink screen..." />
+  <div className="page-shell py-16">
+    <Skeleton className="h-12 w-64" />
+    <Skeleton className="mt-4 h-[480px] w-full" />
+  </div>
 );
 
 const App = () => (

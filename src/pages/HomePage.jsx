@@ -1,7 +1,8 @@
 import {
   ArrowRight,
   BriefcaseBusiness,
-  CheckCircle2,
+  Boxes,
+  Brush,
   Hammer,
   Home,
   MapPin,
@@ -10,32 +11,21 @@ import {
   ShieldCheck,
   Search as SearchIcon,
   Sparkles,
-  Star,
+  Truck,
   Wrench
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { LabourCard } from '../components/cards/LabourCard';
-import { AppLoadingState } from '../components/common/AppLoadingState';
 import { Button } from '../components/common/Button';
 import { PageSEO } from '../components/common/PageSEO';
 import { SectionHeading } from '../components/common/SectionHeading';
 import { HeroSearch } from '../components/home/HeroSearch';
 import { AppShell } from '../components/layout/AppShell';
 import { useAuth } from '../context/AuthContext';
-import { heroStats, serviceCategories } from '../data/mockData';
+import { heroStats } from '../data/mockData';
 import { useVoiceSearch } from '../hooks/useVoiceSearch';
 import { resolvePostAuthPath } from '../utils/authFlow';
-
-const featuredCategoryNames = [
-  'Electrician',
-  'Plumbing',
-  'Carpenter',
-  'Painting',
-  'AC repair',
-  'Cleaner'
-];
 
 const statLabels = ['Workers', 'Bookings', 'Response'];
 
@@ -45,8 +35,19 @@ const serviceVisuals = {
   Carpenter: { icon: Hammer, accent: 'bg-orange-500', tint: 'bg-orange-50 text-orange-700' },
   Painting: { icon: Paintbrush, accent: 'bg-rose-500', tint: 'bg-rose-50 text-rose-700' },
   'AC repair': { icon: Sparkles, accent: 'bg-cyan-500', tint: 'bg-cyan-50 text-cyan-700' },
-  Cleaner: { icon: ShieldCheck, accent: 'bg-emerald-500', tint: 'bg-emerald-50 text-emerald-700' }
+  Cleaning: { icon: Brush, accent: 'bg-emerald-500', tint: 'bg-emerald-50 text-emerald-700' },
+  'Home shifting': { icon: Boxes, accent: 'bg-indigo-500', tint: 'bg-indigo-50 text-indigo-700' },
+  'Lorry loading': { icon: Truck, accent: 'bg-violet-500', tint: 'bg-violet-50 text-violet-700' }
 };
+
+const homepageCategories = [
+  { id: 'service-electrician', name: 'Electrician', openRequests: 14 },
+  { id: 'service-plumbing', name: 'Plumbing', openRequests: 15 },
+  { id: 'service-home-shifting', name: 'Home shifting', openRequests: 9 },
+  { id: 'service-lorry-loading', name: 'Lorry loading', openRequests: 7 },
+  { id: 'service-cleaning', name: 'Cleaning', openRequests: 20 },
+  { id: 'service-ac-repair', name: 'AC repair', openRequests: 12 }
+];
 
 const quickPaths = [
   {
@@ -90,49 +91,14 @@ const HomePage = () => {
   const navigate = useNavigate();
   const { currentUser, userProfile, loading } = useAuth();
   const [query, setQuery] = useState('');
-  const [featuredLabours, setFeaturedLabours] = useState([]);
   const { isListening, startListening } = useVoiceSearch({
     lang: 'en-IN',
     onResult: setQuery
   });
-  const homepageCategories = featuredCategoryNames
-    .map((name) => serviceCategories.find((category) => category.name === name))
-    .filter(Boolean);
-
-  useEffect(() => {
-    if (currentUser) {
-      return undefined;
-    }
-
-    let isActive = true;
-
-    import('../services/labourService')
-      .then(({ fetchFeaturedLabours }) => fetchFeaturedLabours())
-      .then((labours) => {
-        if (isActive) {
-          setFeaturedLabours(labours);
-        }
-      })
-      .catch((error) => {
-        console.warn('WorkLink featured labour load skipped:', error?.code ?? error?.message ?? error);
-
-        if (isActive) {
-          setFeaturedLabours([]);
-        }
-      });
-
-    return () => {
-      isActive = false;
-    };
-  }, [currentUser]);
 
   if (currentUser) {
     if (loading) {
-      return (
-        <AppShell>
-          <AppLoadingState title="Opening your dashboard" description="Checking your WorkLink profile..." />
-        </AppShell>
-      );
+      return null;
     }
 
     return <Navigate to={resolvePostAuthPath({ profile: userProfile })} replace />;
@@ -194,7 +160,7 @@ const HomePage = () => {
               </div>
               <div className="mt-4 grid gap-2">
                 {homepageCategories.slice(0, 4).map((category) => {
-                  const visual = serviceVisuals[category.name] ?? serviceVisuals.Cleaner;
+                  const visual = serviceVisuals[category.name] ?? serviceVisuals.Cleaning;
                   const Icon = visual.icon;
 
                   return (
@@ -270,7 +236,7 @@ const HomePage = () => {
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {homepageCategories.map((category) => {
-              const visual = serviceVisuals[category.name] ?? serviceVisuals.Cleaner;
+              const visual = serviceVisuals[category.name] ?? serviceVisuals.Cleaning;
               const Icon = visual.icon;
 
               return (
@@ -292,51 +258,6 @@ const HomePage = () => {
               );
             })}
           </div>
-        </div>
-      </section>
-
-      <section className="section-space pt-2">
-        <div className="page-shell">
-          <SectionHeading eyebrow="Labour" title="Top rated workers" />
-          {featuredLabours.length ? (
-            <div className="mt-4 grid gap-3 lg:grid-cols-2">
-              {featuredLabours.slice(0, 4).map((labour) => (
-                <LabourCard key={labour.id} labour={labour} compact />
-              ))}
-            </div>
-          ) : (
-            <div className="mt-4">
-              <div className="grid gap-3 md:grid-cols-3">
-                {[
-                  { name: 'Ravi Kumar', skill: 'Electrician', loc: 'Hyderabad', rating: '4.8' },
-                  { name: 'Suresh', skill: 'Plumbing', loc: 'Chennai', rating: '4.7' },
-                  { name: 'Phani', skill: 'Welding', loc: 'Bengaluru', rating: '4.9' }
-                ].map((worker) => (
-                  <div key={worker.name} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_8px_22px_rgba(15,23,42,0.04)]">
-                    <div className="flex items-center gap-3">
-                      <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-600 text-base font-bold text-white">
-                        {worker.name.charAt(0)}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-center gap-1 text-sm font-bold text-slate-950">
-                          {worker.name}
-                          <CheckCircle2 size={14} className="text-emerald-500" />
-                        </span>
-                        <span className="block text-xs text-slate-500">{worker.skill} in {worker.loc}</span>
-                      </span>
-                    </div>
-                    <div className="mt-3 flex items-center justify-between">
-                      <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600">
-                        <Star size={14} fill="currentColor" />
-                        {worker.rating}
-                      </span>
-                      <Button as={Link} to="/search" size="sm">Book</Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </section>
 

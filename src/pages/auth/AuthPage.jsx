@@ -16,7 +16,6 @@ import toast from 'react-hot-toast';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import clsx from 'clsx';
 import { Button } from '../../components/common/Button';
-import { AppLoadingState } from '../../components/common/AppLoadingState';
 import { Card } from '../../components/common/Card';
 import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
@@ -477,7 +476,6 @@ const AuthPage = () => {
           title="Login / Signup"
           description="Join WorkLink as labour or client using phone OTP, Google login, Apple login, or email and password."
         />
-        <AppLoadingState title="Finishing sign in" description="Completing the secure redirect..." />
       </AppShell>
     );
   }
