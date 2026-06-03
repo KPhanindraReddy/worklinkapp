@@ -266,8 +266,7 @@ const LabourDashboardPage = () => {
   }, [currentUser?.uid]);
 
   const metrics = useMemo(() => {
-    const completedJobs =
-      bookings.filter((item) => item.status === 'completed').length || dashboardProfile.completedJobs;
+    const completedJobs = dashboardProfile.completedJobs;
     const pendingRequests = bookings.filter((item) => item.status === 'pending').length;
     const activeWork = bookings.filter((item) => ['accepted', 'in_progress'].includes(item.status)).length;
     const earnings = bookings
@@ -572,8 +571,7 @@ const LabourDashboardPage = () => {
     );
   }
 
-  const completedJobs =
-    bookings.filter((item) => item.status === 'completed').length || dashboardProfile.completedJobs;
+  const completedJobs = dashboardProfile.completedJobs;
   const pendingRequests = bookings.filter((item) => item.status === 'pending').length;
   const todaySummary = financialSummary.find((item) => item.label === 'Today earned')?.value ?? formatCurrency(0);
   const paidSummary = financialSummary.find((item) => item.label === 'Paid earnings')?.value ?? formatCurrency(0);
