@@ -53,6 +53,7 @@ import {
   normalizeCoordinates
 } from '../../utils/location';
 import { buildProfileAvatarDataUrl } from '../../utils/profileAvatar';
+import { labourMatchesCategory } from '../../utils/recommendations';
 import { createRouteGroupId } from '../../utils/requestRouting';
 
 const openRequestStatuses = ['pending', 'accepted', 'in_progress', 'awaiting_payment'];
@@ -121,6 +122,14 @@ const getInitials = (value) =>
     .slice(0, 2)
     .map((item) => item.charAt(0).toUpperCase())
     .join('') || 'WL';
+
+const normalizeServiceName = (value) =>
+  String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 const LightPanel = ({ id, className = '', children }) => (
   <section
@@ -306,9 +315,6 @@ const ClientDashboardPage = () => {
         if (nearbyItems.length) {
           setCoverageMessage('');
         }
-        const nextServices = new Set(nearbyItems.map((labour) => labour.category).filter(Boolean));
-
-        setSelectedService((prev) => (prev && !nextServices.has(prev) ? '' : prev));
       })
       .catch((error) => {
         if (isActive) {
@@ -328,7 +334,7 @@ const ClientDashboardPage = () => {
 
   useEffect(() => {
     const matchingLabours = selectedService
-      ? availableLabours.filter((labour) => labour.category === selectedService)
+      ? availableLabours.filter((labour) => labourMatchesCategory(labour, selectedService))
       : [];
 
     setServiceLabours(matchingLabours);
@@ -379,8 +385,15 @@ const ClientDashboardPage = () => {
       ),
     [availableLabours]
   );
-  const availableServiceSet = useMemo(() => new Set(serviceOptions), [serviceOptions]);
-  const getServiceAvailability = (service) => (availableServiceSet.has(service) ? 'Available' : null);
+  const availableServiceSet = useMemo(
+    () => new Set(serviceOptions.map((service) => normalizeServiceName(service))),
+    [serviceOptions]
+  );
+  const getServiceAvailability = (service) =>
+    availableServiceSet.has(normalizeServiceName(service)) ||
+    availableLabours.some((labour) => labourMatchesCategory(labour, service))
+      ? 'Available'
+      : null;
   const radiusSelectOptions = useMemo(
     () => labourRadiusOptions.map((km) => ({ label: `${km} km`, value: String(km) })),
     []
@@ -477,13 +490,6 @@ const ClientDashboardPage = () => {
     setSelectedService(service);
     setRequestMode('instant');
     setCoverageMessage('');
-
-    if (service && !availableServiceSet.has(service)) {
-      const message = `${service} is not available within ${radiusKm} km. Try increasing distance.`;
-      setCoverageMessage(message);
-      toast.error(message);
-      recordUnavailableDemand(service);
-    }
   };
 
   const notifyLabour = async ({ bookingId, labour, requestMode: mode }) => {

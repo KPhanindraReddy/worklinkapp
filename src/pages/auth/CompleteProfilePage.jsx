@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
+import { AutocompleteSelect } from '../../components/common/AutocompleteSelect';
 import { InputField } from '../../components/common/InputField';
 import { AddressAutocomplete } from '../../components/common/AddressAutocomplete';
 import { PageSEO } from '../../components/common/PageSEO';
@@ -333,12 +334,14 @@ const CompleteProfilePage = () => {
 
               {role === 'labour' ? (
                 <div className="space-y-4">
-                  <SelectField
+                  <AutocompleteSelect
                     label="Work category"
-                    placeholder="Select category"
+                    placeholder="Select or type service"
                     value={formValues.category}
                     options={workCategories}
                     onChange={(event) => handleChange('category', event.target.value)}
+                    allowCustom
+                    customOptionLabel="Add service"
                   />
                   <SelectField
                     label="Availability"

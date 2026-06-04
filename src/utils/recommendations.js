@@ -43,6 +43,25 @@ const tokenizeValue = (value) =>
     .map((token) => token.trim())
     .filter(Boolean);
 
+const getTokenRoot = (token) => {
+  if (token.length <= 4) {
+    return token;
+  }
+
+  return token.replace(/(ing|ers|er|or|s)$/i, '');
+};
+
+const tokensMatch = (leftToken, rightToken) => {
+  const leftRoot = getTokenRoot(leftToken);
+  const rightRoot = getTokenRoot(rightToken);
+
+  return (
+    leftToken.includes(rightToken) ||
+    rightToken.includes(leftToken) ||
+    (leftRoot.length > 2 && rightRoot.length > 2 && (leftRoot.includes(rightRoot) || rightRoot.includes(leftRoot)))
+  );
+};
+
 const buildLabourSearchValues = (labour) =>
   [
     normalizeValue(labour.category),
@@ -82,7 +101,7 @@ export const labourMatchesServiceQuery = (labour, serviceQuery = '') => {
   return queryTokens.every(
     (queryToken) =>
       searchTokens.some(
-        (token) => token.includes(queryToken) || queryToken.includes(token)
+        (token) => tokensMatch(token, queryToken)
       ) ||
       searchableValues.some(
         (value) => value.includes(queryToken) || queryToken.includes(value)

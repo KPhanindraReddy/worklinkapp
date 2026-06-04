@@ -8,7 +8,10 @@ export const AutocompleteSelect = ({
   onChange,
   placeholder = 'Type to search...',
   className = '',
-  getAvailability = null
+  getAvailability = null,
+  allowCustom = false,
+  customOptionLabel = 'Use',
+  disabled = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -16,19 +19,29 @@ export const AutocompleteSelect = ({
   const inputRef = useRef(null);
   const containerRef = useRef(null);
 
+  const getOptionLabel = (option) => (typeof option === 'string' ? option : option.label);
+  const getOptionValue = (option) => (typeof option === 'string' ? option : option.value);
+  const normalizeText = (text) => String(text ?? '').trim().toLowerCase();
+
   const filteredOptions = search
     ? options.filter(opt => {
-        const label = typeof opt === 'string' ? opt : opt.label;
-        return label.toLowerCase().startsWith(search.toLowerCase());
+        const label = getOptionLabel(opt);
+        return label.toLowerCase().includes(search.toLowerCase());
       })
     : options;
+  const customValue = search.trim();
+  const hasExactMatch = options.some((option) => normalizeText(getOptionLabel(option)) === normalizeText(customValue));
+  const displayOptions =
+    allowCustom && customValue && !hasExactMatch
+      ? [...filteredOptions, { label: `${customOptionLabel} "${customValue}"`, value: customValue, isCustom: true }]
+      : filteredOptions;
 
   const selectedLabel = value
-    ? (options.find(opt => (typeof opt === 'string' ? opt : opt.value) === value)?.label ?? value)
+    ? (options.find(opt => getOptionValue(opt) === value)?.label ?? value)
     : '';
 
   const handleSelect = (option) => {
-    const val = typeof option === 'string' ? option : option.value;
+    const val = getOptionValue(option);
     onChange?.({ target: { value: val } });
     setSearch('');
     setIsOpen(false);
@@ -46,16 +59,20 @@ export const AutocompleteSelect = ({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setHighlightedIndex(prev => (prev + 1) % filteredOptions.length);
+        if (displayOptions.length) {
+          setHighlightedIndex(prev => (prev + 1) % displayOptions.length);
+        }
         break;
       case 'ArrowUp':
         e.preventDefault();
-        setHighlightedIndex(prev => (prev - 1 + filteredOptions.length) % filteredOptions.length);
+        if (displayOptions.length) {
+          setHighlightedIndex(prev => (prev - 1 + displayOptions.length) % displayOptions.length);
+        }
         break;
       case 'Enter':
         e.preventDefault();
-        if (filteredOptions[highlightedIndex]) {
-          handleSelect(filteredOptions[highlightedIndex]);
+        if (displayOptions[highlightedIndex]) {
+          handleSelect(displayOptions[highlightedIndex]);
         }
         break;
       case 'Escape':
@@ -69,7 +86,11 @@ export const AutocompleteSelect = ({
   };
 
   const handleInputChange = (e) => {
-    setSearch(e.target.value);
+    const nextSearch = e.target.value;
+    if (value && nextSearch !== selectedLabel) {
+      onChange?.({ target: { value: '' } });
+    }
+    setSearch(nextSearch);
     setHighlightedIndex(0);
     setIsOpen(true);
   };
@@ -107,8 +128,9 @@ export const AutocompleteSelect = ({
             value={search || selectedLabel}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            onFocus={() => setIsOpen(true)}
+            onFocus={() => !disabled && setIsOpen(true)}
             placeholder={placeholder}
+            disabled={disabled}
             className="min-h-6 min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 sm:text-[13px]"
             autoComplete="off"
           />
@@ -116,6 +138,7 @@ export const AutocompleteSelect = ({
             <button
               type="button"
               onClick={handleClear}
+              disabled={disabled}
               className="flex-none text-slate-400 hover:text-slate-600"
               aria-label="Clear selection"
             >
@@ -125,11 +148,11 @@ export const AutocompleteSelect = ({
           <ChevronDown size={16} className="flex-none text-slate-400" />
         </div>
 
-        {isOpen && filteredOptions.length > 0 && (
+        {isOpen && displayOptions.length > 0 && !disabled && (
           <div className="absolute top-full z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
-            {filteredOptions.map((option, index) => {
-              const optLabel = typeof option === 'string' ? option : option.label;
-              const optValue = typeof option === 'string' ? option : option.value;
+            {displayOptions.map((option, index) => {
+              const optLabel = getOptionLabel(option);
+              const optValue = getOptionValue(option);
               const availability = getAvailability?.(optValue);
 
               return (
@@ -163,7 +186,7 @@ export const AutocompleteSelect = ({
           </div>
         )}
 
-        {isOpen && filteredOptions.length === 0 && search && (
+        {isOpen && displayOptions.length === 0 && search && !disabled && (
           <div className="absolute top-full z-10 mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-center text-sm text-slate-500 shadow-lg">
             No matches for "{search}"
           </div>
