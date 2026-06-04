@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { LabourCard } from '../../components/cards/LabourCard';
 import { QuickBookingDialog } from '../../components/booking/QuickBookingDialog';
+import { AutocompleteSelect } from '../../components/common/AutocompleteSelect';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
@@ -164,6 +165,11 @@ const SearchPage = () => {
     [filters.category, filters.query, selectedLabour?.category]
   );
 
+  const getServiceAvailability = (service) => {
+    const labourWithService = availableResults.find(l => l.category === service);
+    return labourWithService?.availability || null;
+  };
+
   const handleRefreshLocation = async () => {
     await geolocation.requestLocation({ force: true });
   };
@@ -231,7 +237,7 @@ const SearchPage = () => {
                   <Mic size={16} />
                   {isListening ? 'Listening...' : 'Voice search'}
                 </Button>
-                <SelectField
+                <AutocompleteSelect
                   label="Service"
                   placeholder="Choose a service"
                   options={workCategories}
@@ -314,7 +320,7 @@ const SearchPage = () => {
                 </div>
 
                 {availableServiceOptions.length ? (
-                  <SelectField
+                  <AutocompleteSelect
                     label="Available service"
                     placeholder="All available services"
                     options={availableServiceOptions}
@@ -325,6 +331,7 @@ const SearchPage = () => {
                       setFilters((prev) => ({ ...prev, category: service, query: service }));
                       setSelectedLabour(null);
                     }}
+                    getAvailability={getServiceAvailability}
                   />
                 ) : (
                   <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm font-medium text-slate-600">
