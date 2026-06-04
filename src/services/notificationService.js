@@ -1,6 +1,7 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   onSnapshot,
   query,
@@ -104,6 +105,28 @@ export const markAllNotificationsRead = async (notifications = []) => {
       updateDoc(doc(db, 'notifications', notification.id), {
         read: true
       })
+    )
+  );
+};
+
+export const deleteNotification = async (notificationId) => {
+  if (!notificationId || !isFirebaseConfigured || !db) {
+    return;
+  }
+
+  await deleteDoc(doc(db, 'notifications', notificationId));
+};
+
+export const deleteNotifications = async (notifications = []) => {
+  if (!isFirebaseConfigured || !db) {
+    return;
+  }
+
+  const deletableNotifications = notifications.filter((notification) => notification?.id);
+
+  await Promise.all(
+    deletableNotifications.map((notification) =>
+      deleteDoc(doc(db, 'notifications', notification.id))
     )
   );
 };

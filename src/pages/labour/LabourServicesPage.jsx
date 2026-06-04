@@ -17,7 +17,6 @@ import { Card } from '../../components/common/Card';
 import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
 import { Skeleton } from '../../components/common/Skeleton';
-import { MetricsGrid } from '../../components/dashboard/MetricsGrid';
 import { AppShell } from '../../components/layout/AppShell';
 import { LocationText } from '../../components/location/LocationText';
 import { useAuth } from '../../context/AuthContext';
@@ -81,6 +80,12 @@ const buildDirectionsUrl = (booking) => {
 };
 
 const actionButtonClass = 'bg-slate-950 text-white shadow-sm hover:bg-slate-800';
+const metricBoxClasses = [
+  'border-amber-300 text-amber-800',
+  'border-sky-300 text-sky-800',
+  'border-blue-300 text-blue-800',
+  'border-emerald-300 text-emerald-800'
+];
 
 const LabourServicesPage = () => {
   const { currentUser, userProfile } = useAuth();
@@ -142,10 +147,10 @@ const LabourServicesPage = () => {
   );
   const metrics = useMemo(
     () => [
-      { label: 'Pending now', value: pendingBookings.length },
+      { label: 'Pending', value: pendingBookings.length },
       { label: 'Scheduled', value: scheduledBookings.filter((item) => item.status === 'accepted').length },
       { label: 'In progress', value: scheduledBookings.filter((item) => item.status === 'in_progress').length },
-      { label: 'Awaiting payment', value: scheduledBookings.filter((item) => item.status === 'awaiting_payment').length }
+      { label: 'Awaiting', value: scheduledBookings.filter((item) => item.status === 'awaiting_payment').length }
     ],
     [pendingBookings.length, scheduledBookings]
   );
@@ -281,51 +286,52 @@ const LabourServicesPage = () => {
 
       <section className="section-space">
         <div className="page-shell space-y-5">
-          <Card className="rounded-[28px] p-4 sm:p-5">
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-              <div>
-                <div className="flex flex-wrap gap-2">
-                  <Badge tone="blue">Labour</Badge>
-                  <Badge tone={dateFilter ? 'emerald' : 'slate'}>
-                    {dateFilter ? `Filtered: ${dateFilter}` : 'All dates'}
-                  </Badge>
-                </div>
-                <h1 className="mt-3 text-2xl font-bold text-slate-950 sm:text-3xl">
-                  Services
-                </h1>
-                <p className="mt-2 text-sm font-medium leading-6 text-slate-600">
-                  Pending requests and scheduled jobs are managed here.
-                </p>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end lg:min-w-[24rem]">
-                <InputField
-                  label="Filter by date"
+          <Card className="rounded-[24px] p-3 sm:p-4">
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+              <h1 className="text-xl font-bold text-slate-950 sm:text-2xl">Services</h1>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 sm:w-[18rem]">
+                <input
                   type="date"
                   value={dateFilter}
                   onChange={(event) => setDateFilter(event.target.value)}
+                  className="min-h-10 min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-800 outline-none focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 max-sm:text-base"
+                  aria-label="Filter by date"
                 />
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-11"
+                  className="h-10 px-3"
                   onClick={() => setDateFilter('')}
                   disabled={!dateFilter}
                 >
-                  Clear
+                  All
                 </Button>
               </div>
             </div>
           </Card>
 
-          <MetricsGrid items={metrics} loading={loading} />
+          <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+            {metrics.map((item, index) => (
+              <div
+                key={item.label}
+                className={`rounded-xl border-2 bg-white p-2 text-center shadow-sm sm:p-2.5 ${metricBoxClasses[index]}`}
+              >
+                <p className="truncate text-[9px] font-black uppercase tracking-[0.06em] sm:text-[10px]">{item.label}</p>
+                {loading ? (
+                  <Skeleton className="mx-auto mt-1.5 h-6 w-8 rounded-lg" />
+                ) : (
+                  <p className="mt-1 font-display text-xl font-black leading-none sm:text-2xl">{item.value}</p>
+                )}
+              </div>
+            ))}
+          </div>
 
           <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
             <Card className="rounded-[24px] p-4 sm:p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-950">Pending now</h2>
-                  <p className="mt-1 text-sm text-slate-600">Accept or reject new client requests.</p>
                 </div>
                 <Badge tone={pendingBookings.length ? 'amber' : 'slate'}>
                   {pendingBookings.length} pending
@@ -425,7 +431,6 @@ const LabourServicesPage = () => {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-950">Scheduled services</h2>
-                  <p className="mt-1 text-sm text-slate-600">Directions, OTP, and finish action stay here.</p>
                 </div>
                 <Badge tone={scheduledBookings.length ? 'emerald' : 'slate'}>
                   {scheduledBookings.length} scheduled

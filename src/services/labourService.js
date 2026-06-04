@@ -129,7 +129,7 @@ const fetchLabourCandidates = async (filters, resolvedCategory) => {
         count: snapshot.size
       });
 
-      return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      return snapshot.docs.map((item) => normalizeLabourProfile({ id: item.id, ...item.data() }));
     } catch (error) {
       lastError = error;
       console.warn('[Slivz labour search] candidate query failed', {
@@ -153,6 +153,25 @@ const fetchLabourCandidates = async (filters, resolvedCategory) => {
 };
 
 const normalizeSearchValue = (value) => String(value ?? '').trim().toLowerCase();
+const normalizeLabourProfile = (labour = {}) => {
+  const reviews = Array.isArray(labour.reviews) ? labour.reviews : [];
+  const reviewsCount =
+    Number(labour.reviewsCount ?? labour.reviewCount ?? labour.ratingsCount ?? reviews.length) || 0;
+  const rating =
+    Number(labour.rating) ||
+    (reviews.length
+      ? reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / reviews.length
+      : 0);
+  const currentLocation = labour.currentLocation || labour.workLocation || labour.location || '';
+
+  return {
+    ...labour,
+    currentLocation,
+    location: labour.location || currentLocation,
+    rating,
+    reviewsCount
+  };
+};
 const resolveMaxDistanceKm = (filters, origin) => {
   const requestedDistance = Number(filters.maxDistanceKm);
 
@@ -190,7 +209,7 @@ export const fetchFeaturedLabours = async (count = 6) => {
   );
   const snapshot = await getDocs(labourQuery);
 
-  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+  return snapshot.docs.map((item) => normalizeLabourProfile({ id: item.id, ...item.data() }));
 };
 
 export const searchLabours = async (filters = {}, origin) => {
@@ -281,7 +300,7 @@ export const getLabourById = async (labourId) => {
   }
 
   const snapshot = await getDoc(doc(db, 'labours', labourId));
-  return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
+  return snapshot.exists() ? normalizeLabourProfile({ id: snapshot.id, ...snapshot.data() }) : null;
 };
 
 export const subscribeLabourById = (labourId, onNext, onError) => {
@@ -298,7 +317,7 @@ export const subscribeLabourById = (labourId, onNext, onError) => {
   return onSnapshot(
     doc(db, 'labours', labourId),
     (snapshot) => {
-      onNext(snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null);
+      onNext(snapshot.exists() ? normalizeLabourProfile({ id: snapshot.id, ...snapshot.data() }) : null);
     },
     onError
   );

@@ -1,4 +1,4 @@
-import { CalendarDays, LoaderCircle, LocateFixed, MapPin, Send, X } from 'lucide-react';
+import { LoaderCircle, LocateFixed, Send, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
@@ -20,9 +20,9 @@ import { fetchMapboxLocationName } from '../../utils/mapbox';
 import { buildProfileAvatarDataUrl } from '../../utils/profileAvatar';
 import { createRouteGroupId } from '../../utils/requestRouting';
 
-const activeWorkStatuses = ['accepted', 'in_progress'];
 const openRequestStatuses = ['pending', 'accepted', 'in_progress', 'awaiting_payment'];
 const generateStartOtp = () => String(Math.floor(100000 + Math.random() * 900000));
+const liveLocationFallback = 'Live location shared';
 
 const buildInitialFormValues = ({ labour, userProfile, defaultService }) => ({
   serviceName: defaultService || labour?.category || '',
@@ -60,11 +60,7 @@ export const QuickBookingDialog = ({
   const resolvedLocationName = useLocationName(clientLocation);
   const requestLocationLabel = getDisplayLocationText(
     savedLocationLabel || resolvedLocationName,
-    'Live location captured'
-  );
-  const pendingBookings = useMemo(
-    () => bookings.filter((booking) => booking.status === 'pending'),
-    [bookings]
+    liveLocationFallback
   );
   const openBookings = useMemo(
     () => bookings.filter((booking) => openRequestStatuses.includes(booking.status)),
@@ -74,10 +70,7 @@ export const QuickBookingDialog = ({
     () => bookings.find((booking) => booking.status === 'in_progress') ?? null,
     [bookings]
   );
-  const activeBookings = useMemo(
-    () => bookings.filter((booking) => activeWorkStatuses.includes(booking.status)),
-    [bookings]
-  );
+  const requestAddress = formValues.address.trim() || (clientLocation ? requestLocationLabel : '');
   const canSubmit = Boolean(
     isClient &&
       labour &&
@@ -85,7 +78,7 @@ export const QuickBookingDialog = ({
       !openBookings.length &&
       !inProgressBooking &&
       formValues.serviceName.trim() &&
-      formValues.address.trim() &&
+      requestAddress &&
       (requestTiming === 'instant' || (selectedDate && selectedSlot))
   );
   const sortedCandidateLabours = useMemo(
@@ -189,8 +182,8 @@ export const QuickBookingDialog = ({
     if (!canSubmit) {
       toast.error(
         requestTiming === 'instant'
-          ? 'Add service and address before sending.'
-          : 'Choose a date, time, service, and address before sending.'
+          ? 'Choose service and share location before sending.'
+          : 'Choose date, time, service, and location before sending.'
       );
       return;
     }
@@ -223,7 +216,7 @@ export const QuickBookingDialog = ({
         labourPhoneNumber: targetLabour.phoneNumber || '',
         serviceType: serviceName,
         serviceDetails: formValues.serviceDetails.trim(),
-        location: formValues.address.trim(),
+        location: requestAddress || liveLocationFallback,
         coordinates: clientLocation,
         notes: formValues.serviceDetails.trim(),
         amount: 0,
@@ -277,9 +270,6 @@ export const QuickBookingDialog = ({
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-[0.28em] text-brand-700">Quick booking</p>
             <h2 className="mt-2 break-words text-xl font-semibold text-slate-950 sm:text-2xl">Book {labour.fullName}</h2>
-            <p className="mt-2 text-sm text-slate-600">
-              Send instantly or schedule a time, then wait for the labour response.
-            </p>
           </div>
           <Button type="button" variant="ghost" size="sm" className="h-10 w-10 flex-none p-0" onClick={onClose} aria-label="Close quick booking">
             <X size={18} />
@@ -310,18 +300,9 @@ export const QuickBookingDialog = ({
                   </div>
                 </div>
               </div>
-              <div className="mt-4 rounded-2xl border border-white bg-white/90 p-4 text-sm text-slate-600">
-                <div className="flex items-center gap-2 font-semibold text-slate-900">
-                  <MapPin size={15} className="text-brand-600" />
-                  Client location
-                </div>
-                <p className="mt-2 leading-6">
-                  The exact route and location are shared on the accepted work card after the labour confirms this request.
-                </p>
-              </div>
             </div>
 
-            {openBookings.length ? (
+            {openBookings.length && !inProgressBooking ? (
               <div className="rounded-[28px] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
                 Finish or cancel your current request before sending another one.
               </div>
@@ -361,11 +342,6 @@ export const QuickBookingDialog = ({
               </div>
             ) : null}
 
-            {activeBookings.length ? (
-              <div className="rounded-[28px] border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950">
-                Accepted requests and client OTP details stay visible in your client dashboard and request page.
-              </div>
-            ) : null}
           </div>
 
           <form className="space-y-5" onSubmit={handleSubmit}>
@@ -377,44 +353,35 @@ export const QuickBookingDialog = ({
                 placeholder="Electrician, plumbing, painting..."
               />
               <InputField
-                label="Address"
+                label="Address (optional)"
                 value={formValues.address}
                 onChange={(event) => updateFormValue('address', event.target.value)}
-                placeholder="House no, street, area, city"
+                placeholder={clientLocation ? 'GPS will be used if empty' : 'House no, street, area, city'}
                 className="md:col-span-2"
               />
-              <TextAreaField
-                label="Work details"
-                value={formValues.serviceDetails}
-                onChange={(event) => updateFormValue('serviceDetails', event.target.value)}
-                placeholder="Describe the issue, urgency, and any access notes."
-                className="md:col-span-2"
-              />
-            </div>
-
-            <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-              <div className="flex items-center gap-2 font-semibold text-slate-900">
-                <CalendarDays size={16} className="text-brand-600" />
-                Request location
-              </div>
-              <p className="mt-2 leading-6">
-                {clientLocation
-                  ? requestLocationLabel
-                  : geolocation.error || 'Manual address will be used if GPS is unavailable.'}
-              </p>
-              <div className="mt-4">
+              <div className="md:col-span-2 flex flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+                <span className="line-clamp-1 font-semibold text-slate-800">
+                  {clientLocation ? requestLocationLabel : geolocation.error || 'Use live location or type address'}
+                </span>
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="w-full sm:w-auto"
+                  className="w-full flex-none sm:w-auto"
                   onClick={handleRefreshLocation}
                   disabled={geolocation.loading}
                 >
                   {geolocation.loading ? <LoaderCircle size={15} className="animate-spin" /> : <LocateFixed size={15} />}
-                  {clientLocation ? 'Update live location' : 'Use live location'}
+                  {clientLocation ? 'Update GPS' : 'Use GPS'}
                 </Button>
               </div>
+              <TextAreaField
+                label="Notes (optional)"
+                value={formValues.serviceDetails}
+                onChange={(event) => updateFormValue('serviceDetails', event.target.value)}
+                placeholder="Small note for the labour"
+                className="md:col-span-2"
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1">
@@ -444,11 +411,7 @@ export const QuickBookingDialog = ({
                 onDateChange={setSelectedDate}
                 onSlotChange={setSelectedSlot}
               />
-            ) : (
-              <div className="rounded-[24px] border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium leading-6 text-emerald-950">
-                Instant requests go to the nearest available labour first. If they reject or do not respond, Slivz tries the next available labour automatically.
-              </div>
-            )}
+            ) : null}
 
             <Button type="submit" size="lg" className="w-full" disabled={submitting || !canSubmit}>
               {submitting ? (

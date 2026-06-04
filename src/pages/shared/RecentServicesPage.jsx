@@ -106,7 +106,7 @@ const RecentServicesPage = () => {
     const draft = reviewDrafts[booking.id] ?? {};
 
     if (!draft.rating) {
-      toast.error('Choose a star rating before submitting.');
+      toast.error('Choose a rating before submitting.');
       return;
     }
 
@@ -117,8 +117,7 @@ const RecentServicesPage = () => {
         bookingId: booking.id,
         clientId: currentUser.uid,
         clientName: userProfile?.fullName,
-        rating: draft.rating,
-        comment: draft.comment
+        rating: draft.rating
       });
       setReviewDrafts((prev) => {
         const next = { ...prev };
@@ -359,28 +358,18 @@ const RecentServicesPage = () => {
                     ) : (
                       <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
                         <p className="text-sm font-semibold text-slate-950">Rate this service</p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {Array.from({ length: 5 }).map((_, index) => {
-                            const value = index + 1;
-                            const selected = Number(reviewDrafts[booking.id]?.rating ?? 0) >= value;
-
-                            return (
-                              <button
-                                key={value}
-                                type="button"
-                                onClick={() => updateReviewDraft(booking.id, 'rating', value)}
-                                className={`grid h-10 w-10 place-items-center rounded-xl border transition ${
-                                  selected
-                                    ? 'border-amber-300 bg-amber-100 text-amber-600'
-                                    : 'border-slate-200 bg-white text-slate-400 hover:border-amber-200 hover:text-amber-500'
-                                }`}
-                                aria-label={`Rate ${value} star${value === 1 ? '' : 's'}`}
-                              >
-                                <Star size={18} fill={selected ? 'currentColor' : 'none'} />
-                              </button>
-                            );
-                          })}
-                        </div>
+                        <select
+                          value={reviewDrafts[booking.id]?.rating ?? ''}
+                          onChange={(event) => updateReviewDraft(booking.id, 'rating', event.target.value)}
+                          className="mt-2 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none focus:border-amber-300 focus:ring-2 focus:ring-amber-100 max-sm:text-base sm:max-w-xs"
+                        >
+                          <option value="">Choose rating</option>
+                          <option value="5">5 - Excellent</option>
+                          <option value="4">4 - Good</option>
+                          <option value="3">3 - Okay</option>
+                          <option value="2">2 - Poor</option>
+                          <option value="1">1 - Bad</option>
+                        </select>
                         <Button
                           type="button"
                           size="sm"

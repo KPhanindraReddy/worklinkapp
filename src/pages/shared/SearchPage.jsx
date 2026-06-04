@@ -259,10 +259,7 @@ const SearchPage = () => {
                   showMatchScore
                   onQuickBook={handleQuickBook}
                 />
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <Button type="button" className="w-full" onClick={() => handleQuickBook(selectedLabour)}>
-                    Send request
-                  </Button>
+                <div className="mt-4">
                   <Button as={Link} to={`/labour/${selectedLabour.id}`} variant="outline" className="w-full">
                     View full profile
                   </Button>

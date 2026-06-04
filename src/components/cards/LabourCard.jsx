@@ -6,7 +6,7 @@ import { Card } from '../common/Card';
 import { VerificationBadge } from '../common/VerificationBadge';
 import { formatDistanceKm } from '../../utils/formatters';
 import { useAuth } from '../../context/AuthContext';
-import { getDisplayLocationText } from '../../utils/location';
+import { getDisplayLocationText, normalizeCoordinates } from '../../utils/location';
 
 const availabilityTone = {
   Available: 'emerald',
@@ -20,10 +20,13 @@ export const LabourCard = ({ labour, showMatchScore = false, onQuickBook, compac
   const isLabour = userProfile?.role === 'labour';
   const isAvailable = labour.availability === 'Available';
   const canQuickBook = Boolean(isClient && isAvailable && onQuickBook);
+  const hasLocationCoordinates = Boolean(normalizeCoordinates(labour.liveCoordinates || labour.coordinates));
   const locationLabel = getDisplayLocationText(
     labour.currentLocation || labour.location,
-    'Location not added'
+    hasLocationCoordinates ? 'Live location shared' : 'Location not added'
   );
+  const ratingValue = Number(labour.rating || 0);
+  const reviewsCount = Number(labour.reviewsCount || labour.reviewCount || 0);
 
   if (compact) {
     return (
@@ -53,7 +56,7 @@ export const LabourCard = ({ labour, showMatchScore = false, onQuickBook, compac
                 <span className="truncate text-slate-700 dark:text-slate-300">{labour.category}</span>
                 <span className="inline-flex items-center gap-1">
                   <Star size={11} className="text-amber-500" />
-                  {labour.rating || 0}
+                  {ratingValue ? ratingValue.toFixed(1).replace('.0', '') : '0'} ({reviewsCount})
                 </span>
                 {labour.distanceKm !== undefined ? <span>{formatDistanceKm(labour.distanceKm)}</span> : null}
               </div>
@@ -125,7 +128,7 @@ export const LabourCard = ({ labour, showMatchScore = false, onQuickBook, compac
           <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
             <span className="inline-flex items-center gap-1">
               <Star size={12} className="text-amber-500" />
-              {labour.rating} ({labour.reviewsCount})
+              {ratingValue ? ratingValue.toFixed(1).replace('.0', '') : '0'} ({reviewsCount})
             </span>
             <span>{labour.experienceYears} yrs exp</span>
           </div>

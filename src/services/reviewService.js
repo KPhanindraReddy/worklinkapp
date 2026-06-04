@@ -54,7 +54,7 @@ export const submitServiceReview = async ({ bookingId, clientId, clientName, rat
   }
 
   if (!Number.isInteger(numericRating) || numericRating < 1 || numericRating > 5) {
-    throw new Error('Choose a rating from 1 to 5 stars.');
+    throw new Error('Choose a rating from 1 to 5.');
   }
 
   const bookingRef = doc(db, 'bookings', bookingId);
@@ -75,6 +75,12 @@ export const submitServiceReview = async ({ bookingId, clientId, clientName, rat
     }
 
     const booking = bookingSnapshot.data();
+    const labourRef = booking.labourId ? doc(db, 'labours', booking.labourId) : null;
+    const userRef = booking.labourId ? doc(db, 'users', booking.labourId) : null;
+    const [labourSnapshot, userSnapshot] = await Promise.all([
+      labourRef ? transaction.get(labourRef) : Promise.resolve(null),
+      userRef ? transaction.get(userRef) : Promise.resolve(null)
+    ]);
 
     if (booking.clientId !== clientId) {
       throw new Error('Only the client who booked this service can rate it.');
@@ -104,5 +110,28 @@ export const submitServiceReview = async ({ bookingId, clientId, clientName, rat
       reviewedAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
+
+    const profileStats = labourSnapshot?.exists()
+      ? labourSnapshot.data()
+      : userSnapshot?.exists()
+        ? userSnapshot.data()
+        : {};
+    const previousCount = Number(profileStats.reviewsCount || 0);
+    const previousRating = Number(profileStats.rating || 0);
+    const nextCount = previousCount + 1;
+    const nextRating = ((previousRating * previousCount) + numericRating) / nextCount;
+    const nextStats = {
+      rating: Number(nextRating.toFixed(2)),
+      reviewsCount: nextCount,
+      updatedAt: serverTimestamp()
+    };
+
+    if (labourRef) {
+      transaction.set(labourRef, nextStats, { merge: true });
+    }
+
+    if (userRef) {
+      transaction.set(userRef, nextStats, { merge: true });
+    }
   });
 };
