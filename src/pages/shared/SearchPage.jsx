@@ -1,5 +1,6 @@
 import { LocateFixed, LoaderCircle, MapPin, Mic, SlidersHorizontal } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { LabourCard } from '../../components/cards/LabourCard';
 import { QuickBookingDialog } from '../../components/booking/QuickBookingDialog';
@@ -160,14 +161,23 @@ const SearchPage = () => {
       ).sort((a, b) => a.localeCompare(b)),
     [availableResults]
   );
+  const availableServiceSet = useMemo(() => new Set(availableServiceOptions), [availableServiceOptions]);
   const defaultQuickBookService = useMemo(
     () => filters.query.trim() || filters.category || selectedLabour?.category || '',
     [filters.category, filters.query, selectedLabour?.category]
   );
 
   const getServiceAvailability = (service) => {
-    const labourWithService = availableResults.find(l => l.category === service);
-    return labourWithService?.availability || null;
+    return availableServiceSet.has(service) ? 'Available' : null;
+  };
+
+  const handleServiceSearchChange = (service) => {
+    setFilters((prev) => ({ ...prev, category: service, query: service }));
+    setSelectedLabour(null);
+
+    if (service && !availableServiceSet.has(service) && !searching) {
+      toast.error(`${service} is not available for scheduling near your location right now.`);
+    }
   };
 
   const handleRefreshLocation = async () => {
@@ -200,7 +210,23 @@ const SearchPage = () => {
             description="Choose a service, confirm what is available near your saved location, and book a worker."
           />
 
-          <div className="mt-5 grid gap-4 sm:mt-8 lg:grid-cols-[320px_1fr] lg:gap-6">
+          <Card className="mt-5 border-emerald-200 bg-emerald-50/70 sm:mt-8">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+              <AutocompleteSelect
+                label="Search service"
+                placeholder={searching ? 'Checking services nearby' : 'Search service for scheduling'}
+                options={workCategories}
+                value={filters.category || filters.query}
+                onChange={(event) => handleServiceSearchChange(event.target.value)}
+                getAvailability={getServiceAvailability}
+              />
+              <Badge tone={availableServiceOptions.length ? 'emerald' : 'slate'} className="min-h-10 px-4">
+                {searching ? 'Checking' : `${availableServiceOptions.length} available`}
+              </Badge>
+            </div>
+          </Card>
+
+          <div className="mt-5 grid gap-4 lg:grid-cols-[320px_1fr] lg:gap-6">
             <Card className="h-fit space-y-4 lg:sticky lg:top-24">
               <div className="flex items-center justify-between gap-3 text-slate-950 dark:text-white">
                 <div className="flex min-w-0 items-center gap-2">
@@ -326,18 +352,10 @@ const SearchPage = () => {
                     options={availableServiceOptions}
                     value={filters.category}
                     className="mt-5"
-                    onChange={(event) => {
-                      const service = event.target.value;
-                      setFilters((prev) => ({ ...prev, category: service, query: service }));
-                      setSelectedLabour(null);
-                    }}
+                    onChange={(event) => handleServiceSearchChange(event.target.value)}
                     getAvailability={getServiceAvailability}
                   />
-                ) : (
-                  <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm font-medium text-slate-600">
-                    No service available within {NEARBY_LABOUR_RADIUS_KM} km right now.
-                  </div>
-                )}
+                ) : null}
               </Card>
 
               {selectedLabour ? (

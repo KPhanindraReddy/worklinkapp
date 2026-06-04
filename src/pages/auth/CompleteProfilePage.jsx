@@ -5,7 +5,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { InputField } from '../../components/common/InputField';
-import { AddressAutocomplete } from '../../components/common/AddressAutocomplete';
 import { PageSEO } from '../../components/common/PageSEO';
 import { PhoneInputField } from '../../components/common/PhoneInputField';
 import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUploader';
@@ -272,19 +271,11 @@ const CompleteProfilePage = () => {
                 />
                 {role === 'client' ? (
                   <div className="space-y-3">
-                    <AddressAutocomplete
+                    <InputField
                       label="Location"
                       value={formValues.location}
                       placeholder="Gachibowli, Hyderabad"
-                      onSelect={(suggestion) => {
-                        if (suggestion) {
-                          setFormValues((prev) => ({
-                            ...prev,
-                            location: suggestion.label,
-                            coordinates: suggestion.coordinates
-                          }));
-                        }
-                      }}
+                      onChange={(event) => handleChange('location', event.target.value)}
                     />
                     <ProfileLocationPanel
                       roleLabel="client"
@@ -301,19 +292,11 @@ const CompleteProfilePage = () => {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <AddressAutocomplete
+                    <InputField
                       label="Current location"
                       value={formValues.currentLocation}
                       placeholder="Madhapur, Hyderabad"
-                      onSelect={(suggestion) => {
-                        if (suggestion) {
-                          setFormValues((prev) => ({
-                            ...prev,
-                            currentLocation: suggestion.label,
-                            coordinates: suggestion.coordinates
-                          }));
-                        }
-                      }}
+                      onChange={(event) => handleChange('currentLocation', event.target.value)}
                     />
                     <ProfileLocationPanel
                       roleLabel="labour"

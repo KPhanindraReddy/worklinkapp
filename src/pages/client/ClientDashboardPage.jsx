@@ -5,7 +5,6 @@ import {
   LoaderCircle,
   MapPin,
   MessageCircle,
-  Navigation,
   Search,
   Send,
   UserCheck,
@@ -18,10 +17,10 @@ import { BookingCalendar } from '../../components/booking/BookingCalendar';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
+import { AutocompleteSelect } from '../../components/common/AutocompleteSelect';
 import { EmptyState } from '../../components/common/EmptyState';
 import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
-import { SelectField } from '../../components/common/SelectField';
 import { Skeleton } from '../../components/common/Skeleton';
 import { AppShell } from '../../components/layout/AppShell';
 import { LocationText } from '../../components/location/LocationText';
@@ -46,14 +45,13 @@ import {
   parseDateValue
 } from '../../utils/formatters';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
-import { NEARBY_LABOUR_RADIUS_KM } from '../../utils/constants';
+import { NEARBY_LABOUR_RADIUS_KM, workCategories } from '../../utils/constants';
 import {
   buildMapsUrl,
   getDisplayLocationText,
   getLocationLabel,
   normalizeCoordinates
 } from '../../utils/location';
-import { fetchMapboxCoordinatesForAddress } from '../../utils/mapbox';
 import { buildProfileAvatarDataUrl } from '../../utils/profileAvatar';
 import { createRouteGroupId } from '../../utils/requestRouting';
 
@@ -178,10 +176,6 @@ const ClientDashboardPage = () => {
   const [requestCoordinates, setRequestCoordinates] = useState(
     () => normalizeCoordinates(userProfile?.coordinates) || null
   );
-  const [serviceLocationMode, setServiceLocationMode] = useState('live');
-  const [serviceLocationInput, setServiceLocationInput] = useState('');
-  const [manualServiceLocationLabel, setManualServiceLocationLabel] = useState('');
-  const [resolvingServiceLocation, setResolvingServiceLocation] = useState(false);
   const [coverageMessage, setCoverageMessage] = useState('');
   const lastDemandKeyRef = useRef('');
   const lastLocationErrorRef = useRef('');
@@ -228,10 +222,8 @@ const ClientDashboardPage = () => {
     };
 
     setLiveCoordinates(nextCoordinates);
-    if (serviceLocationMode === 'live') {
-      setRequestCoordinates(nextCoordinates);
-    }
-  }, [geolocation.hasLocation, geolocation.latitude, geolocation.longitude, serviceLocationMode]);
+    setRequestCoordinates(nextCoordinates);
+  }, [geolocation.hasLocation, geolocation.latitude, geolocation.longitude]);
 
   const clientOrigin = useMemo(
     () => normalizeCoordinates(requestCoordinates) || null,
@@ -245,7 +237,7 @@ const ClientDashboardPage = () => {
   const clientLocationLabel = useMemo(
     () => {
       if (clientOrigin) {
-        return manualServiceLocationLabel || resolvedLocationName || profileLocationLabel || 'Live location captured';
+        return resolvedLocationName || profileLocationLabel || 'Live location captured';
       }
 
       if (geolocation.loading) {
@@ -254,11 +246,11 @@ const ClientDashboardPage = () => {
 
       return geolocation.error || 'Allow location to show nearby services';
     },
-    [clientOrigin, geolocation.error, geolocation.loading, manualServiceLocationLabel, profileLocationLabel, resolvedLocationName]
+    [clientOrigin, geolocation.error, geolocation.loading, profileLocationLabel, resolvedLocationName]
   );
   const bookingAddress =
     clientOrigin
-      ? getDisplayLocationText(manualServiceLocationLabel || resolvedLocationName || profileLocationLabel, 'Live location shared')
+      ? getDisplayLocationText(resolvedLocationName || profileLocationLabel, 'Live location shared')
       : '';
 
   const recordUnavailableDemand = async (serviceType = selectedService || 'Any service') => {
@@ -312,13 +304,6 @@ const ClientDashboardPage = () => {
         setAvailableLabours(nearbyItems);
         if (nearbyItems.length) {
           setCoverageMessage('');
-        } else {
-          const message = `We are currently not available in this location: ${bookingAddress || clientLocationLabel}.`;
-          setCoverageMessage(message);
-          if (serviceLocationMode === 'manual') {
-            toast.error(message);
-            recordUnavailableDemand('Any service');
-          }
         }
         const nextServices = new Set(nearbyItems.map((labour) => labour.category).filter(Boolean));
 
@@ -338,7 +323,7 @@ const ClientDashboardPage = () => {
     return () => {
       isActive = false;
     };
-  }, [clientOrigin, serviceLocationMode]);
+  }, [clientOrigin]);
 
   useEffect(() => {
     const matchingLabours = selectedService
@@ -393,10 +378,12 @@ const ClientDashboardPage = () => {
       ),
     [availableLabours]
   );
+  const availableServiceSet = useMemo(() => new Set(serviceOptions), [serviceOptions]);
+  const getServiceAvailability = (service) => (availableServiceSet.has(service) ? 'Available' : null);
   const trackedBookings = useMemo(() => bookings.slice(0, 3), [bookings]);
   const mapTitle = selectedService ? `${selectedService} within ${NEARBY_LABOUR_RADIUS_KM} km` : 'Service location';
   const mapSubtitle = clientOrigin
-    ? `${serviceLocationMode === 'manual' ? 'Service address' : 'Live location'}: ${clientLocationLabel}`
+    ? `Live location: ${clientLocationLabel}`
     : clientLocationLabel;
   const visibleMapLabours = selectedService ? serviceLabours : [];
   const selectedMapLabour = visibleMapLabours.find((labour) => labour.id === selectedLabourId) ?? null;
@@ -463,8 +450,6 @@ const ClientDashboardPage = () => {
       return;
     }
 
-    setServiceLocationMode('live');
-    setManualServiceLocationLabel('');
     setRequestCoordinates(coordinates);
     setLiveCoordinates(coordinates);
     toast.success('Live location updated.');
@@ -478,39 +463,20 @@ const ClientDashboardPage = () => {
       return;
     }
 
-    setServiceLocationMode('live');
-    setManualServiceLocationLabel('');
     setRequestCoordinates(coordinates);
     toast.success('Service location set to live GPS.');
   };
 
-  const handleApplyServiceAddress = async () => {
-    const address = serviceLocationInput.trim();
+  const handleServiceChange = (service) => {
+    setSelectedService(service);
+    setRequestMode('instant');
+    setCoverageMessage('');
 
-    if (!address) {
-      toast.error('Enter the service address first.');
-      return;
-    }
-
-    setResolvingServiceLocation(true);
-
-    try {
-      const result = await fetchMapboxCoordinatesForAddress(address);
-
-      if (!result?.coordinates) {
-        toast.error('Could not find that address. Try adding area, city, and pincode.');
-        return;
-      }
-
-      setServiceLocationMode('manual');
-      setManualServiceLocationLabel(result.label || address);
-      setServiceLocationInput(result.label || address);
-      setRequestCoordinates(result.coordinates);
-      toast.success('Service location updated.');
-    } catch (error) {
-      toast.error(getFirebaseErrorMessage(error));
-    } finally {
-      setResolvingServiceLocation(false);
+    if (service && !availableServiceSet.has(service)) {
+      const message = `${service} is currently not available near your location.`;
+      setCoverageMessage(message);
+      toast.error(message);
+      recordUnavailableDemand(service);
     }
   };
 
@@ -561,7 +527,7 @@ const ClientDashboardPage = () => {
           : `Scheduled request for ${selectedDate} ${selectedSlot}.`,
       location: bookingAddress || (clientOrigin ? 'Live location shared' : ''),
       requestedAddress: bookingAddress || (clientOrigin ? 'Live location shared' : ''),
-      requestedLocationMode: serviceLocationMode,
+      requestedLocationMode: 'live',
       coordinates: clientOrigin,
       notes:
         mode === 'instant'
@@ -875,22 +841,13 @@ const ClientDashboardPage = () => {
             >
               <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
                 <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-                  <SelectField
+                  <AutocompleteSelect
                     label="Available service"
-                    placeholder={
-                      laboursLoading
-                        ? 'Checking nearby services'
-                        : serviceOptions.length
-                          ? 'Choose available service'
-                          : `No services within ${NEARBY_LABOUR_RADIUS_KM} km`
-                    }
-                    options={serviceOptions}
+                    placeholder={laboursLoading ? 'Checking nearby services' : 'Search service'}
+                    options={workCategories}
                     value={selectedService}
-                    disabled={laboursLoading || !serviceOptions.length}
-                    onChange={(event) => {
-                      setSelectedService(event.target.value);
-                      setRequestMode('instant');
-                    }}
+                    onChange={(event) => handleServiceChange(event.target.value)}
+                    getAvailability={getServiceAvailability}
                   />
                   <Button type="button" variant="outline" size="sm" className="h-11 w-full sm:w-auto" onClick={handleRefreshLocation} disabled={geolocation.loading}>
                     {geolocation.loading ? <LoaderCircle size={15} className="animate-spin" /> : <LocateFixed size={15} />}
@@ -918,21 +875,9 @@ const ClientDashboardPage = () => {
                   <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Service location</p>
                   <p className="mt-1 truncate text-sm font-semibold text-slate-800">{clientLocationLabel}</p>
                 </div>
-                <Badge tone={serviceLocationMode === 'manual' ? 'blue' : 'emerald'}>
-                  {serviceLocationMode === 'manual' ? 'Address' : 'Live GPS'}
-                </Badge>
+                <Badge tone="emerald">Live GPS</Badge>
               </div>
-              <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
-                <InputField
-                  label="Another address"
-                  value={serviceLocationInput}
-                  onChange={(event) => setServiceLocationInput(event.target.value)}
-                  placeholder="House, area, city, pincode"
-                />
-                <Button type="button" variant="outline" size="sm" className="h-10 w-full sm:w-auto" onClick={handleApplyServiceAddress} disabled={resolvingServiceLocation}>
-                  {resolvingServiceLocation ? <LoaderCircle size={15} className="animate-spin" /> : <Navigation size={15} />}
-                  Use address
-                </Button>
+              <div className="mt-2">
                 <Button type="button" variant="outline" size="sm" className="h-10 w-full sm:w-auto" onClick={handleUseLiveServiceLocation}>
                   <LocateFixed size={15} />
                   Live GPS
@@ -946,22 +891,13 @@ const ClientDashboardPage = () => {
             ) : null}
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
               <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-                <SelectField
+                <AutocompleteSelect
                   label="Available service"
-                  placeholder={
-                    laboursLoading
-                      ? 'Checking nearby services'
-                      : serviceOptions.length
-                        ? 'Choose available service'
-                        : `No services within ${NEARBY_LABOUR_RADIUS_KM} km`
-                  }
-                  options={serviceOptions}
+                  placeholder={laboursLoading ? 'Checking nearby services' : 'Search service'}
+                  options={workCategories}
                   value={selectedService}
-                  disabled={laboursLoading || !serviceOptions.length}
-                  onChange={(event) => {
-                    setSelectedService(event.target.value);
-                    setRequestMode('instant');
-                  }}
+                  onChange={(event) => handleServiceChange(event.target.value)}
+                  getAvailability={getServiceAvailability}
                 />
                 <Button type="button" variant="outline" size="sm" className="h-11 w-full sm:w-auto" onClick={handleRefreshLocation} disabled={geolocation.loading}>
                   {geolocation.loading ? <LoaderCircle size={15} className="animate-spin" /> : <LocateFixed size={15} />}
@@ -1254,529 +1190,7 @@ const ClientDashboardPage = () => {
       </section>
     </AppShell>
   );
-
-  return (
-    <AppShell>
-      <PageSEO title="Client Dashboard" description="Request nearby labour instantly or schedule a trusted worker from your live location." />
-
-      <section className="section-space pt-3">
-        <div className="page-shell space-y-6">
-          <ServiceRequestMap
-            center={clientOrigin}
-            labours={visibleMapLabours}
-            selectedLabourId={selectedLabourId}
-            onSelectLabour={(labour) => setSelectedLabourId(labour.id)}
-            searching={laboursLoading || submittingInstant}
-            title={mapTitle}
-            subtitle={mapSubtitle}
-            centerLabel={clientLocationLabel || 'Your live location'}
-            emptyLabel={`Choose a service below to show labour within ${NEARBY_LABOUR_RADIUS_KM} km`}
-            showCenterLabel={false}
-            showRoutePreview={Boolean(selectedService && selectedLabourId)}
-            initialZoom={12}
-            minZoom={9}
-            maxZoom={17}
-            className="-mx-[0.625rem] min-h-[620px] touch-pan-y rounded-none border-x-0 sm:mx-0 sm:min-h-[640px] sm:rounded-[28px] sm:border"
-            sheetClassName="bottom-4 left-4 right-4 rounded-[24px] p-4 sm:rounded-[24px] sm:border"
-          >
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-                <SelectField
-                  label="Available service"
-                  placeholder={
-                    laboursLoading
-                      ? 'Checking nearby services'
-                      : serviceOptions.length
-                        ? 'Choose available service'
-                        : `No services within ${NEARBY_LABOUR_RADIUS_KM} km`
-                  }
-                  options={serviceOptions}
-                  value={selectedService}
-                  disabled={laboursLoading || !serviceOptions.length}
-                  onChange={(event) => {
-                    setSelectedService(event.target.value);
-                    setRequestMode('instant');
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-11 w-full sm:w-auto"
-                  onClick={handleRefreshLocation}
-                  disabled={geolocation.loading}
-                >
-                  {geolocation.loading ? <LoaderCircle size={15} className="animate-spin" /> : <LocateFixed size={15} />}
-                  Update GPS
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 lg:min-w-[21rem]">
-                <Button
-                  type="button"
-                  size="lg"
-                  className="w-full bg-slate-950 hover:bg-slate-800"
-                  onClick={handleInstantRequest}
-                  disabled={submittingInstant || bookingsLoading}
-                >
-                  {submittingInstant ? <LoaderCircle size={16} className="animate-spin" /> : <Send size={16} />}
-                  Instant
-                </Button>
-                <Button
-                  type="button"
-                  size="lg"
-                  variant={requestMode === 'scheduled' ? 'primary' : 'outline'}
-                  className="w-full"
-                  onClick={handleScheduleMode}
-                  disabled={bookingsLoading}
-                >
-                  <CalendarClock size={16} />
-                  Schedule
-                </Button>
-              </div>
-            </div>
-          </ServiceRequestMap>
-
-          {pendingBookings.length ? (
-            <Card className="rounded-[24px] border-brand-200 bg-brand-50 p-5">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700">Requesting</p>
-                  <h2 className="mt-2 text-xl font-semibold text-slate-950">Waiting for labour response</h2>
-                  <p className="mt-2 break-words text-sm font-medium leading-6 text-slate-700">
-                    {pendingBookings[0].labourName} received your {pendingBookings[0].serviceType} request.
-                    Instant requests will move to the next available labour if this one rejects or times out.
-                  </p>
-                </div>
-                <div className="grid h-16 w-16 place-items-center rounded-full border-4 border-white bg-brand-600 text-white shadow-glow">
-                  <LoaderCircle size={26} className="animate-spin" />
-                </div>
-              </div>
-              <div className="mt-4">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                  disabled={cancellingBookingId === pendingBookings[0].id}
-                  onClick={() => handleCancelBooking(pendingBookings[0])}
-                >
-                  {cancellingBookingId === pendingBookings[0].id ? 'Cancelling...' : 'Cancel request'}
-                </Button>
-              </div>
-            </Card>
-          ) : null}
-
-          {activeBookings.length ? (
-            <Card className="rounded-[24px] border-emerald-200 bg-emerald-50 p-5">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700">
-                    Labour connected
-                  </p>
-                  <h2 className="mt-2 text-xl font-semibold text-slate-950">
-                    {activeBookings[0].labourName} accepted your request
-                  </h2>
-                  <p className="mt-2 text-sm font-medium leading-6 text-slate-700">
-                    Keep your start OTP ready. Share it only after the labour reaches your location.
-                  </p>
-                </div>
-                <Badge tone="emerald">{activeBookings[0].status}</Badge>
-              </div>
-              <div className="mt-4 flex items-center gap-3">
-                <img
-                  src={activeBookings[0].labourProfilePhoto || buildProfileAvatarDataUrl(activeBookings[0].labourName || 'Labour')}
-                  alt={activeBookings[0].labourName}
-                  width="48"
-                  height="48"
-                  loading="eager"
-                  decoding="sync"
-                  className="h-12 w-12 rounded-xl object-cover"
-                />
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-950">{activeBookings[0].labourName}</p>
-                  <p className="truncate text-xs font-medium text-slate-600">{activeBookings[0].serviceType}</p>
-                </div>
-              </div>
-              {activeBookings[0].startOtp ? (
-                <div className="mt-4 rounded-2xl border border-emerald-200 bg-white p-4">
-                  <p className="text-xs font-bold uppercase text-emerald-700">Start OTP</p>
-                  <p className="mt-2 font-display text-2xl font-bold tracking-[0.24em] text-slate-950">
-                    {activeBookings[0].startOtp}
-                  </p>
-                </div>
-              ) : null}
-              {activeBookings[0].status === 'accepted' ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="mt-4 w-full sm:w-auto"
-                  disabled={cancellingBookingId === activeBookings[0].id}
-                  onClick={() => handleCancelBooking(activeBookings[0])}
-                >
-                  {cancellingBookingId === activeBookings[0].id ? 'Cancelling...' : 'Cancel request'}
-                </Button>
-              ) : null}
-            </Card>
-          ) : null}
-
-          {awaitingPaymentBookings.length ? (
-            <Card className="rounded-[24px] border-amber-200 bg-amber-50 p-5">
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-700">
-                    Work finished
-                  </p>
-                  <h2 className="mt-2 text-xl font-semibold text-slate-950">
-                    Complete payment for {awaitingPaymentBookings[0].labourName}
-                  </h2>
-                  <p className="mt-2 text-sm font-medium leading-6 text-slate-700">
-                    Enter the amount you paid after the labour finishes the work. This closes the service for both sides.
-                  </p>
-                  <InputField
-                    label="Amount paid"
-                    type="number"
-                    min="1"
-                    inputMode="decimal"
-                    value={paymentAmounts[awaitingPaymentBookings[0].id] ?? ''}
-                    onChange={(event) =>
-                      handlePaymentAmountChange(awaitingPaymentBookings[0].id, event.target.value)
-                    }
-                    placeholder="Enter amount"
-                    className="mt-4 max-w-sm"
-                  />
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="h-11 w-full lg:w-auto"
-                  disabled={completingPaymentId === awaitingPaymentBookings[0].id}
-                  onClick={() => handleCompleteClientPayment(awaitingPaymentBookings[0])}
-                >
-                  {completingPaymentId === awaitingPaymentBookings[0].id ? 'Completing...' : 'Complete service'}
-                </Button>
-              </div>
-            </Card>
-          ) : null}
-
-          {requestMode === 'scheduled' ? (
-            <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
-              <BookingCalendar
-                selectedDate={selectedDate}
-                selectedSlot={selectedSlot}
-                onDateChange={setSelectedDate}
-                onSlotChange={setSelectedSlot}
-              />
-
-              <Card className="rounded-[24px] p-4 sm:p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-xl font-semibold text-slate-950">Schedule {selectedService || 'service'} labour</h2>
-                    <p className="mt-2 text-sm font-medium text-slate-600">
-                      Pick a worker for the selected day and time.
-                    </p>
-                  </div>
-                  <Badge tone={serviceLabours.length ? 'emerald' : 'slate'}>
-                    {laboursLoading ? 'Checking' : `${serviceLabours.length} found`}
-                  </Badge>
-                </div>
-
-                <div className="mt-5 space-y-2.5">
-                  {laboursLoading ? (
-                    <>
-                      <Skeleton className="h-20 w-full rounded-2xl" />
-                      <Skeleton className="h-20 w-full rounded-2xl" />
-                      <Skeleton className="h-20 w-full rounded-2xl" />
-                    </>
-                  ) : serviceLabours.length ? (
-                    serviceLabours.map((labour) => {
-                      const notAvailableForDate = getKnownScheduleConflict(labour);
-                      const isSubmitting = scheduleSubmittingId === labour.id;
-
-                      return (
-                        <button
-                          key={labour.id}
-                          type="button"
-                          className={`w-full rounded-2xl border p-3 text-left transition ${
-                            notAvailableForDate
-                              ? 'border-amber-200 bg-amber-50'
-                              : selectedLabourId === labour.id
-                                ? 'border-brand-400 bg-brand-50'
-                                : 'border-slate-200 bg-white hover:border-brand-300 hover:bg-slate-50'
-                          }`}
-                          onClick={() => handleScheduleLabour(labour)}
-                          disabled={Boolean(scheduleSubmittingId)}
-                        >
-                          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-                            <div className="flex min-w-0 items-center gap-3">
-                              <img
-                                src={labour.profilePhoto}
-                                alt={labour.fullName}
-                                width="48"
-                                height="48"
-                                loading="lazy"
-                                decoding="async"
-                                className="h-12 w-12 flex-none rounded-xl object-cover"
-                              />
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-semibold text-slate-950">{labour.fullName}</p>
-                                <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs font-medium text-slate-600">
-                                  <span>{labour.category}</span>
-                                  <span>{formatDistanceKm(labour.distanceKm)}</span>
-                                </div>
-                              </div>
-                            </div>
-                            <span className={`inline-flex min-h-10 items-center justify-center rounded-xl px-3 text-xs font-bold ${
-                              notAvailableForDate
-                                ? 'bg-amber-100 text-amber-900'
-                                : 'bg-slate-950 text-white'
-                            }`}>
-                              {isSubmitting
-                                ? 'Scheduling...'
-                                : notAvailableForDate
-                                  ? 'Not available'
-                                  : selectedDate && selectedSlot
-                                    ? 'Schedule'
-                                    : 'Pick time'}
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })
-                  ) : (
-                    <EmptyState
-                      title={selectedService ? 'No labour available for this service' : 'Choose a service'}
-                      description={
-                        selectedService
-                          ? `Try another time, update GPS, or choose a different service within ${NEARBY_LABOUR_RADIUS_KM} km.`
-                          : `Select a service above to show related labour within ${NEARBY_LABOUR_RADIUS_KM} km.`
-                      }
-                    />
-                  )}
-                </div>
-              </Card>
-            </div>
-          ) : null}
-
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {metricsLoading ? (
-              <>
-                <Skeleton className="h-24 w-full rounded-2xl" />
-                <Skeleton className="h-24 w-full rounded-2xl" />
-                <Skeleton className="h-24 w-full rounded-2xl" />
-                <Skeleton className="h-24 w-full rounded-2xl" />
-              </>
-            ) : (
-              metrics.map((item) => (
-                <Card key={item.label} className="rounded-2xl p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    {item.label}
-                  </p>
-                  <p className="mt-2 text-2xl font-bold text-slate-950">{item.value}</p>
-                </Card>
-              ))
-            )}
-          </div>
-
-          <div className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
-            <Card className="rounded-[24px] p-4 sm:p-5">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-semibold text-slate-950">Request tracking</h2>
-                  <p className="mt-2 text-sm text-slate-600">
-                    Pending, accepted, scheduled, and completed requests appear here.
-                  </p>
-                </div>
-                <Button as={Link} to="/chat" variant="outline" size="sm" className="w-full sm:w-auto">
-                  <MessageCircle size={16} />
-                  Chat
-                </Button>
-              </div>
-              <div className="mt-5 space-y-3">
-                {bookingsLoading ? (
-                  <>
-                    <Skeleton className="h-24 w-full rounded-2xl" />
-                    <Skeleton className="h-24 w-full rounded-2xl" />
-                  </>
-                ) : trackedBookings.length ? (
-                  trackedBookings.map((booking) => (
-                    <div key={booking.id} className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <img
-                            src={
-                              booking.labourProfilePhoto ||
-                              buildProfileAvatarDataUrl(booking.labourName || 'Labour')
-                            }
-                            alt={booking.labourName}
-                            width="44"
-                            height="44"
-                            loading="lazy"
-                            decoding="async"
-                            className="h-11 w-11 flex-none rounded-xl object-cover"
-                          />
-                          <div className="min-w-0">
-                            <h3 className="font-semibold text-slate-950">{booking.serviceType}</h3>
-                            <p className="mt-1 break-words text-sm text-slate-600">
-                              {booking.labourName} - {getDisplayLocationText(booking.location, 'Live location shared')}
-                            </p>
-                          </div>
-                        </div>
-                        <Badge tone={getBookingTone(booking.status)}>{booking.status}</Badge>
-                      </div>
-                      <div className="mt-3 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
-                        <span className="inline-flex items-center gap-2">
-                          <Clock3 size={15} />
-                          {formatDate(booking.appointmentAt)}
-                        </span>
-                        <span className="inline-flex items-center gap-2 font-semibold text-brand-700">
-                          <WalletCards size={15} />
-                          {booking.status === 'completed' && Number(booking.amount) > 0
-                            ? formatCurrency(booking.amount)
-                            : booking.status === 'awaiting_payment'
-                              ? 'Enter paid amount'
-                            : 'Charge pending'}
-                        </span>
-                      </div>
-                      {booking.status === 'completed' && Number(booking.amount) > 0 ? (
-                        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-semibold text-slate-950">
-                                {booking.paymentStatus === 'paid' ? 'Payment paid' : 'Payment due'}
-                              </p>
-                              <p className="mt-1 text-xs font-medium text-slate-500">
-                                Final charge: {formatCurrency(booking.amount)}
-                              </p>
-                            </div>
-                            <Badge tone={booking.paymentStatus === 'paid' ? 'emerald' : 'amber'}>
-                              {booking.paymentStatus === 'paid' ? 'Paid' : 'Waiting'}
-                            </Badge>
-                          </div>
-                        </div>
-                      ) : null}
-                      {booking.status === 'awaiting_payment' ? (
-                        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3">
-                          <p className="text-sm font-semibold text-amber-950">Payment amount needed</p>
-                          <p className="mt-1 text-xs font-medium leading-5 text-amber-900">
-                            Use the work-finished card above to enter the paid amount and complete this request.
-                          </p>
-                        </div>
-                      ) : null}
-                      {['accepted', 'in_progress'].includes(booking.status) ? (
-                        <div className="mt-4 grid gap-3 sm:flex sm:flex-wrap">
-                          <Button
-                            as="a"
-                            href={buildMapsUrl(booking.coordinates, booking.location)}
-                            target="_blank"
-                            rel="noreferrer"
-                            size="sm"
-                            variant="outline"
-                            className="w-full sm:w-auto"
-                          >
-                            <Navigation size={15} />
-                            View location
-                          </Button>
-                          <Button as={Link} to="/chat" size="sm" className="w-full sm:w-auto">
-                            <MessageCircle size={15} />
-                            Chat labour
-                          </Button>
-                          {booking.status === 'accepted' ? (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className="w-full sm:w-auto"
-                              disabled={cancellingBookingId === booking.id}
-                              onClick={() => handleCancelBooking(booking)}
-                            >
-                              {cancellingBookingId === booking.id ? 'Cancelling...' : 'Cancel'}
-                            </Button>
-                          ) : null}
-                        </div>
-                      ) : null}
-                      {booking.status === 'pending' ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="mt-4 w-full sm:w-auto"
-                          disabled={cancellingBookingId === booking.id}
-                          onClick={() => handleCancelBooking(booking)}
-                        >
-                          {cancellingBookingId === booking.id ? 'Cancelling...' : 'Cancel request'}
-                        </Button>
-                      ) : null}
-                    </div>
-                  ))
-                ) : (
-                  <p className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm font-medium text-slate-600">
-                    Your service requests will show here after you send one.
-                  </p>
-                )}
-              </div>
-            </Card>
-
-            <Card className="rounded-[24px] p-4 sm:p-5">
-              <div className="flex items-center gap-2">
-                <UserCheck size={18} className="text-emerald-600" />
-                <h2 className="text-xl font-semibold text-slate-950">Related labour</h2>
-              </div>
-              <div className="mt-5 space-y-2.5">
-                {laboursLoading ? (
-                  <>
-                    <Skeleton className="h-16 w-full rounded-2xl" />
-                    <Skeleton className="h-16 w-full rounded-2xl" />
-                  </>
-                ) : serviceLabours.length ? (
-                  serviceLabours.slice(0, 4).map((labour) => (
-                    <button
-                      key={labour.id}
-                      type="button"
-                      className={`w-full rounded-2xl border p-3 text-left transition ${
-                        selectedLabourId === labour.id
-                          ? 'border-brand-400 bg-brand-50'
-                          : 'border-slate-200 bg-white hover:border-brand-300 hover:bg-slate-50'
-                      }`}
-                      onClick={() => setSelectedLabourId(labour.id)}
-                    >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <img
-                          src={labour.profilePhoto}
-                          alt={labour.fullName}
-                          width="44"
-                          height="44"
-                          loading="lazy"
-                          decoding="async"
-                          className="h-11 w-11 flex-none rounded-xl object-cover"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-slate-950">{labour.fullName}</p>
-                          <p className="mt-1 truncate text-xs font-medium text-slate-600">
-                            {formatDistanceKm(labour.distanceKm)}
-                          </p>
-                        </div>
-                        <Badge tone="emerald">{labour.availability}</Badge>
-                      </div>
-                    </button>
-                  ))
-                ) : (
-                  <p className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm font-medium text-slate-600">
-                    Choose a service to show free workers within {NEARBY_LABOUR_RADIUS_KM} km of your live location.
-                  </p>
-                )}
-              </div>
-              <Button as={Link} to="/search" variant="outline" size="sm" className="mt-4 w-full">
-                <Search size={15} />
-                Full search
-              </Button>
-            </Card>
-          </div>
-        </div>
-      </section>
-    </AppShell>
-  );
+
 };
 
 export default ClientDashboardPage;

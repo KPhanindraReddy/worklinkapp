@@ -16,12 +16,12 @@ import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link, useSearchParams } from 'react-router-dom';
 import { BookingCalendar } from '../../components/booking/BookingCalendar';
+import { AutocompleteSelect } from '../../components/common/AutocompleteSelect';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
-import { SelectField } from '../../components/common/SelectField';
 import { TextAreaField } from '../../components/common/TextAreaField';
 import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
@@ -584,11 +584,11 @@ const BookingPage = () => {
                   </Badge>
                 </div>
 
-                <SelectField
+                <AutocompleteSelect
                   label="Service"
                   placeholder="Choose a service"
                   options={workCategories}
-                  value={workCategories.includes(formValues.serviceName) ? formValues.serviceName : ''}
+                  value={formValues.serviceName}
                   className="mt-6"
                   onChange={(event) => handleServiceSelect(event.target.value)}
                 />

@@ -175,36 +175,56 @@ const LabourEarningsPage = () => {
                 </Badge>
               </div>
 
-              <div className="mt-4 space-y-3">
+              <div className="mt-4 space-y-2">
                 {loading ? (
                   <>
                     <Skeleton className="h-24 w-full rounded-2xl" />
                     <Skeleton className="h-24 w-full rounded-2xl" />
                   </>
                 ) : filteredPaidBookings.length ? (
-                  filteredPaidBookings.map((booking) => (
-                    <div key={booking.id} className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <h3 className="font-semibold text-slate-950">{booking.clientName || 'Client'}</h3>
-                          <p className="mt-1 break-words text-sm text-slate-600">
-                            {booking.serviceType} - {getDisplayLocationText(booking.location, 'Live location shared')}
-                          </p>
-                        </div>
-                        <Badge tone="emerald">Paid</Badge>
-                      </div>
-                      <div className="mt-3 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
-                        <span className="inline-flex items-center gap-2 font-semibold text-brand-700">
-                          <IndianRupee size={15} />
-                          {formatCurrency(booking.amount)}
-                        </span>
-                        <span className="inline-flex items-center gap-2">
-                          <CalendarClock size={15} />
-                          {formatDate(getPaymentDate(booking))}
-                        </span>
-                      </div>
+                  <>
+                    <div className="hidden rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-500 md:grid md:grid-cols-[1fr_1fr_0.85fr_0.85fr_0.55fr] md:gap-3">
+                      <span>Client</span>
+                      <span>Service</span>
+                      <span>Date</span>
+                      <span>Amount</span>
+                      <span>Status</span>
                     </div>
-                  ))
+                    {filteredPaidBookings.map((booking) => (
+                      <div key={booking.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+                        <div className="grid gap-3 md:grid-cols-[1fr_1fr_0.85fr_0.85fr_0.55fr] md:items-center">
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Client</p>
+                            <h3 className="truncate font-semibold text-slate-950">{booking.clientName || 'Client'}</h3>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Service</p>
+                            <p className="truncate text-sm font-semibold text-slate-800">{booking.serviceType}</p>
+                            <p className="mt-1 truncate text-xs text-slate-500">
+                              {getDisplayLocationText(booking.location, 'Live location shared')}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Date</p>
+                            <span className="inline-flex items-center gap-2 text-sm text-slate-600">
+                              <CalendarClock size={15} />
+                              {formatDate(getPaymentDate(booking))}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Amount</p>
+                            <span className="inline-flex items-center gap-2 font-semibold text-brand-700">
+                              <IndianRupee size={15} />
+                              {formatCurrency(booking.amount)}
+                            </span>
+                          </div>
+                          <div className="flex justify-start md:justify-end">
+                            <Badge tone="emerald">Paid</Badge>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </>
                 ) : (
                   <p className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
                     No paid services for this date.
@@ -221,24 +241,39 @@ const LabourEarningsPage = () => {
               <p className="mt-2 text-sm text-slate-600">
                 These jobs are finished by you, but the client still needs to enter the paid amount.
               </p>
-              <div className="mt-4 space-y-3">
+              <div className="mt-4 space-y-2">
                 {loading ? (
                   <Skeleton className="h-24 w-full rounded-2xl" />
                 ) : awaitingPaymentBookings.length ? (
-                  awaitingPaymentBookings.slice(0, 6).map((booking) => (
-                    <div key={booking.id} className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="font-semibold text-amber-950">{booking.clientName || 'Client'}</p>
-                          <p className="mt-1 text-sm text-amber-900">{booking.serviceType}</p>
-                        </div>
-                        <Badge tone="amber">Amount pending</Badge>
-                      </div>
-                      <p className="mt-3 text-sm text-amber-900">
-                        Finished on {formatDate(booking.workFinishedAt || booking.appointmentAt)}
-                      </p>
+                  <>
+                    <div className="hidden rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-amber-700 md:grid md:grid-cols-[1fr_1fr_0.9fr_0.75fr] md:gap-3">
+                      <span>Client</span>
+                      <span>Service</span>
+                      <span>Finished</span>
+                      <span>Status</span>
                     </div>
-                  ))
+                    {awaitingPaymentBookings.slice(0, 6).map((booking) => (
+                      <div key={booking.id} className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                        <div className="grid gap-3 md:grid-cols-[1fr_1fr_0.9fr_0.75fr] md:items-center">
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-amber-700 md:hidden">Client</p>
+                            <p className="truncate font-semibold text-amber-950">{booking.clientName || 'Client'}</p>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-amber-700 md:hidden">Service</p>
+                            <p className="truncate text-sm font-semibold text-amber-900">{booking.serviceType}</p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-amber-700 md:hidden">Finished</p>
+                            <p className="text-sm text-amber-900">{formatDate(booking.workFinishedAt || booking.appointmentAt)}</p>
+                          </div>
+                          <div className="flex justify-start md:justify-end">
+                            <Badge tone="amber">Amount pending</Badge>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </>
                 ) : (
                   <p className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
                     No finished jobs waiting for client payment.
