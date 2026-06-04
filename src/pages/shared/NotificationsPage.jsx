@@ -72,6 +72,12 @@ const NotificationsPage = () => {
 
           {notifications.length ? (
             <div className="space-y-3">
+              <div className="hidden rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-500 md:grid md:grid-cols-[0.9fr_1.6fr_0.8fr_0.55fr] md:gap-3">
+                <span>Title</span>
+                <span>Message</span>
+                <span>Time</span>
+                <span>Status</span>
+              </div>
               {notifications.map((notification) => {
                 const target = getNotificationTarget(notification);
                 const Wrapper = target ? Link : 'button';
@@ -84,23 +90,34 @@ const NotificationsPage = () => {
                   className="block text-left"
                   onClick={() => markNotificationRead(notification.id)}
                 >
-                <Card className="flex items-start gap-4 rounded-[28px] transition hover:border-brand-200 hover:bg-brand-50/40">
-                  <div className="grid h-10 w-10 place-items-center rounded-2xl bg-brand-100 text-brand-700 dark:bg-brand-500/10 dark:text-brand-200">
+                <Card className="rounded-2xl p-4 transition hover:border-brand-200 hover:bg-brand-50/40">
+                  <div className="grid gap-3 md:grid-cols-[0.9fr_1.6fr_0.8fr_0.55fr] md:items-center">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="grid h-10 w-10 flex-none place-items-center rounded-2xl bg-brand-100 text-brand-700 dark:bg-brand-500/10 dark:text-brand-200">
                     <BellRing size={16} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <h3 className="text-base font-semibold text-slate-950 dark:text-white">
-                        {notification.title}
-                      </h3>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Title</p>
+                        <h3 className="truncate text-sm font-semibold text-slate-950 dark:text-white">
+                          {notification.title}
+                        </h3>
+                      </div>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Message</p>
+                      <p className="truncate text-sm text-slate-600 dark:text-slate-300">{notification.body}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Time</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {formatDate(notification.createdAt)}
+                      </p>
+                    </div>
+                    <div className="flex justify-start md:justify-end">
                       <Badge tone={notification.read ? 'slate' : 'blue'}>
                         {notification.read ? 'Read' : 'New'}
                       </Badge>
                     </div>
-                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{notification.body}</p>
-                    <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                      {formatDate(notification.createdAt)}
-                    </p>
                   </div>
                 </Card>
                 </Wrapper>

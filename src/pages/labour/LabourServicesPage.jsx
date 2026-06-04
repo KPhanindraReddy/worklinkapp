@@ -2,6 +2,7 @@ import {
   CalendarClock,
   ClipboardList,
   Clock3,
+  MapPin,
   MessageCircle,
   Navigation,
   Phone,
@@ -18,6 +19,7 @@ import { PageSEO } from '../../components/common/PageSEO';
 import { Skeleton } from '../../components/common/Skeleton';
 import { MetricsGrid } from '../../components/dashboard/MetricsGrid';
 import { AppShell } from '../../components/layout/AppShell';
+import { LocationText } from '../../components/location/LocationText';
 import { useAuth } from '../../context/AuthContext';
 import {
   completeBookingWork,
@@ -27,9 +29,8 @@ import {
 } from '../../services/bookingService';
 import { ensureConversation } from '../../services/chatService';
 import { createNotification } from '../../services/notificationService';
-import { formatDate, parseDateValue } from '../../utils/formatters';
+import { formatCurrency, formatDate, parseDateValue } from '../../utils/formatters';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
-import { getDisplayLocationText } from '../../utils/location';
 
 const getDateKey = (value) => {
   const date = parseDateValue(value);
@@ -341,27 +342,53 @@ const LabourServicesPage = () => {
                     <Skeleton className="h-28 w-full rounded-2xl" />
                   </>
                 ) : pendingBookings.length ? (
-                  pendingBookings.map((booking) => (
-                    <div key={booking.id} className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <h3 className="font-semibold text-slate-950">{booking.serviceType}</h3>
-                          <p className="mt-1 break-words text-sm text-slate-600">
-                            {booking.clientName || 'Client'}
-                          </p>
+                  <>
+                    <div className="hidden rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-500 md:grid md:grid-cols-[1fr_1fr_0.8fr_0.9fr_0.7fr] md:gap-3">
+                      <span>Name</span>
+                      <span>Service</span>
+                      <span>Time</span>
+                      <span>Money</span>
+                      <span>Status</span>
+                    </div>
+                    {pendingBookings.map((booking) => (
+                      <div key={booking.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+                        <div className="grid gap-3 md:grid-cols-[1fr_1fr_0.8fr_0.9fr_0.7fr] md:items-center">
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Name</p>
+                            <h3 className="truncate font-semibold text-slate-950">{booking.clientName || 'Client'}</h3>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Service</p>
+                            <p className="truncate text-sm font-semibold text-slate-800">{booking.serviceType}</p>
+                            <p className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-slate-500">
+                              <MapPin size={13} className="flex-none" />
+                              <span className="truncate">
+                                <LocationText
+                                  location={booking.location}
+                                  coordinates={booking.coordinates}
+                                  fallback="Live location shared"
+                                />
+                              </span>
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Time</p>
+                            <span className="inline-flex items-center gap-2 text-sm text-slate-600">
+                              <CalendarClock size={15} />
+                              {formatDate(booking.appointmentAt)}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Money</p>
+                            <span className="inline-flex items-center gap-2 text-sm font-semibold text-brand-700">
+                              <WalletCards size={15} />
+                              After work
+                            </span>
+                          </div>
+                          <div className="flex justify-start md:justify-end">
+                            <Badge tone="amber">Pending</Badge>
+                          </div>
                         </div>
-                        <Badge tone="amber">Pending</Badge>
-                      </div>
-                      <div className="mt-3 grid gap-2 text-sm text-slate-600">
-                        <span className="inline-flex items-center gap-2">
-                          <CalendarClock size={15} />
-                          {formatDate(booking.appointmentAt)}
-                        </span>
-                        <span className="inline-flex items-center gap-2 font-semibold text-brand-700">
-                          <WalletCards size={15} />
-                          Client enters paid amount after work
-                        </span>
-                      </div>
                       {booking.serviceDetails ? (
                         <p className="mt-3 text-sm leading-6 text-slate-600">{booking.serviceDetails}</p>
                       ) : null}
@@ -399,7 +426,8 @@ const LabourServicesPage = () => {
                         </Button>
                       </div>
                     </div>
-                  ))
+                    ))}
+                  </>
                 ) : (
                   <p className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
                     No pending requests for this date.
@@ -426,26 +454,59 @@ const LabourServicesPage = () => {
                     <Skeleton className="h-32 w-full rounded-2xl" />
                   </>
                 ) : scheduledBookings.length ? (
-                  scheduledBookings.map((booking) => (
-                    <div key={booking.id} className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <h3 className="font-semibold text-slate-950">{booking.clientName || 'Client'}</h3>
-                          <p className="mt-1 break-words text-sm text-slate-600">
-                            {booking.serviceType} - {getDisplayLocationText(booking.location, 'Live location shared')}
-                          </p>
+                  <>
+                    <div className="hidden rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-500 md:grid md:grid-cols-[1fr_1fr_0.8fr_0.9fr_0.8fr] md:gap-3">
+                      <span>Name</span>
+                      <span>Service</span>
+                      <span>Time</span>
+                      <span>Money</span>
+                      <span>Status</span>
+                    </div>
+                    {scheduledBookings.map((booking) => (
+                      <div key={booking.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+                        <div className="grid gap-3 md:grid-cols-[1fr_1fr_0.8fr_0.9fr_0.8fr] md:items-center">
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Name</p>
+                            <h3 className="truncate font-semibold text-slate-950">{booking.clientName || 'Client'}</h3>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Service</p>
+                            <p className="truncate text-sm font-semibold text-slate-800">{booking.serviceType}</p>
+                            <p className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-slate-500">
+                              <MapPin size={13} className="flex-none" />
+                              <span className="truncate">
+                                <LocationText
+                                  location={booking.location}
+                                  coordinates={booking.coordinates}
+                                  fallback="Live location shared"
+                                />
+                              </span>
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Time</p>
+                            <span className="inline-flex items-center gap-2 text-sm text-slate-600">
+                              <Clock3 size={15} />
+                              {formatDate(booking.appointmentAt)}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Money</p>
+                            <span className="inline-flex items-center gap-2 text-sm font-semibold text-brand-700">
+                              <WalletCards size={15} />
+                              {booking.paymentStatus === 'paid' && Number(booking.amount) > 0
+                                ? formatCurrency(booking.amount)
+                                : booking.status === 'awaiting_payment'
+                                  ? 'Waiting'
+                                  : 'After work'}
+                            </span>
+                          </div>
+                          <div className="flex justify-start md:justify-end">
+                            <Badge tone={getStatusTone(booking.status)}>
+                              {formatStatusLabel(booking.status)}
+                            </Badge>
+                          </div>
                         </div>
-                        <Badge tone={getStatusTone(booking.status)}>
-                          {formatStatusLabel(booking.status)}
-                        </Badge>
-                      </div>
-
-                      <div className="mt-3 grid gap-2 text-sm text-slate-600">
-                        <span className="inline-flex items-center gap-2">
-                          <Clock3 size={15} />
-                          {formatDate(booking.appointmentAt)}
-                        </span>
-                      </div>
 
                       <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
                         {['accepted', 'in_progress'].includes(booking.status) ? (
@@ -533,7 +594,8 @@ const LabourServicesPage = () => {
                         </div>
                       ) : null}
                     </div>
-                  ))
+                    ))}
+                  </>
                 ) : (
                   <p className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
                     No scheduled services for this date.

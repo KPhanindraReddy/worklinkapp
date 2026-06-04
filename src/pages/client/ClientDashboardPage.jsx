@@ -3,6 +3,7 @@ import {
   Clock3,
   LocateFixed,
   LoaderCircle,
+  MapPin,
   MessageCircle,
   Navigation,
   Search,
@@ -23,6 +24,7 @@ import { PageSEO } from '../../components/common/PageSEO';
 import { SelectField } from '../../components/common/SelectField';
 import { Skeleton } from '../../components/common/Skeleton';
 import { AppShell } from '../../components/layout/AppShell';
+import { LocationText } from '../../components/location/LocationText';
 import { ServiceRequestMap } from '../../components/map/ServiceRequestMap';
 import { useAuth } from '../../context/AuthContext';
 import { useGeolocation } from '../../hooks/useGeolocation';
@@ -1062,6 +1064,17 @@ const ClientDashboardPage = () => {
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-700">Work finished</p>
                   <h2 className="mt-2 text-xl font-bold text-slate-950 sm:text-[1.35rem]">Complete payment for {awaitingPaymentBookings[0].labourName}</h2>
+                  <div className="mt-3 grid gap-2 rounded-[14px] border border-amber-200 bg-white/70 p-3 text-sm font-semibold text-slate-700 sm:grid-cols-3">
+                    <span>{awaitingPaymentBookings[0].serviceType}</span>
+                    <span>{formatDate(awaitingPaymentBookings[0].appointmentAt)}</span>
+                    <span className="min-w-0 truncate">
+                      <LocationText
+                        location={awaitingPaymentBookings[0].location}
+                        coordinates={awaitingPaymentBookings[0].coordinates}
+                        fallback="Live location shared"
+                      />
+                    </span>
+                  </div>
                   <InputField
                     label="Amount paid"
                     type="number"
@@ -1096,19 +1109,58 @@ const ClientDashboardPage = () => {
                     <Skeleton className="h-16 w-full rounded-2xl" />
                   </>
                 ) : trackedBookings.length ? (
-                  trackedBookings.map((booking) => (
-                    <div key={booking.id} className="rounded-[16px] border border-slate-200 bg-slate-50 p-3">
-                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-                        <div className="min-w-0">
-                          <h3 className="truncate text-sm font-bold text-slate-950 sm:text-base">{booking.serviceType}</h3>
-                          <p className="mt-0.5 truncate text-xs font-medium text-slate-500">{booking.labourName || 'Labour'} - {formatDate(booking.appointmentAt)}</p>
+                  <>
+                    <div className="hidden rounded-[14px] border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500 md:grid md:grid-cols-[1fr_1fr_0.8fr_0.8fr_0.75fr] md:gap-3">
+                      <span>Name</span>
+                      <span>Service</span>
+                      <span>Time</span>
+                      <span>Money</span>
+                      <span>Status</span>
+                    </div>
+                    {trackedBookings.map((booking) => (
+                      <div key={booking.id} className="rounded-[16px] border border-slate-200 bg-slate-50 p-3">
+                        <div className="grid gap-3 md:grid-cols-[1fr_1fr_0.8fr_0.8fr_0.75fr] md:items-center">
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Name</p>
+                            <h3 className="truncate text-sm font-bold text-slate-950">{booking.labourName || 'Labour'}</h3>
+                            <p className="mt-0.5 text-xs font-medium text-slate-500">{booking.requestMode === 'scheduled' ? 'Scheduled' : 'Instant'}</p>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Service</p>
+                            <p className="truncate text-sm font-semibold text-slate-800">{booking.serviceType}</p>
+                            <p className="mt-1 flex min-w-0 items-center gap-1.5 text-xs font-medium text-slate-500">
+                              <MapPin size={13} className="flex-none" />
+                              <span className="truncate">
+                                <LocationText
+                                  location={booking.location}
+                                  coordinates={booking.coordinates}
+                                  fallback="Live location shared"
+                                />
+                              </span>
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Time</p>
+                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                              <Clock3 size={13} />
+                              {formatDate(booking.appointmentAt)}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Money</p>
+                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-700">
+                              <WalletCards size={13} />
+                              {booking.status === 'completed' && Number(booking.amount) > 0
+                                ? formatCurrency(booking.amount)
+                                : booking.status === 'awaiting_payment'
+                                  ? 'Payment due'
+                                  : 'Pending'}
+                            </span>
+                          </div>
+                          <div className="flex justify-start md:justify-end">
+                            <Badge tone={getBookingTone(booking.status)}>{booking.status}</Badge>
+                          </div>
                         </div>
-                        <Badge tone={getBookingTone(booking.status)}>{booking.status}</Badge>
-                      </div>
-                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-slate-500">
-                        <span className="inline-flex items-center gap-1.5"><Clock3 size={13} />{booking.requestMode === 'scheduled' ? 'Scheduled' : 'Instant'}</span>
-                        <span className="inline-flex items-center gap-1.5 text-brand-700"><WalletCards size={13} />{booking.status === 'completed' && Number(booking.amount) > 0 ? formatCurrency(booking.amount) : booking.status === 'awaiting_payment' ? 'Payment due' : 'Pending'}</span>
-                      </div>
                       {booking.labourId ? (
                         <Button
                           as={Link}
@@ -1121,8 +1173,9 @@ const ClientDashboardPage = () => {
                           Chat labour
                         </Button>
                       ) : null}
-                    </div>
-                  ))
+                      </div>
+                    ))}
+                  </>
                 ) : (
                   <EmptyDashed>Your service requests will show here</EmptyDashed>
                 )}

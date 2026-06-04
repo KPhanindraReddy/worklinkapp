@@ -1,4 +1,4 @@
-import { History, Star } from 'lucide-react';
+import { CalendarClock, History, MapPin, Star, WalletCards } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -11,6 +11,7 @@ import { PageSEO } from '../../components/common/PageSEO';
 import { Skeleton } from '../../components/common/Skeleton';
 import { TextAreaField } from '../../components/common/TextAreaField';
 import { AppShell } from '../../components/layout/AppShell';
+import { LocationText } from '../../components/location/LocationText';
 import { useAuth } from '../../context/AuthContext';
 import {
   completeClientPayment,
@@ -20,7 +21,6 @@ import {
 import { submitServiceReview } from '../../services/reviewService';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
-import { getDisplayLocationText } from '../../utils/location';
 
 const getStatusTone = (status) => {
   if (['accepted', 'in_progress'].includes(status)) {
@@ -240,30 +240,68 @@ const RecentServicesPage = () => {
             </div>
           ) : bookings.length ? (
             <div className="space-y-3">
+              <div className="hidden rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-500 md:grid md:grid-cols-[1.1fr_1fr_0.85fr_0.85fr_0.8fr] md:gap-3">
+                <span>Name</span>
+                <span>Service</span>
+                <span>Time</span>
+                <span>Money</span>
+                <span>Status</span>
+              </div>
               {bookings.map((booking) => (
-                <Card key={booking.id} className="rounded-[28px]">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <h2 className="text-base font-semibold text-slate-950">{booking.serviceType}</h2>
-                      <p className="mt-1 text-[13px] text-slate-500">
-                        {subjectLabel}: {role === 'labour' ? booking.clientName : booking.labourName}
+                <Card key={booking.id} className="rounded-2xl p-4">
+                  <div className="grid gap-3 md:grid-cols-[1.1fr_1fr_0.85fr_0.85fr_0.8fr] md:items-center">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">
+                        Name
+                      </p>
+                      <h2 className="truncate text-sm font-semibold text-slate-950">
+                        {role === 'labour' ? booking.clientName || 'Client' : booking.labourName || 'Worker'}
+                      </h2>
+                      <p className="mt-1 text-xs text-slate-500">{subjectLabel}</p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">
+                        Service
+                      </p>
+                      <p className="truncate text-sm font-semibold text-slate-800">{booking.serviceType}</p>
+                      <p className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-slate-500">
+                        <MapPin size={13} className="flex-none" />
+                        <span className="truncate">
+                          <LocationText
+                            location={booking.location}
+                            coordinates={booking.coordinates}
+                            fallback="Location shared after confirmation"
+                          />
+                        </span>
                       </p>
                     </div>
-                    <Badge tone={getStatusTone(booking.status)}>
-                      {formatStatusLabel(booking.status)}
-                    </Badge>
-                  </div>
-
-                  <div className="mt-4 grid gap-2 text-[13px] text-slate-600 md:grid-cols-3">
-                    <p>{formatDate(booking.appointmentAt)}</p>
-                    <p>
-                      {booking.status === 'completed' && Number(booking.amount) > 0
-                        ? formatCurrency(booking.amount)
-                        : booking.status === 'awaiting_payment'
-                          ? 'Enter paid amount'
-                        : 'Charge pending'}
-                    </p>
-                    <p>{getDisplayLocationText(booking.location, 'Location shared after confirmation')}</p>
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">
+                        Time
+                      </p>
+                      <p className="inline-flex items-center gap-1.5 text-sm text-slate-600">
+                        <CalendarClock size={14} />
+                        {formatDate(booking.appointmentAt)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">
+                        Money
+                      </p>
+                      <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700">
+                        <WalletCards size={14} />
+                        {booking.status === 'completed' && Number(booking.amount) > 0
+                          ? formatCurrency(booking.amount)
+                          : booking.status === 'awaiting_payment'
+                            ? 'Enter paid amount'
+                            : 'Charge pending'}
+                      </p>
+                    </div>
+                    <div className="flex justify-start md:justify-end">
+                      <Badge tone={getStatusTone(booking.status)}>
+                        {formatStatusLabel(booking.status)}
+                      </Badge>
+                    </div>
                   </div>
 
                   {role === 'client' && booking.status === 'completed' && Number(booking.amount) > 0 ? (
