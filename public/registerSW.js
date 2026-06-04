@@ -5,7 +5,7 @@
 
   const registerCleanupWorker = function () {
     navigator.serviceWorker.register('/sw.js').catch(function (error) {
-      console.warn('WorkLink legacy service worker replacement skipped:', error);
+      console.warn('Slivz legacy service worker replacement skipped:', error);
     });
   };
 

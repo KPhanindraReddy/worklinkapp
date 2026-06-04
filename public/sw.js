@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'worklink-v2';
+const CACHE_VERSION = 'Slivz-v2';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const IMAGE_CACHE = `${CACHE_VERSION}-images`;

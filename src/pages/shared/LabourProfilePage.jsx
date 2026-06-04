@@ -152,7 +152,7 @@ const LabourProfilePage = () => {
                   value={labour.profilePhoto}
                   fullName={labour.fullName}
                   avatarClassName="h-28 w-28 sm:h-32 sm:w-32 md:h-36 md:w-36"
-                  onError={(error) => console.warn('[WorkLink labour photo] upload failed', error)}
+                  onError={(error) => console.warn('[Slivz labour photo] upload failed', error)}
                 />
               ) : (
                 <img

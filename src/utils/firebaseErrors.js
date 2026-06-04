@@ -1,5 +1,5 @@
 const errorCodeMap = {
-  'auth/email-already-in-use': 'This email is already connected to another WorkLink account.',
+  'auth/email-already-in-use': 'This email is already connected to another Slivz account.',
   'auth/invalid-email': 'Please enter a valid email address.',
   'auth/invalid-credential': 'Your login details were not accepted. Please try again.',
   'auth/weak-password': 'Use a stronger password with at least 6 characters.',
@@ -11,7 +11,7 @@ const errorCodeMap = {
   'auth/operation-not-allowed':
     'This login method is not enabled in Firebase Authentication yet.',
   'auth/operation-not-supported-in-this-environment':
-    'This browser blocked the popup flow. WorkLink will switch to a redirect-based login instead.',
+    'This browser blocked the popup flow. Slivz will switch to a redirect-based login instead.',
   'auth/too-many-requests': 'Too many attempts were detected. Please wait and try again.',
   'auth/unauthorized-domain':
     'This domain is not approved in Firebase Authentication. Add it to the authorized domains list and try again.',
@@ -20,7 +20,7 @@ const errorCodeMap = {
   'failed-precondition':
     'Firestore needs the latest rules or indexes. Deploy Firebase rules and indexes, then try again.',
   'permission-denied':
-    'Firestore permissions are blocking this action. Deploy the WorkLink Firestore rules or switch the database to test mode while setting up.'
+    'Firestore permissions are blocking this action. Deploy the Slivz Firestore rules or switch the database to test mode while setting up.'
 };
 
 export const getFirebaseErrorMessage = (error) =>

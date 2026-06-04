@@ -1,7 +1,7 @@
-const RECOVERY_PREFIX = 'worklink-runtime-recovery';
-const LEGACY_CLEANUP_KEY = 'worklink-legacy-cache-cleanup';
-const RECOVERY_SEARCH_PARAM = '__worklink_recovery';
-const RECOVERY_TIMESTAMP_PARAM = '__worklink_recovered_at';
+const RECOVERY_PREFIX = 'Slivz-runtime-recovery';
+const LEGACY_CLEANUP_KEY = 'Slivz-legacy-cache-cleanup';
+const RECOVERY_SEARCH_PARAM = '__Slivz_recovery';
+const RECOVERY_TIMESTAMP_PARAM = '__Slivz_recovered_at';
 const LEGACY_RUNTIME_RECOVERY_REASON = 'legacy-runtime';
 
 const buildRecoveryKey = (reason) => `${RECOVERY_PREFIX}:${reason}`;
@@ -133,7 +133,7 @@ export const cleanupLegacyRuntimeState = async () => {
         cacheState.hadCaches
     );
   } catch (cleanupError) {
-    console.warn('WorkLink legacy cache cleanup skipped:', cleanupError);
+    console.warn('Slivz legacy cache cleanup skipped:', cleanupError);
     return false;
   }
 };
@@ -156,11 +156,11 @@ export const recoverRuntimeApp = (reason) => {
   Promise.resolve()
     .then(unregisterServiceWorkers)
     .catch((serviceWorkerError) => {
-      console.warn('WorkLink service worker cleanup skipped:', serviceWorkerError);
+      console.warn('Slivz service worker cleanup skipped:', serviceWorkerError);
     })
     .then(clearBrowserCaches)
     .catch((cacheError) => {
-      console.warn('WorkLink cache clear skipped:', cacheError);
+      console.warn('Slivz cache clear skipped:', cacheError);
     })
     .finally(() => {
       reloadApp(reason);

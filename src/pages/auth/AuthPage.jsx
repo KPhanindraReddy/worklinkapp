@@ -11,7 +11,7 @@ import {
   Sparkles,
   UserRound
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import clsx from 'clsx';
@@ -110,6 +110,7 @@ const AuthPage = () => {
     loginWithApple,
     loginWithEmail,
     loginWithGoogle,
+    sendPasswordReset,
     sendPhoneOtp,
     verifyPhoneOtp,
     consumeRedirectAuthResult,
@@ -131,19 +132,11 @@ const AuthPage = () => {
   );
 
   const activeRole = roleCopy[role] ?? roleCopy.client;
-  const ActiveRoleIcon = activeRole.icon;
-  const otherRole = roleCopy[activeRole.otherRole] ?? roleCopy.labour;
-  const OtherRoleIcon = otherRole.icon;
   const actionLabel = mode === 'signup' ? 'Register' : 'Login';
   const canSubmitEmail =
     mode === 'signup'
       ? Boolean(formValues.fullName.trim() && formValues.email.trim() && formValues.password.trim())
       : Boolean(formValues.email.trim() && formValues.password.trim());
-
-  const pageTitle = useMemo(
-    () => `${activeRole.label} ${actionLabel.toLowerCase()}`,
-    [activeRole.label, actionLabel]
-  );
 
   useEffect(() => {
     if (!processingRedirectAuth && currentUser && !submitting) {
@@ -342,11 +335,30 @@ const AuthPage = () => {
 
         toast.success(
           isProfileComplete(profile)
-            ? 'Welcome back to WorkLink.'
+            ? 'Welcome back to Slivz.'
             : 'Login successful. Complete your profile to continue.'
         );
         await redirectAfterAuth(profile, role);
       }
+    } catch (error) {
+      toast.error(getFirebaseErrorMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    const email = formValues.email.trim();
+
+    if (!email) {
+      toast.error('Enter your email first, then tap Forgot password.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await sendPasswordReset(email);
+      toast.success('Password reset link sent to your email.');
     } catch (error) {
       toast.error(getFirebaseErrorMessage(error));
     } finally {
@@ -474,7 +486,7 @@ const AuthPage = () => {
       <AppShell hideBottomDock hideFooter>
         <PageSEO
           title="Login / Signup"
-          description="Join WorkLink as labour or client using phone OTP, Google login, Apple login, or email and password."
+          description="Join Slivz as labour or client using phone OTP, Google login, Apple login, or email and password."
         />
       </AppShell>
     );
@@ -484,7 +496,7 @@ const AuthPage = () => {
     <AppShell hideBottomDock hideFooter>
       <PageSEO
         title="Login / Signup"
-        description="Join WorkLink as labour or client using phone OTP, Google login, Apple login, or email and password."
+        description="Join Slivz as labour or client using phone OTP, Google login, Apple login, or email and password."
       />
 
       <section className="min-h-[calc(100dvh-4rem)] bg-white py-4 sm:py-6 lg:bg-slate-50 lg:py-8">
@@ -497,10 +509,10 @@ const AuthPage = () => {
             <div className="mt-8 max-w-lg">
               <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-slate-200">
                 <Sparkles size={14} />
-                WorkLink account
+                Slivz account
               </span>
               <h1 className="mt-4 font-display text-3xl font-bold leading-tight sm:text-4xl">
-                Login fast. Start hiring or earning locally.
+                Login first. Start hiring or earning locally.
               </h1>
               <p className="mt-3 text-sm leading-6 text-slate-300">
                 Choose client or labour, sign in with email, Google, Apple, or phone OTP, and continue to the right dashboard.
@@ -524,24 +536,16 @@ const AuthPage = () => {
           </aside>
 
           <Card className="min-w-0 rounded-2xl p-3 shadow-[0_10px_28px_rgba(15,23,42,0.07)] sm:p-5 lg:p-6">
-            <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
-              <div className="grid grid-cols-2 rounded-xl bg-slate-100 p-1">
-                {['login', 'signup'].map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    className={clsx(
-                      'rounded-lg px-2 py-2.5 text-sm font-semibold transition sm:px-4',
-                      mode === item
-                        ? 'bg-white text-slate-950 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-900'
-                    )}
-                    onClick={() => handleModeSelect(item)}
-                  >
-                    {item === 'signup' ? 'Register' : 'Login'}
-                  </button>
-                ))}
+            <div className="grid gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-600">
+                  {activeRole.label}
+                </p>
+                <h2 className="mt-1 text-2xl font-bold text-slate-950 sm:text-3xl">
+                  {mode === 'signup' ? 'Register your account' : 'Login'}
+                </h2>
               </div>
+
               <div className="grid grid-cols-2 rounded-xl border border-slate-200 bg-white p-1">
                 {publicRoleOptions
                   .map((item) => {
@@ -567,25 +571,6 @@ const AuthPage = () => {
               </div>
             </div>
 
-            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div className="flex items-center gap-3">
-                <div className="grid h-11 w-11 flex-none place-items-center rounded-xl bg-slate-950 text-white">
-                  <ActiveRoleIcon size={18} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-600 sm:text-xs">
-                    {activeRole.label}
-                  </p>
-                  <h2 className="text-xl font-bold text-slate-950 sm:text-2xl">{pageTitle}</h2>
-                </div>
-              </div>
-              <p className="mt-3 text-sm leading-6 text-slate-600">
-                {role === 'client'
-                  ? 'Find workers, manage bookings, chat, and track your service history.'
-                  : 'Show your skills, receive bookings, and manage daily work from one place.'}
-              </p>
-            </div>
-
             {!isFirebaseConfigured ? (
               <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[13px] font-medium text-amber-900">
                 Firebase keys missing. Authentication is disabled.
@@ -609,7 +594,7 @@ const AuthPage = () => {
                 </div>
               ) : null}
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3">
                 <InputField
                   label="Email"
                   type="email"
@@ -626,10 +611,34 @@ const AuthPage = () => {
                 />
               </div>
 
+              {mode === 'login' ? (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    className="text-sm font-semibold text-brand-700 hover:text-brand-800"
+                    onClick={handleForgotPassword}
+                    disabled={submitting}
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+              ) : null}
+
               <Button type="submit" size="lg" className="w-full" disabled={submitting || !canSubmitEmail}>
                 {submitting ? 'Please wait...' : `${actionLabel} as ${activeRole.label}`}
               </Button>
             </form>
+
+            <p className="mt-4 text-center text-sm font-medium text-slate-600">
+              {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
+              <button
+                type="button"
+                className="font-bold text-brand-700 hover:text-brand-800"
+                onClick={() => handleModeSelect(mode === 'login' ? 'signup' : 'login')}
+              >
+                {mode === 'login' ? 'Register' : 'Login'}
+              </button>
+            </p>
 
             <div className="my-4 flex items-center gap-3">
               <div className="h-px flex-1 bg-slate-200" />
@@ -649,7 +658,7 @@ const AuthPage = () => {
                   disabled={submitting}
                 >
                   <GoogleIcon />
-                  Google
+                  Sign in with Google
                 </Button>
 
                 <Button
@@ -660,7 +669,7 @@ const AuthPage = () => {
                   disabled={submitting}
                 >
                   <Apple size={16} />
-                  Apple
+                  Sign in with Apple
                 </Button>
               </div>
 
@@ -671,7 +680,7 @@ const AuthPage = () => {
                   className="w-full justify-between"
                   onClick={() => setShowOtpOptions((prev) => !prev)}
                 >
-                  <span>Phone OTP</span>
+                  <span>Sign in with phone</span>
                   {showOtpOptions ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </Button>
 
@@ -719,35 +728,6 @@ const AuthPage = () => {
                   </div>
                 ) : null}
                 <div id="recaptcha-container" />
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <div className="flex items-center gap-3">
-                <div className="grid h-9 w-9 place-items-center rounded-xl bg-white text-brand-700 shadow-sm">
-                  <OtherRoleIcon size={16} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-slate-950">{activeRole.otherLabel}</p>
-                </div>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => switchAccount(activeRole.otherRole, 'login')}
-                >
-                  Login
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => switchAccount(activeRole.otherRole, 'signup')}
-                >
-                  Register
-                </Button>
               </div>
             </div>
           </Card>

@@ -218,7 +218,7 @@ const LabourDashboardPage = () => {
 
     syncLabourCompletedJobs(currentUser.uid)
       .catch((error) => {
-        console.warn('WorkLink completed jobs sync skipped:', error);
+        console.warn('Slivz completed jobs sync skipped:', error);
       })
       .finally(() => {
         completedJobsSyncInFlight.current = false;
@@ -461,7 +461,7 @@ const LabourDashboardPage = () => {
           });
         } catch (notificationError) {
           notificationDelivered = false;
-          console.warn('WorkLink notification delivery skipped:', notificationError);
+          console.warn('Slivz notification delivery skipped:', notificationError);
         }
       }
 
@@ -509,7 +509,7 @@ const LabourDashboardPage = () => {
           });
         } catch (notificationError) {
           notificationDelivered = false;
-          console.warn('WorkLink notification delivery skipped:', notificationError);
+          console.warn('Slivz notification delivery skipped:', notificationError);
         }
       }
 
@@ -559,7 +559,7 @@ const LabourDashboardPage = () => {
           });
         } catch (notificationError) {
           notificationDelivered = false;
-          console.warn('WorkLink notification delivery skipped:', notificationError);
+          console.warn('Slivz notification delivery skipped:', notificationError);
         }
       }
 

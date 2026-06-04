@@ -49,7 +49,7 @@ const NotificationsPage = () => {
 
   return (
     <AppShell>
-      <PageSEO title="Notifications" description="Booking, chat, verification, and platform alerts for your WorkLink account." />
+      <PageSEO title="Notifications" description="Booking, chat, verification, and platform alerts for your Slivz account." />
 
       <section className="section-space">
         <div className="page-shell space-y-4">

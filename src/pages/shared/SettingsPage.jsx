@@ -284,7 +284,7 @@ const SettingsPage = () => {
 
   return (
     <AppShell>
-      <PageSEO title="Profile & Settings" description="Manage your WorkLink profile details." />
+      <PageSEO title="Profile & Settings" description="Manage your Slivz profile details." />
 
       <section className="section-space bg-white sm:bg-transparent">
         <div className="page-shell max-w-[860px] space-y-3 sm:space-y-4">
@@ -562,7 +562,7 @@ const SettingsPage = () => {
             <FieldSectionTitle icon={Settings} tone="slate">Settings</FieldSectionTitle>
             <div className="overflow-hidden rounded-[14px] border border-slate-200 bg-white">
               {[
-                { label: 'About WorkLink', icon: Info },
+                { label: 'About Slivz', icon: Info },
                 { label: 'Notifications', icon: Bell },
                 { label: isLabour ? 'Browse labour' : 'Browse services', icon: Search }
               ].map((item) => {
@@ -578,7 +578,7 @@ const SettingsPage = () => {
             </div>
             <div className="rounded-[14px] border border-rose-100 bg-rose-50 p-3">
               <p className="mb-3 text-xs font-medium text-slate-500">
-                Signed in to WorkLink as <span className="font-bold text-slate-700">{formValues.fullName || 'user'}</span>
+                Signed in to Slivz as <span className="font-bold text-slate-700">{formValues.fullName || 'user'}</span>
               </p>
               <Button variant="danger" className="w-full" onClick={handleLogout}>
                 <LogOut size={16} />

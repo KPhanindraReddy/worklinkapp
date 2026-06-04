@@ -15,7 +15,7 @@ export const LanguageSwitcher = () => (
       options={languageOptions}
       onChange={(event) => {
         i18n.changeLanguage(event.target.value);
-        window.localStorage.setItem('worklink-lang', event.target.value);
+        window.localStorage.setItem('Slivz-lang', event.target.value);
       }}
     />
   </div>

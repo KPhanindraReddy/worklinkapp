@@ -25,7 +25,7 @@ const SEARCH_RESULT_LIMIT = 80;
 const SEARCH_CACHE_TTL_MS = 30000;
 const labourSearchCache = new Map();
 const debugLabourSearch = (message, payload = {}) => {
-  console.debug(`[WorkLink labour search] ${message}`, payload);
+  console.debug(`[Slivz labour search] ${message}`, payload);
 };
 
 const normalizeAvailabilityValue = (value) => {
@@ -132,7 +132,7 @@ const fetchLabourCandidates = async (filters, resolvedCategory) => {
       return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     } catch (error) {
       lastError = error;
-      console.warn('[WorkLink labour search] candidate query failed', {
+      console.warn('[Slivz labour search] candidate query failed', {
         code: error?.code,
         message: error?.message,
         filters,

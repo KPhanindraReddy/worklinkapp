@@ -56,7 +56,7 @@ export const LiveLocationSync = ({ currentUser, userProfile }) => {
         lastSyncedCoordinatesRef.current = normalizedCoordinates;
         lastSyncAtRef.current = Date.now();
       } catch (error) {
-        console.warn('WorkLink live location sync skipped:', error?.code ?? error?.message ?? error);
+        console.warn('Slivz live location sync skipped:', error?.code ?? error?.message ?? error);
       }
     };
 

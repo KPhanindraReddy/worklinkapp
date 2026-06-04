@@ -1,4 +1,4 @@
-﻿import {
+import {
   CheckCircle2,
   Clock3,
   LocateFixed,
@@ -52,7 +52,7 @@ import { createRouteGroupId } from '../../utils/requestRouting';
 const activeWorkStatuses = ['accepted', 'in_progress'];
 const generateStartOtp = () => String(Math.floor(100000 + Math.random() * 900000));
 const debugBooking = (message, payload = {}) => {
-  console.debug(`[WorkLink booking] ${message}`, payload);
+  console.debug(`[Slivz booking] ${message}`, payload);
 };
 
 const getBookingTime = (booking) =>
@@ -318,7 +318,7 @@ const BookingPage = () => {
         toast.error(`${serviceName} is not available within ${NEARBY_LABOUR_RADIUS_KM} km right now.`);
       }
     } catch (error) {
-      console.error('[WorkLink booking] search failed', error);
+      console.error('[Slivz booking] search failed', error);
       toast.error(getFirebaseErrorMessage(error));
     } finally {
       setSearching(false);
@@ -481,7 +481,7 @@ const BookingPage = () => {
         });
       } catch (notificationError) {
         notificationDelivered = false;
-        console.warn('WorkLink notification delivery skipped:', notificationError);
+        console.warn('Slivz notification delivery skipped:', notificationError);
       }
 
       debugBooking('request submitted', {
@@ -496,7 +496,7 @@ const BookingPage = () => {
           : 'Request submitted. Open the labour dashboard and notifications after Firestore rules are deployed.'
       );
     } catch (error) {
-      console.error('[WorkLink booking] request submit failed', error);
+      console.error('[Slivz booking] request submit failed', error);
       toast.error(getFirebaseErrorMessage(error));
     } finally {
       setSubmitting(false);
@@ -806,7 +806,7 @@ const BookingPage = () => {
                 ) : (
                   <Card className="rounded-[24px] border-emerald-200 bg-emerald-50 p-4">
                     <p className="text-sm font-medium leading-6 text-emerald-950">
-                      Instant requests go to the nearest available labour first. If there is no response in 30 seconds, WorkLink tries the next available labour. If only one labour is available, the request stays open for 5 minutes.
+                      Instant requests go to the nearest available labour first. If there is no response in 30 seconds, Slivz tries the next available labour. If only one labour is available, the request stays open for 5 minutes.
                     </p>
                   </Card>
                 )}

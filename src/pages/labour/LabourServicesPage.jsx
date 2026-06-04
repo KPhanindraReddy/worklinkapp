@@ -210,7 +210,7 @@ const LabourServicesPage = () => {
             bookingId: booking.id
           });
         } catch (notificationError) {
-          console.warn('WorkLink notification delivery skipped:', notificationError);
+          console.warn('Slivz notification delivery skipped:', notificationError);
         }
       }
 
@@ -265,7 +265,7 @@ const LabourServicesPage = () => {
             bookingId: booking.id
           });
         } catch (notificationError) {
-          console.warn('WorkLink notification delivery skipped:', notificationError);
+          console.warn('Slivz notification delivery skipped:', notificationError);
         }
       }
 
@@ -279,7 +279,7 @@ const LabourServicesPage = () => {
 
   return (
     <AppShell>
-      <PageSEO title="Labour Services" description="Manage pending and scheduled WorkLink service requests." />
+      <PageSEO title="Labour Services" description="Manage pending and scheduled Slivz service requests." />
 
       <section className="section-space">
         <div className="page-shell space-y-5">

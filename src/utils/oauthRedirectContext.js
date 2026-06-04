@@ -1,4 +1,4 @@
-const OAUTH_REDIRECT_CONTEXT_KEY = 'worklink.oauth.redirect';
+const OAUTH_REDIRECT_CONTEXT_KEY = 'Slivz.oauth.redirect';
 
 const getSessionStorage = () => {
   if (typeof window === 'undefined') {
@@ -22,7 +22,7 @@ export const storeRedirectContext = (context) => {
   try {
     storage.setItem(OAUTH_REDIRECT_CONTEXT_KEY, JSON.stringify(context));
   } catch (error) {
-    console.warn('WorkLink OAuth redirect context could not be stored:', error);
+    console.warn('Slivz OAuth redirect context could not be stored:', error);
   }
 };
 
@@ -37,7 +37,7 @@ export const readRedirectContext = () => {
     const rawValue = storage.getItem(OAUTH_REDIRECT_CONTEXT_KEY);
     return rawValue ? JSON.parse(rawValue) : null;
   } catch (error) {
-    console.warn('WorkLink OAuth redirect context could not be restored:', error);
+    console.warn('Slivz OAuth redirect context could not be restored:', error);
     return null;
   }
 };
@@ -52,7 +52,7 @@ export const clearRedirectContext = () => {
   try {
     storage.removeItem(OAUTH_REDIRECT_CONTEXT_KEY);
   } catch (error) {
-    console.warn('WorkLink OAuth redirect context could not be cleared:', error);
+    console.warn('Slivz OAuth redirect context could not be cleared:', error);
   }
 };
 

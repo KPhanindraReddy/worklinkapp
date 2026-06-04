@@ -281,7 +281,7 @@ const ClientDashboardPage = () => {
         coordinates: clientOrigin
       });
     } catch (error) {
-      console.warn('WorkLink service demand recording skipped:', error);
+      console.warn('Slivz service demand recording skipped:', error);
     }
   };
 
@@ -527,7 +527,7 @@ const ClientDashboardPage = () => {
       });
       return true;
     } catch (notificationError) {
-      console.warn('WorkLink notification delivery skipped:', notificationError);
+      console.warn('Slivz notification delivery skipped:', notificationError);
       return false;
     }
   };
@@ -647,7 +647,7 @@ const ClientDashboardPage = () => {
 
       toast.success(
         notificationDelivered
-          ? `Request sent to ${targetLabour.fullName}. If they reject or time out, WorkLink will buzz the next available labour.`
+          ? `Request sent to ${targetLabour.fullName}. If they reject or time out, Slivz will buzz the next available labour.`
           : `Request sent to ${targetLabour.fullName}. Labour alerts will appear after Firestore rules are deployed.`
       );
     } catch (error) {
@@ -758,7 +758,7 @@ const ClientDashboardPage = () => {
             bookingId: booking.id
           });
         } catch (notificationError) {
-          console.warn('WorkLink notification delivery skipped:', notificationError);
+          console.warn('Slivz notification delivery skipped:', notificationError);
         }
       }
 
@@ -792,7 +792,7 @@ const ClientDashboardPage = () => {
             bookingId: booking.id
           });
         } catch (notificationError) {
-          console.warn('WorkLink notification delivery skipped:', notificationError);
+          console.warn('Slivz notification delivery skipped:', notificationError);
         }
       }
 

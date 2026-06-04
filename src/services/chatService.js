@@ -6,7 +6,7 @@ import { parseDateValue } from '../utils/formatters';
 export const buildConversationId = (userA, userB) => [userA, userB].sort().join('__');
 
 const normalizeParticipantProfile = (profile = {}) => ({
-  fullName: profile.fullName || profile.participantName || profile.name || 'WorkLink user',
+  fullName: profile.fullName || profile.participantName || profile.name || 'Slivz user',
   role: profile.role || profile.participantRole || '',
   phoneNumber: profile.phoneNumber || '',
   whatsAppLink: profile.whatsAppLink || ''

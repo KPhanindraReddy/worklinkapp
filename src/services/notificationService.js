@@ -13,7 +13,7 @@ import { db } from '../firebase/firestore';
 import { parseDateValue } from '../utils/formatters';
 
 const debugNotifications = (message, payload = {}) => {
-  console.debug(`[WorkLink notifications] ${message}`, payload);
+  console.debug(`[Slivz notifications] ${message}`, payload);
 };
 
 const sortNotificationsByCreatedAtDesc = (items) =>

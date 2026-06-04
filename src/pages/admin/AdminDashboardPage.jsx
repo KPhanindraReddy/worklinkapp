@@ -1,4 +1,4 @@
-ï»¿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
   AlertTriangle,
@@ -252,7 +252,7 @@ const AdminDashboardPage = () => {
     const minutes = totalMinutes % 60;
     return hours ? `${hours}h ${minutes}m` : `${minutes}m`;
   };
-  const firebaseProjectId = firebaseConfig.projectId || 'worklink-labour';
+  const firebaseProjectId = firebaseConfig.projectId || 'Slivz-labour';
   const functionsLogsUrl = `https://console.cloud.google.com/functions/list?project=${encodeURIComponent(
     firebaseProjectId
   )}`;
@@ -335,7 +335,7 @@ const AdminDashboardPage = () => {
 
   return (
     <AppShell>
-      <PageSEO title="Admin Dashboard" description="Manage WorkLink users, verification, reports, analytics, and marketplace operations." />
+      <PageSEO title="Admin Dashboard" description="Manage Slivz users, verification, reports, analytics, and marketplace operations." />
 
       <section className="section-space">
         <div className="page-shell">
@@ -470,7 +470,7 @@ const AdminDashboardPage = () => {
                       diagnostics.failedNotifications.slice(0, 3).map((item) => (
                         <div key={item.id} className="rounded-xl border border-amber-200 bg-white p-3 text-sm">
                           <p className="font-semibold text-slate-900">
-                            {item.serviceType || 'Service'} â€¢ {item.status || 'unknown'}
+                            {item.serviceType || 'Service'} • {item.status || 'unknown'}
                           </p>
                           <p className="mt-1 text-slate-600">
                             {item.labourName || 'Labour'} / {item.clientName || 'Client'}
@@ -496,7 +496,7 @@ const AdminDashboardPage = () => {
                       diagnostics.functionErrors.slice(0, 3).map((item) => (
                         <div key={item.id} className="rounded-xl border border-rose-200 bg-white p-3 text-sm">
                           <p className="font-semibold text-slate-900">
-                            {item.kind || 'unknown'} â€¢ HTTP {item.status || 0}
+                            {item.kind || 'unknown'} • HTTP {item.status || 0}
                           </p>
                           <p className="mt-1 text-slate-600">{item.bookingId ? `Booking ${item.bookingId}` : 'No booking id'}</p>
                           <p className="mt-1 text-rose-700">{item.errorMessage}</p>
@@ -520,10 +520,10 @@ const AdminDashboardPage = () => {
                       diagnostics.stuckBookings.slice(0, 3).map((item) => (
                         <div key={item.id} className="rounded-xl border border-blue-200 bg-white p-3 text-sm">
                           <p className="font-semibold text-slate-900">
-                            {item.status} â€¢ stuck {formatStuckDuration(item.ageMs)}
+                            {item.status} • stuck {formatStuckDuration(item.ageMs)}
                           </p>
                           <p className="mt-1 text-slate-600">
-                            {item.serviceType || 'Service'} â€¢ {item.labourName || 'Labour'}
+                            {item.serviceType || 'Service'} • {item.labourName || 'Labour'}
                           </p>
                           <p className="mt-1 text-blue-700">{fromNow(item.updatedAt)}</p>
                         </div>
@@ -546,7 +546,7 @@ const AdminDashboardPage = () => {
                       diagnostics.messageFailures.slice(0, 3).map((item) => (
                         <div key={item.id} className="rounded-xl border border-violet-200 bg-white p-3 text-sm">
                           <p className="font-semibold text-slate-900">
-                            {item.kind || 'message'} â€¢ HTTP {item.status || 0}
+                            {item.kind || 'message'} • HTTP {item.status || 0}
                           </p>
                           <p className="mt-1 text-slate-600">{item.to || 'No phone'}</p>
                           <p className="mt-1 text-violet-700">{item.errorMessage}</p>

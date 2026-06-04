@@ -2,6 +2,7 @@ import {
   RecaptchaVerifier,
   createUserWithEmailAndPassword,
   getRedirectResult,
+  sendPasswordResetEmail,
   signInWithRedirect,
   signInWithEmailAndPassword,
   signInWithPhoneNumber,
@@ -74,7 +75,7 @@ const buildBaseProfile = (user, formValues = {}, existingProfile = null) => {
   const isHiddenAdmin = isHiddenAdminAccount(user, formValues, existingProfile);
   const fullName = isHiddenAdmin
     ? 'admin'
-    : formValues.fullName || existingProfile?.fullName || user.displayName || 'WorkLink User';
+    : formValues.fullName || existingProfile?.fullName || user.displayName || 'Slivz User';
   const profilePhotoUrl =
     formValues.profilePhotoUrl ||
     formValues.profilePhoto ||
@@ -217,6 +218,14 @@ export const sendPhoneOtp = async (phoneNumber) => {
 
   const verifier = getOrCreateRecaptchaVerifier();
   return signInWithPhoneNumber(auth, normalizeFirebaseAuthPhoneNumber(phoneNumber), verifier);
+};
+
+export const sendPasswordReset = async (email) => {
+  if (!isFirebaseConfigured || !auth) {
+    throw new Error('Add Firebase keys in .env before using password reset.');
+  }
+
+  await sendPasswordResetEmail(auth, email);
 };
 
 export const verifyPhoneOtp = async (confirmationResult, code) => {

@@ -80,7 +80,7 @@ export const RequestRoutingController = () => {
     return subscribeBookingsForUser(
       { userId: currentUser.uid, role: userProfile.role },
       setBookings,
-      (error) => console.warn('WorkLink routing subscription skipped:', error)
+      (error) => console.warn('Slivz routing subscription skipped:', error)
     );
   }, [currentUser?.uid, userProfile?.role]);
 
@@ -174,7 +174,7 @@ export const RequestRoutingController = () => {
             bookingId
           });
         } catch (notificationError) {
-          console.warn('WorkLink notification delivery skipped:', notificationError);
+          console.warn('Slivz notification delivery skipped:', notificationError);
         }
 
         toast.success(

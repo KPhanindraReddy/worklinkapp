@@ -9,7 +9,7 @@ export const registerServiceWorker = () => {
     'load',
     () => {
       navigator.serviceWorker.register('/sw.js').catch((error) => {
-        console.warn('WorkLink service worker registration skipped:', error);
+        console.warn('Slivz service worker registration skipped:', error);
       });
     },
     { once: true }

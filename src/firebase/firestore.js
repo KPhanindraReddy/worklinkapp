@@ -9,6 +9,6 @@ if (db && typeof window !== 'undefined') {
       return;
     }
 
-    console.warn('WorkLink Firestore offline cache setup skipped:', error);
+    console.warn('Slivz Firestore offline cache setup skipped:', error);
   });
 }

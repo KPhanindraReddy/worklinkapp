@@ -19,7 +19,7 @@ export const BrandLogo = ({ className, onClick, to = '/', showTagline = false })
       </span>
       <span className="min-w-0">
         <span className="block truncate font-display text-base font-bold leading-tight text-slate-950 sm:text-lg">
-          WorkLink
+          Slivz
         </span>
         {showTagline ? (
           <span className="hidden truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 sm:block">
@@ -36,7 +36,7 @@ export const BrandLogo = ({ className, onClick, to = '/', showTagline = false })
         to={to}
         className={clsx('flex min-w-0 items-center gap-2 sm:gap-3', className)}
         onClick={onClick}
-        aria-label="WorkLink home"
+        aria-label="Slivz home"
       >
         {content}
       </Link>

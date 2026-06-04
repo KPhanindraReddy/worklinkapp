@@ -74,7 +74,7 @@ export const AuthProvider = ({ children }) => {
                 return;
               }
 
-              console.warn('WorkLink profile read skipped:', error?.code ?? error?.message ?? error);
+              console.warn('Slivz profile read skipped:', error?.code ?? error?.message ?? error);
               setUserProfile(null);
               setLoading(false);
             }
@@ -85,7 +85,7 @@ export const AuthProvider = ({ children }) => {
             return;
           }
 
-          console.warn('WorkLink profile read skipped:', error?.code ?? error?.message ?? error);
+          console.warn('Slivz profile read skipped:', error?.code ?? error?.message ?? error);
           setUserProfile(null);
           setLoading(false);
         });
@@ -109,7 +109,7 @@ export const AuthProvider = ({ children }) => {
           return;
         }
 
-        console.warn('WorkLink auth initialization skipped:', error?.code ?? error?.message ?? error);
+        console.warn('Slivz auth initialization skipped:', error?.code ?? error?.message ?? error);
         setCurrentUser(null);
         setUserProfile(null);
         setLoading(false);
@@ -134,7 +134,7 @@ export const AuthProvider = ({ children }) => {
       setUserProfile(profile);
       return profile;
     } catch (error) {
-      console.warn('WorkLink profile refresh skipped:', error?.code ?? error?.message ?? error);
+      console.warn('Slivz profile refresh skipped:', error?.code ?? error?.message ?? error);
       setUserProfile(null);
       return null;
     }
@@ -150,6 +150,7 @@ export const AuthProvider = ({ children }) => {
       loginWithGoogle: (...args) => runAuthAction('beginGoogleLogin', ...args),
       loginWithApple: (...args) => runAuthAction('beginAppleLogin', ...args),
       registerWithEmail: (...args) => runAuthAction('registerWithEmail', ...args),
+      sendPasswordReset: (...args) => runAuthAction('sendPasswordReset', ...args),
       sendPhoneOtp: (...args) => runAuthAction('sendPhoneOtp', ...args),
       verifyPhoneOtp: (...args) => runAuthAction('verifyPhoneOtp', ...args),
       consumeRedirectAuthResult: (...args) => runAuthAction('consumeRedirectAuthResult', ...args),

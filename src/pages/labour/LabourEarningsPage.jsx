@@ -101,7 +101,7 @@ const LabourEarningsPage = () => {
 
   return (
     <AppShell>
-      <PageSEO title="Labour Earnings" description="Track paid WorkLink services and daily labour earnings." />
+      <PageSEO title="Labour Earnings" description="Track paid Slivz services and daily labour earnings." />
 
       <section className="section-space">
         <div className="page-shell space-y-5">

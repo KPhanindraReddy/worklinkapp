@@ -30,7 +30,7 @@ const decorateConversationForUser = (conversation, currentUserId) => {
   return {
     ...conversation,
     otherUserId,
-    displayName: otherProfile?.fullName || conversation.participantName || 'WorkLink user',
+    displayName: otherProfile?.fullName || conversation.participantName || 'Slivz user',
     displayRole: otherProfile?.role || conversation.participantRole || '',
     phoneNumber: otherProfile?.phoneNumber || conversation.phoneNumber || '',
     whatsAppLink: otherProfile?.whatsAppLink || conversation.whatsAppLink || ''
@@ -108,7 +108,7 @@ const ChatPage = () => {
             },
             otherUserProfile: {
               fullName: otherProfile?.fullName,
-              role: otherProfile?.role || otherProfile?.category || 'WorkLink user',
+              role: otherProfile?.role || otherProfile?.category || 'Slivz user',
               phoneNumber: otherProfile?.phoneNumber || '',
               whatsAppLink: otherProfile?.phoneNumber
                 ? `https://wa.me/${otherProfile.phoneNumber.replace(/\D/g, '')}`
@@ -257,12 +257,12 @@ const ChatPage = () => {
             senderId: currentUser.uid,
             bookingId: activeConversation.bookingId,
             type: 'chat',
-            title: `New message from ${userProfile?.fullName || 'WorkLink user'}`,
+            title: `New message from ${userProfile?.fullName || 'Slivz user'}`,
             body: text.length > 120 ? `${text.slice(0, 117)}...` : text,
             conversationId: activeConversation.id
           });
         } catch (notificationError) {
-          console.warn('[WorkLink chat] notification write skipped', notificationError);
+          console.warn('[Slivz chat] notification write skipped', notificationError);
         }
       }
 
@@ -289,7 +289,7 @@ const ChatPage = () => {
               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
                 <p className="font-semibold">Chat is blocked by Realtime Database rules right now.</p>
                 <p className="mt-2">
-                  Deploy the WorkLink Realtime Database rules, then refresh the page. Chat will work once RTDB
+                  Deploy the Slivz Realtime Database rules, then refresh the page. Chat will work once RTDB
                   allows the required reads and writes.
                 </p>
               </div>

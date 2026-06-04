@@ -1,4 +1,4 @@
-﻿import { CalendarDays, LoaderCircle, LocateFixed, MapPin, Send, X } from 'lucide-react';
+import { CalendarDays, LoaderCircle, LocateFixed, MapPin, Send, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
@@ -242,7 +242,7 @@ export const QuickBookingDialog = ({
         });
       } catch (notificationError) {
         notificationDelivered = false;
-        console.warn('WorkLink notification delivery skipped:', notificationError);
+        console.warn('Slivz notification delivery skipped:', notificationError);
       }
 
       toast.success(
@@ -439,7 +439,7 @@ export const QuickBookingDialog = ({
               />
             ) : (
               <div className="rounded-[24px] border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium leading-6 text-emerald-950">
-                Instant requests go to the nearest available labour first. If they reject or do not respond, WorkLink tries the next available labour automatically.
+                Instant requests go to the nearest available labour first. If they reject or do not respond, Slivz tries the next available labour automatically.
               </div>
             )}
 

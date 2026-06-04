@@ -12,7 +12,7 @@ export const testimonials = [
     name: 'Sneha Kulkarni',
     role: 'Homeowner',
     quote:
-      'WorkLink helped me find a verified plumber in under 20 minutes, and the full booking flow felt professional.',
+      'Slivz helped me find a verified plumber in under 20 minutes, and the full booking flow felt professional.',
     rating: 5
   },
   {
@@ -20,7 +20,7 @@ export const testimonials = [
     name: 'Mahesh Yadav',
     role: 'Independent Carpenter',
     quote:
-      'I use WorkLink to show my finished work, manage bookings, and get repeat clients without running behind leads.',
+      'I use Slivz to show my finished work, manage bookings, and get repeat clients without running behind leads.',
     rating: 5
   },
   {

@@ -14,7 +14,7 @@ import { parseDateValue } from '../utils/formatters';
 import { normalizeWhatsAppPhoneNumber } from '../utils/phone';
 
 const debugBookingService = (message, payload = {}) => {
-  console.debug(`[WorkLink booking service] ${message}`, payload);
+  console.debug(`[Slivz booking service] ${message}`, payload);
 };
 
 const sortBookingsByAppointmentDesc = (items) =>

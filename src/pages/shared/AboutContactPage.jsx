@@ -8,16 +8,16 @@ const AboutContactPage = () => (
   <AppShell>
     <PageSEO
       title="About & Contact"
-      description="Learn about WorkLink's marketplace vision, trust model, and contact channels."
+      description="Learn about Slivz's marketplace vision, trust model, and contact channels."
     />
 
     <section className="section-space">
       <div className="page-shell grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <Card className="rounded-[36px]">
           <SectionHeading
-            eyebrow="About WorkLink"
+            eyebrow="About Slivz"
             title="A labour marketplace built for trust, speed, and local hiring"
-            description="WorkLink helps labour professionals present verified, richer profiles while giving clients a faster way to search, book, chat, review, and manage repeat work."
+            description="Slivz helps labour professionals present verified, richer profiles while giving clients a faster way to search, book, chat, review, and manage repeat work."
           />
           <div className="mt-8 grid gap-4 text-sm leading-7 text-slate-600 dark:text-slate-300">
             <p>
@@ -32,13 +32,13 @@ const AboutContactPage = () => (
         <Card className="rounded-[36px]">
           <SectionHeading
             eyebrow="Contact"
-            title="Reach the WorkLink team"
+            title="Reach the Slivz team"
             description="Use these channels for onboarding support, partnership questions, or product setup help."
           />
           <div className="mt-8 space-y-5 text-sm text-slate-600 dark:text-slate-300">
             <div className="flex items-center gap-3">
               <Mail size={18} className="text-brand-600" />
-              support@worklink.app
+              support@slivz.app
             </div>
             <div className="flex items-center gap-3">
               <Phone size={18} className="text-brand-600" />

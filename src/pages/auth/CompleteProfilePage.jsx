@@ -185,7 +185,7 @@ const CompleteProfilePage = () => {
     <AppShell>
       <PageSEO
         title="Complete Profile"
-        description="Finish your labour or client profile after login so WorkLink can unlock dashboard access."
+        description="Finish your labour or client profile after login so Slivz can unlock dashboard access."
       />
 
       <section className="section-space">

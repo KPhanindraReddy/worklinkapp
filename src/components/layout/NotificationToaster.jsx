@@ -28,7 +28,7 @@ export const NotificationToaster = ({ currentUser }) => {
           .filter((item) => !seenIdsRef.current.has(item.id) && !item.read)
           .slice(0, 3)
           .forEach((item) => {
-            toast(item.body || item.title || 'New WorkLink update');
+            toast(item.body || item.title || 'New Slivz update');
           });
 
         seenIdsRef.current = nextIds;
