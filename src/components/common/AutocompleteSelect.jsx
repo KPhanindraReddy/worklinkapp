@@ -11,28 +11,26 @@ export const AutocompleteSelect = ({
   getAvailability = null
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [inputValue, setInputValue] = useState('');
+  const [search, setSearch] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const inputRef = useRef(null);
   const containerRef = useRef(null);
+
+  const filteredOptions = search
+    ? options.filter(opt => {
+        const label = typeof opt === 'string' ? opt : opt.label;
+        return label.toLowerCase().startsWith(search.toLowerCase());
+      })
+    : options;
 
   const selectedLabel = value
     ? (options.find(opt => (typeof opt === 'string' ? opt : opt.value) === value)?.label ?? value)
     : '';
 
-  const isShowingSelectedValue = Boolean(value && inputValue === selectedLabel);
-  const filteredOptions = inputValue
-    ? options.filter(opt => {
-        const label = typeof opt === 'string' ? opt : opt.label;
-        return label.toLowerCase().startsWith(inputValue.toLowerCase());
-      })
-    : options;
-
   const handleSelect = (option) => {
     const val = typeof option === 'string' ? option : option.value;
-    const label = typeof option === 'string' ? option : option.label;
     onChange?.({ target: { value: val } });
-    setInputValue(label ?? val);
+    setSearch('');
     setIsOpen(false);
   };
 
@@ -63,7 +61,7 @@ export const AutocompleteSelect = ({
       case 'Escape':
         e.preventDefault();
         setIsOpen(false);
-        setInputValue(selectedLabel);
+        setSearch('');
         break;
       default:
         break;
@@ -71,22 +69,15 @@ export const AutocompleteSelect = ({
   };
 
   const handleInputChange = (e) => {
-    const nextValue = e.target.value;
-    setInputValue(nextValue);
+    setSearch(e.target.value);
     setHighlightedIndex(0);
     setIsOpen(true);
-
-    if (value && nextValue !== selectedLabel) {
-      onChange?.({ target: { value: '' } });
-    }
   };
 
   const handleClear = (e) => {
     e.stopPropagation();
-    setInputValue('');
+    setSearch('');
     onChange?.({ target: { value: '' } });
-    setIsOpen(true);
-    inputRef.current?.focus();
   };
 
   useEffect(() => {
@@ -100,17 +91,6 @@ export const AutocompleteSelect = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    if (value) {
-      setInputValue(selectedLabel);
-      return;
-    }
-
-    if (document.activeElement !== inputRef.current) {
-      setInputValue('');
-    }
-  }, [selectedLabel, value]);
-
   return (
     <label className={`block min-w-0 max-w-full space-y-1.5 ${className}`} ref={containerRef}>
       {label ? (
@@ -120,19 +100,19 @@ export const AutocompleteSelect = ({
       ) : null}
 
       <div className="relative">
-        <div className="flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition focus-within:border-brand-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-100 max-sm:min-h-12 max-sm:rounded-2xl">
+        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition focus-within:border-brand-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-100">
           <input
             ref={inputRef}
             type="text"
-            value={inputValue}
+            value={search || selectedLabel}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            onFocus={() => setIsOpen(!isShowingSelectedValue)}
+            onFocus={() => setIsOpen(true)}
             placeholder={placeholder}
-            className="min-h-6 min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 sm:text-[13px] max-sm:text-base"
+            className="min-h-6 min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 sm:text-[13px]"
             autoComplete="off"
           />
-          {inputValue && (
+          {(search || selectedLabel) && (
             <button
               type="button"
               onClick={handleClear}
@@ -145,7 +125,7 @@ export const AutocompleteSelect = ({
           <ChevronDown size={16} className="flex-none text-slate-400" />
         </div>
 
-        {isOpen && !isShowingSelectedValue && filteredOptions.length > 0 && (
+        {isOpen && filteredOptions.length > 0 && (
           <div className="absolute top-full z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
             {filteredOptions.map((option, index) => {
               const optLabel = typeof option === 'string' ? option : option.label;
@@ -183,9 +163,9 @@ export const AutocompleteSelect = ({
           </div>
         )}
 
-        {isOpen && !isShowingSelectedValue && filteredOptions.length === 0 && inputValue && (
+        {isOpen && filteredOptions.length === 0 && search && (
           <div className="absolute top-full z-10 mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-center text-sm text-slate-500 shadow-lg">
-            No matches for "{inputValue}"
+            No matches for "{search}"
           </div>
         )}
       </div>

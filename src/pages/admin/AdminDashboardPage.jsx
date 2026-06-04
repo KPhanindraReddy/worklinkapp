@@ -1,16 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+ï»¿import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
   AlertTriangle,
   CircleOff,
   ExternalLink,
   LoaderCircle,
-  Mail,
-  MapPin,
   MessageSquareWarning,
   Pencil,
-  Phone,
   Search,
+  ShieldCheck,
   ShieldAlert,
   UserRound
 } from 'lucide-react';
@@ -24,13 +22,15 @@ import { SelectField } from '../../components/common/SelectField';
 import { Skeleton } from '../../components/common/Skeleton';
 import { VerificationBadge } from '../../components/common/VerificationBadge';
 import { AppShell } from '../../components/layout/AppShell';
+import { BrandLogo } from '../../components/layout/BrandLogo';
 import { MetricsGrid } from '../../components/dashboard/MetricsGrid';
 import {
-  banUser,
   getAdminDiagnostics,
   getAdminOverview,
+  listSupportTickets,
   listAdminProfiles,
   updateAdminUserProfile,
+  updateUserAccountStatus,
   verifyLabourAccount
 } from '../../services/adminService';
 import { firebaseConfig } from '../../firebase/env';
@@ -38,6 +38,26 @@ import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { formatCurrency, fromNow } from '../../utils/formatters';
 import { getLocationLabel } from '../../utils/location';
 import { availabilityOptions, workCategories } from '../../utils/constants';
+
+const TableShell = ({ children }) => (
+  <div className="overflow-x-auto rounded-[16px] border border-slate-200 bg-white">
+    <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+      {children}
+    </table>
+  </div>
+);
+
+const Th = ({ children }) => (
+  <th className="whitespace-nowrap px-3 py-2 text-xs font-bold uppercase tracking-normal text-slate-500">
+    {children}
+  </th>
+);
+
+const Td = ({ children, className = '', ...props }) => (
+  <td className={`min-w-0 px-3 py-3 align-top text-slate-700 ${className}`} {...props}>
+    {children}
+  </td>
+);
 
 const AdminDashboardPage = () => {
   const [overview, setOverview] = useState({
@@ -72,6 +92,8 @@ const AdminDashboardPage = () => {
   });
   const [editingProfile, setEditingProfile] = useState(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [tickets, setTickets] = useState([]);
+  const [ticketsLoading, setTicketsLoading] = useState(true);
 
   const loadOverview = async () => {
     setOverviewLoading(true);
@@ -94,6 +116,17 @@ const AdminDashboardPage = () => {
       toast.error(getFirebaseErrorMessage(error));
     } finally {
       setDiagnosticsLoading(false);
+    }
+  };
+
+  const loadTickets = async () => {
+    setTicketsLoading(true);
+    try {
+      setTickets(await listSupportTickets());
+    } catch (error) {
+      toast.error(getFirebaseErrorMessage(error));
+    } finally {
+      setTicketsLoading(false);
     }
   };
 
@@ -137,6 +170,7 @@ const AdminDashboardPage = () => {
   useEffect(() => {
     loadOverview();
     loadDiagnostics();
+    loadTickets();
     loadDirectory('labour', { reset: true });
     loadDirectory('client', { reset: true });
   }, []);
@@ -145,7 +179,8 @@ const AdminDashboardPage = () => {
     () => [
       { label: 'Users', value: overview.analytics.userCount ?? 0, hint: 'Total users on the platform' },
       { label: 'Labour accounts', value: overview.analytics.labourCount ?? 0, hint: 'Registered labour profiles' },
-      { label: 'Active bookings', value: overview.analytics.activeBookings ?? 0, hint: 'Current live booking volume' },
+      { label: 'Client accounts', value: overview.analytics.clientCount ?? 0, hint: 'Registered client profiles' },
+      { label: 'Bookings', value: overview.analytics.activeBookings ?? 0, hint: 'Total booking records' },
       {
         label: 'Paid earnings',
         value: formatCurrency(overview.analytics.paidEarnings ?? 0),
@@ -156,6 +191,18 @@ const AdminDashboardPage = () => {
         value: overview.analytics.pendingVerifications ?? 0,
         hint: 'Manual review queue'
       }
+    ],
+    [overview.analytics]
+  );
+  const analyticsRows = useMemo(
+    () => [
+      ['Total users', overview.analytics.userCount ?? 0],
+      ['Labour accounts', overview.analytics.labourCount ?? 0],
+      ['Client accounts', overview.analytics.clientCount ?? 0],
+      ['Bookings', overview.analytics.activeBookings ?? 0],
+      ['Pending verifications', overview.analytics.pendingVerifications ?? 0],
+      ['Paid bookings', overview.analytics.paidBookingCount ?? 0],
+      ['Paid earnings', formatCurrency(overview.analytics.paidEarnings ?? 0)]
     ],
     [overview.analytics]
   );
@@ -183,9 +230,13 @@ const AdminDashboardPage = () => {
   };
 
   const handleBan = async (userId, role) => {
+    await handleAccountStatus(userId, role, 'banned');
+  };
+
+  const handleAccountStatus = async (userId, role, accountStatus) => {
     try {
-      await banUser({ userId, role });
-      toast.success('User status updated to banned.');
+      await updateUserAccountStatus({ userId, role, accountStatus });
+      toast.success(`User status updated to ${accountStatus}.`);
       const setState = role === 'client' ? setClientDirectory : setLabourDirectory;
       setState((prev) => ({
         ...prev,
@@ -193,7 +244,7 @@ const AdminDashboardPage = () => {
           item.id === userId
             ? {
                 ...item,
-                accountStatus: 'banned'
+                accountStatus
               }
             : item
         )
@@ -343,6 +394,7 @@ const AdminDashboardPage = () => {
             <Card className="overflow-hidden rounded-[28px] sm:rounded-[36px]">
               <div className="flex flex-wrap items-start justify-between gap-4 p-4 sm:p-6 md:p-8">
                 <div>
+                  <BrandLogo to="/" showTagline />
                   <div className="flex flex-wrap gap-2">
                     <Badge tone="blue">Admin</Badge>
                     <Badge tone="slate">Operations</Badge>
@@ -359,6 +411,91 @@ const AdminDashboardPage = () => {
             </Card>
 
             <MetricsGrid items={metrics} loading={overviewLoading} />
+
+            <Card>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Website analytics</h2>
+                  <p className="mt-1 text-sm text-slate-500">Simple count view for users, labour, clients, bookings, and earnings.</p>
+                </div>
+                <Badge tone="blue">Live summary</Badge>
+              </div>
+              <TableShell>
+                <thead className="bg-slate-50">
+                  <tr>
+                    <Th>Metric</Th>
+                    <Th>Value</Th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {overviewLoading ? (
+                    <tr>
+                      <Td colSpan={2}><Skeleton className="h-8 w-full" /></Td>
+                    </tr>
+                  ) : (
+                    analyticsRows.map(([label, value]) => (
+                      <tr key={label}>
+                        <Td className="font-semibold text-slate-950">{label}</Td>
+                        <Td>{value}</Td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </TableShell>
+            </Card>
+
+            <Card>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Support tickets</h2>
+                  <p className="mt-1 text-sm text-slate-500">Tickets raised from client and labour profiles.</p>
+                </div>
+                <Badge tone="amber">{tickets.length} tickets</Badge>
+              </div>
+              <TableShell>
+                <thead className="bg-slate-50">
+                  <tr>
+                    <Th>Ticket</Th>
+                    <Th>User</Th>
+                    <Th>Contact</Th>
+                    <Th>Subject</Th>
+                    <Th>Description</Th>
+                    <Th>Date</Th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {ticketsLoading ? (
+                    <tr>
+                      <Td colSpan={6}><Skeleton className="h-8 w-full" /></Td>
+                    </tr>
+                  ) : tickets.length ? (
+                    tickets.map((ticket) => (
+                      <tr key={ticket.id}>
+                        <Td>
+                          <p className="font-bold text-slate-950">{ticket.ticketNumber || ticket.id}</p>
+                          <Badge tone="slate">{ticket.status || 'open'}</Badge>
+                        </Td>
+                        <Td>
+                          <p className="font-semibold text-slate-950">{ticket.fullName || 'User'}</p>
+                          <p className="text-xs font-medium text-slate-400">{ticket.role || 'account'}</p>
+                        </Td>
+                        <Td>
+                          <p className="break-all">{ticket.phoneNumber || 'No phone'}</p>
+                          <p className="break-all text-xs text-slate-500">{ticket.email || 'No email'}</p>
+                        </Td>
+                        <Td className="min-w-44 font-semibold text-slate-950">{ticket.subject}</Td>
+                        <Td className="min-w-64 max-w-md break-words">{ticket.description}</Td>
+                        <Td className="whitespace-nowrap">{ticket.createdAt ? fromNow(ticket.createdAt) : 'New'}</Td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <Td colSpan={6} className="text-slate-500">No support tickets yet.</Td>
+                    </tr>
+                  )}
+                </tbody>
+              </TableShell>
+            </Card>
 
             <div className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
               <Card>
@@ -470,7 +607,7 @@ const AdminDashboardPage = () => {
                       diagnostics.failedNotifications.slice(0, 3).map((item) => (
                         <div key={item.id} className="rounded-xl border border-amber-200 bg-white p-3 text-sm">
                           <p className="font-semibold text-slate-900">
-                            {item.serviceType || 'Service'} • {item.status || 'unknown'}
+                            {item.serviceType || 'Service'} â€¢ {item.status || 'unknown'}
                           </p>
                           <p className="mt-1 text-slate-600">
                             {item.labourName || 'Labour'} / {item.clientName || 'Client'}
@@ -496,7 +633,7 @@ const AdminDashboardPage = () => {
                       diagnostics.functionErrors.slice(0, 3).map((item) => (
                         <div key={item.id} className="rounded-xl border border-rose-200 bg-white p-3 text-sm">
                           <p className="font-semibold text-slate-900">
-                            {item.kind || 'unknown'} • HTTP {item.status || 0}
+                            {item.kind || 'unknown'} â€¢ HTTP {item.status || 0}
                           </p>
                           <p className="mt-1 text-slate-600">{item.bookingId ? `Booking ${item.bookingId}` : 'No booking id'}</p>
                           <p className="mt-1 text-rose-700">{item.errorMessage}</p>
@@ -520,10 +657,10 @@ const AdminDashboardPage = () => {
                       diagnostics.stuckBookings.slice(0, 3).map((item) => (
                         <div key={item.id} className="rounded-xl border border-blue-200 bg-white p-3 text-sm">
                           <p className="font-semibold text-slate-900">
-                            {item.status} • stuck {formatStuckDuration(item.ageMs)}
+                            {item.status} â€¢ stuck {formatStuckDuration(item.ageMs)}
                           </p>
                           <p className="mt-1 text-slate-600">
-                            {item.serviceType || 'Service'} • {item.labourName || 'Labour'}
+                            {item.serviceType || 'Service'} â€¢ {item.labourName || 'Labour'}
                           </p>
                           <p className="mt-1 text-blue-700">{fromNow(item.updatedAt)}</p>
                         </div>
@@ -546,7 +683,7 @@ const AdminDashboardPage = () => {
                       diagnostics.messageFailures.slice(0, 3).map((item) => (
                         <div key={item.id} className="rounded-xl border border-violet-200 bg-white p-3 text-sm">
                           <p className="font-semibold text-slate-900">
-                            {item.kind || 'message'} • HTTP {item.status || 0}
+                            {item.kind || 'message'} â€¢ HTTP {item.status || 0}
                           </p>
                           <p className="mt-1 text-slate-600">{item.to || 'No phone'}</p>
                           <p className="mt-1 text-violet-700">{item.errorMessage}</p>
@@ -625,73 +762,79 @@ const AdminDashboardPage = () => {
                   />
                 </div>
 
-                <div className="mt-5 space-y-4">
+                <div className="mt-5">
                   {labourDirectory.loading && !labourDirectory.items.length ? (
                     <>
                       <Skeleton className="h-32 w-full" />
                       <Skeleton className="h-32 w-full" />
                     </>
                   ) : filteredLabours.length ? (
-                    filteredLabours.map((labour) => (
-                      <div key={labour.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <div className="flex flex-wrap items-start justify-between gap-4">
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="font-semibold text-slate-950 dark:text-white">{labour.fullName}</h3>
-                              <VerificationBadge verified={labour.verified} />
+                    <TableShell>
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <Th>Name</Th>
+                          <Th>Service</Th>
+                          <Th>Contact</Th>
+                          <Th>Location</Th>
+                          <Th>Status</Th>
+                          <Th>Actions</Th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredLabours.map((labour) => (
+                          <tr key={labour.id}>
+                            <Td>
+                              <div className="flex items-center gap-2">
+                                <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-brand-600 text-sm font-bold text-white">
+                                  {(labour.fullName || 'L').charAt(0).toUpperCase()}
+                                </span>
+                                <div>
+                                  <p className="font-semibold text-slate-950">{labour.fullName || 'Labour'}</p>
+                                  <VerificationBadge verified={labour.verified} />
+                                </div>
+                              </div>
+                            </Td>
+                            <Td>
+                              <p className="font-semibold text-slate-950">{labour.category || 'No category'}</p>
+                              <p className="text-xs text-slate-500">{labour.availability || 'Status not set'}</p>
+                            </Td>
+                            <Td>
+                              <p className="break-all">{labour.phoneNumber || 'Phone not added'}</p>
+                              <p className="break-all text-xs text-slate-500">{labour.email || 'Email not added'}</p>
+                            </Td>
+                            <Td className="min-w-48">{getLocationLabel(labour, { preferCurrent: true })}</Td>
+                            <Td>
                               <Badge tone={labour.accountStatus === 'banned' ? 'rose' : 'slate'}>
                                 {labour.accountStatus || 'active'}
                               </Badge>
-                            </div>
-                            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                              {labour.category || 'No category'} - {labour.availability || 'Status not set'}
-                            </p>
-                            <div className="mt-3 grid gap-2 text-sm text-slate-500 dark:text-slate-400">
-                              <p className="inline-flex min-w-0 items-start gap-2 break-words">
-                                <Phone size={14} className="mt-0.5 flex-none" />
-                                <span className="min-w-0 break-all">{labour.phoneNumber || 'Phone not added'}</span>
-                              </p>
-                              <p className="inline-flex min-w-0 items-start gap-2 break-words">
-                                <Mail size={14} className="mt-0.5 flex-none" />
-                                <span className="min-w-0 break-all">{labour.email || 'Email not added'}</span>
-                              </p>
-                              <p className="inline-flex min-w-0 items-start gap-2 break-words">
-                                <MapPin size={14} className="mt-0.5 flex-none" />
-                                <span className="min-w-0">{getLocationLabel(labour, { preferCurrent: true })}</span>
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap sm:gap-3">
-                          {!labour.verified ? (
-                            <Button size="sm" className="w-full sm:w-auto" onClick={() => handleVerify(labour.id)}>
-                              Approve ID
-                            </Button>
-                          ) : null}
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="w-full sm:w-auto"
-                            onClick={() => openProfileEditor(labour, 'labour')}
-                          >
-                            <Pencil size={15} />
-                            Edit details
-                          </Button>
-                          <Button as={Link} to={`/labour/${labour.id}`} size="sm" variant="outline" className="w-full sm:w-auto">
-                            Open profile
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-full sm:w-auto"
-                            onClick={() => handleBan(labour.id, 'labour')}
-                          >
-                            Ban user
-                          </Button>
-                        </div>
-                      </div>
-                    ))
+                            </Td>
+                            <Td>
+                              <div className="flex min-w-52 flex-wrap gap-2">
+                                {!labour.verified ? (
+                                  <Button size="sm" onClick={() => handleVerify(labour.id)}>
+                                    <ShieldCheck size={15} />
+                                    Approve
+                                  </Button>
+                                ) : null}
+                                <Button type="button" size="sm" variant="outline" onClick={() => openProfileEditor(labour, 'labour')}>
+                                  <Pencil size={15} />
+                                  Edit
+                                </Button>
+                                <Button as={Link} to={`/labour/${labour.id}`} size="sm" variant="outline">
+                                  Open
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => handleAccountStatus(labour.id, 'labour', 'active')}>
+                                  Active
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => handleBan(labour.id, 'labour')}>
+                                  Ban
+                                </Button>
+                              </div>
+                            </Td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </TableShell>
                   ) : (
                     <p className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500 dark:text-slate-400">
                       No labour matched this admin search.
@@ -745,61 +888,62 @@ const AdminDashboardPage = () => {
                   />
                 </div>
 
-                <div className="mt-5 space-y-4">
+                <div className="mt-5">
                   {clientDirectory.loading && !clientDirectory.items.length ? (
                     <>
                       <Skeleton className="h-32 w-full" />
                       <Skeleton className="h-32 w-full" />
                     </>
                   ) : filteredClients.length ? (
-                    filteredClients.map((client) => (
-                      <div key={client.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <div className="flex flex-wrap items-start justify-between gap-4">
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="font-semibold text-slate-950 dark:text-white">{client.fullName}</h3>
+                    <TableShell>
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <Th>Name</Th>
+                          <Th>Contact</Th>
+                          <Th>Location</Th>
+                          <Th>Status</Th>
+                          <Th>Actions</Th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredClients.map((client) => (
+                          <tr key={client.id}>
+                            <Td>
+                              <div className="flex items-center gap-2">
+                                <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-slate-900 text-sm font-bold text-white">
+                                  {(client.fullName || 'C').charAt(0).toUpperCase()}
+                                </span>
+                                <p className="font-semibold text-slate-950">{client.fullName || 'Client'}</p>
+                              </div>
+                            </Td>
+                            <Td>
+                              <p className="break-all">{client.phoneNumber || 'Phone not added'}</p>
+                              <p className="break-all text-xs text-slate-500">{client.email || 'Email not added'}</p>
+                            </Td>
+                            <Td className="min-w-48">{getLocationLabel(client)}</Td>
+                            <Td>
                               <Badge tone={client.accountStatus === 'banned' ? 'rose' : 'slate'}>
                                 {client.accountStatus || 'active'}
                               </Badge>
-                            </div>
-                            <div className="mt-3 grid gap-2 text-sm text-slate-500 dark:text-slate-400">
-                              <p className="inline-flex min-w-0 items-start gap-2 break-words">
-                                <Phone size={14} className="mt-0.5 flex-none" />
-                                <span className="min-w-0 break-all">{client.phoneNumber || 'Phone not added'}</span>
-                              </p>
-                              <p className="inline-flex min-w-0 items-start gap-2 break-words">
-                                <Mail size={14} className="mt-0.5 flex-none" />
-                                <span className="min-w-0 break-all">{client.email || 'Email not added'}</span>
-                              </p>
-                              <p className="inline-flex min-w-0 items-start gap-2 break-words">
-                                <MapPin size={14} className="mt-0.5 flex-none" />
-                                <span className="min-w-0">{getLocationLabel(client)}</span>
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap sm:gap-3">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="w-full sm:w-auto"
-                            onClick={() => openProfileEditor(client, 'client')}
-                          >
-                            <Pencil size={15} />
-                            Edit details
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-full sm:w-auto"
-                            onClick={() => handleBan(client.id, 'client')}
-                          >
-                            Ban user
-                          </Button>
-                        </div>
-                      </div>
-                    ))
+                            </Td>
+                            <Td>
+                              <div className="flex min-w-48 flex-wrap gap-2">
+                                <Button type="button" size="sm" variant="outline" onClick={() => openProfileEditor(client, 'client')}>
+                                  <Pencil size={15} />
+                                  Edit
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => handleAccountStatus(client.id, 'client', 'active')}>
+                                  Active
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => handleBan(client.id, 'client')}>
+                                  Ban
+                                </Button>
+                              </div>
+                            </Td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </TableShell>
                   ) : (
                     <p className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500 dark:text-slate-400">
                       No client matched this admin search.

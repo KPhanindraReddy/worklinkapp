@@ -56,6 +56,7 @@ export const getAdminOverview = async () => {
       analytics: {
         userCount: 0,
         labourCount: 0,
+        clientCount: 0,
         activeBookings: 0,
         pendingVerifications: 0,
         paidEarnings: 0,
@@ -85,6 +86,7 @@ export const getAdminOverview = async () => {
   const [
     usersCountSnapshot,
     laboursCountSnapshot,
+    clientsCountSnapshot,
     bookingsCountSnapshot,
     pendingCountSnapshot,
     pendingLaboursSnapshot,
@@ -93,6 +95,7 @@ export const getAdminOverview = async () => {
   ] = await Promise.all([
     getCountFromServer(collection(db, 'users')),
     getCountFromServer(collection(db, 'labours')),
+    getCountFromServer(collection(db, 'clients')),
     getCountFromServer(collection(db, 'bookings')),
     getCountFromServer(query(collection(db, 'labours'), where('verified', '==', false))),
     getDocs(pendingLaboursQuery),
@@ -138,6 +141,7 @@ export const getAdminOverview = async () => {
     analytics: {
       userCount: usersCountSnapshot.data().count,
       labourCount: laboursCountSnapshot.data().count,
+      clientCount: clientsCountSnapshot.data().count,
       activeBookings: bookingsCountSnapshot.data().count,
       pendingVerifications: pendingCountSnapshot.data().count,
       paidEarnings,
@@ -200,12 +204,16 @@ export const verifyLabourAccount = async (labourId) => {
 };
 
 export const banUser = async ({ userId, role } = {}) => {
+  return updateUserAccountStatus({ userId, role, accountStatus: 'banned' });
+};
+
+export const updateUserAccountStatus = async ({ userId, role, accountStatus = 'active' } = {}) => {
   if (!isFirebaseConfigured || !db) {
     return;
   }
 
   const payload = {
-    accountStatus: 'banned',
+    accountStatus,
     updatedAt: serverTimestamp()
   };
 
@@ -372,4 +380,19 @@ export const getAdminDiagnostics = async () => {
     stuckBookings,
     messageFailures
   };
+};
+
+export const listSupportTickets = async ({ pageSize = 50 } = {}) => {
+  if (!isFirebaseConfigured || !db) {
+    return [];
+  }
+
+  const ticketsQuery = query(
+    collection(db, 'supportTickets'),
+    orderBy('createdAt', 'desc'),
+    limit(pageSize)
+  );
+  const snapshot = await getDocs(ticketsQuery);
+
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
 };

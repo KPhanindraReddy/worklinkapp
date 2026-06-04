@@ -849,6 +849,8 @@ const ClientDashboardPage = () => {
                     value={selectedService}
                     onChange={(event) => handleServiceChange(event.target.value)}
                     getAvailability={getServiceAvailability}
+                    allowCustom
+                    customOptionLabel="Search"
                   />
                   <SelectField
                     label="Radius"
@@ -905,6 +907,8 @@ const ClientDashboardPage = () => {
                   value={selectedService}
                   onChange={(event) => handleServiceChange(event.target.value)}
                   getAvailability={getServiceAvailability}
+                  allowCustom
+                  customOptionLabel="Search"
                 />
                 <SelectField
                   label="Radius"

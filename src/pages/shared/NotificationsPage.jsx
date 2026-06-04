@@ -11,20 +11,11 @@ import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
 import {
   deleteNotification,
-  deleteNotifications,
   markAllNotificationsRead,
   markNotificationRead,
   subscribeNotifications
 } from '../../services/notificationService';
-import { formatDate, parseDateValue } from '../../utils/formatters';
-
-const retentionOptions = [
-  { value: '5', label: '5 days' },
-  { value: '15', label: '15 days' },
-  { value: '30', label: '30 days' },
-  { value: '90', label: '90 days' },
-  { value: 'all', label: 'All' }
-];
+import { formatDate } from '../../utils/formatters';
 
 const getNotificationTarget = (notification) => {
   if (notification.type === 'chat' && notification.conversationId) {
@@ -41,28 +32,13 @@ const getNotificationTarget = (notification) => {
 const NotificationsPage = () => {
   const { currentUser } = useAuth();
   const [notifications, setNotifications] = useState([]);
-  const [retentionDays, setRetentionDays] = useState(
-    () => window.localStorage.getItem('slivzNotificationRetentionDays') || '30'
-  );
   const [deletingId, setDeletingId] = useState('');
-  const [cleaning, setCleaning] = useState(false);
   const [swipedNotificationId, setSwipedNotificationId] = useState('');
   const swipeRef = useRef({ id: '', startX: 0, deleting: false });
   const unreadCount = useMemo(
     () => notifications.filter((notification) => !notification.read).length,
     [notifications]
   );
-  const oldNotifications = useMemo(() => {
-    if (retentionDays === 'all') {
-      return [];
-    }
-
-    const cutoffTime = Date.now() - Number(retentionDays) * 24 * 60 * 60 * 1000;
-    return notifications.filter((notification) => {
-      const createdAt = parseDateValue(notification.createdAt)?.getTime();
-      return createdAt && createdAt < cutoffTime;
-    });
-  }, [notifications, retentionDays]);
 
   useEffect(() => {
     return subscribeNotifications(currentUser?.uid, setNotifications);
@@ -77,21 +53,32 @@ const NotificationsPage = () => {
     return undefined;
   }, [notifications]);
 
-  useEffect(() => {
-    window.localStorage.setItem('slivzNotificationRetentionDays', retentionDays);
-  }, [retentionDays]);
-
   const handleDeleteNotification = async (notificationId) => {
+    const removedNotification = notifications.find((notification) => notification.id === notificationId);
+
+    if (!removedNotification || deletingId === notificationId) {
+      return;
+    }
+
     setDeletingId(notificationId);
+    setSwipedNotificationId('');
+    setNotifications((currentNotifications) =>
+      currentNotifications.filter((notification) => notification.id !== notificationId)
+    );
 
     try {
       await deleteNotification(notificationId);
-      setSwipedNotificationId('');
       toast.success('Notification deleted.');
     } catch {
+      setNotifications((currentNotifications) =>
+        currentNotifications.some((notification) => notification.id === notificationId)
+          ? currentNotifications
+          : [removedNotification, ...currentNotifications]
+      );
       toast.error('Could not delete notification.');
     } finally {
       setDeletingId('');
+      swipeRef.current = { id: '', startX: 0, deleting: false };
     }
   };
 
@@ -126,24 +113,6 @@ const NotificationsPage = () => {
     swipeRef.current = { id: '', startX: 0, deleting: false };
   };
 
-  const handleCleanOldNotifications = async () => {
-    if (!oldNotifications.length) {
-      toast.success('No old notifications to delete.');
-      return;
-    }
-
-    setCleaning(true);
-
-    try {
-      await deleteNotifications(oldNotifications);
-      toast.success(`Deleted ${oldNotifications.length} old notifications.`);
-    } catch {
-      toast.error('Could not clean notifications.');
-    } finally {
-      setCleaning(false);
-    }
-  };
-
   return (
     <AppShell>
       <PageSEO title="Notifications" description="Booking, chat, verification, and platform alerts for your Slivz account." />
@@ -164,27 +133,6 @@ const NotificationsPage = () => {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <select
-                  value={retentionDays}
-                  onChange={(event) => setRetentionDays(event.target.value)}
-                  className="min-h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 max-sm:text-base"
-                  aria-label="Notification retention"
-                >
-                  {retentionOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      Keep {option.label}
-                    </option>
-                  ))}
-                </select>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={cleaning || !oldNotifications.length}
-                  onClick={handleCleanOldNotifications}
-                >
-                  Clean
-                </Button>
                 <Badge tone={unreadCount ? 'blue' : 'slate'}>{notifications.length} total</Badge>
               </div>
             </div>
@@ -201,6 +149,7 @@ const NotificationsPage = () => {
                 <div
                   key={notification.id}
                   className="relative overflow-hidden rounded-2xl"
+                  style={{ touchAction: 'pan-y' }}
                   onPointerDown={(event) => handleSwipeStart(notification.id, event)}
                   onPointerMove={(event) => handleSwipeMove(notification.id, event)}
                   onPointerUp={handleSwipeEnd}

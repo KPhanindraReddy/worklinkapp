@@ -2,14 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import {
-  Bell,
   CheckCircle2,
-  ChevronRight,
-  Info,
   LogOut,
   MapPin,
   Pencil,
-  Search,
+  Send,
   Settings,
   UserRound,
   Wrench,
@@ -18,6 +15,7 @@ import {
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
+import { AutocompleteSelect } from '../../components/common/AutocompleteSelect';
 import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
 import { PhoneInputField } from '../../components/common/PhoneInputField';
@@ -31,6 +29,7 @@ import { useAuth } from '../../context/AuthContext';
 import { subscribeBookingsForUser } from '../../services/bookingService';
 import { updateAvailability } from '../../services/labourService';
 import { subscribeReviewsForLabour } from '../../services/reviewService';
+import { createSupportTicket } from '../../services/supportTicketService';
 import { availabilityOptions, languageOptions, workCategories } from '../../utils/constants';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { getDisplayLocationText } from '../../utils/location';
@@ -121,6 +120,9 @@ const SettingsPage = () => {
   const [labourBookings, setLabourBookings] = useState([]);
   const [labourBookingsLoaded, setLabourBookingsLoaded] = useState(false);
   const [labourReviews, setLabourReviews] = useState([]);
+  const [ticketForm, setTicketForm] = useState({ subject: '', description: '' });
+  const [ticketSubmitting, setTicketSubmitting] = useState(false);
+  const [lastTicketNumber, setLastTicketNumber] = useState('');
 
   useEffect(() => {
     if (!isEditing) {
@@ -268,6 +270,34 @@ const SettingsPage = () => {
   const handleLogout = async () => {
     await logout();
     navigate('/auth', { replace: true });
+  };
+  const submitTicket = async () => {
+    if (!currentUser || !userProfile?.role) {
+      toast.error('Sign in before raising a ticket.');
+      return;
+    }
+
+    setTicketSubmitting(true);
+
+    try {
+      const ticket = await createSupportTicket({
+        userId: currentUser.uid,
+        role: userProfile.role,
+        fullName: formValues.fullName || userProfile.fullName || currentUser.displayName || '',
+        phoneNumber: formValues.phoneNumber || userProfile.phoneNumber || currentUser.phoneNumber || '',
+        email: formValues.email || userProfile.email || currentUser.email || '',
+        subject: ticketForm.subject,
+        description: ticketForm.description
+      });
+
+      setLastTicketNumber(ticket?.ticketNumber || '');
+      setTicketForm({ subject: '', description: '' });
+      toast.success(ticket?.ticketNumber ? `Ticket ${ticket.ticketNumber} raised.` : 'Ticket raised.');
+    } catch (error) {
+      toast.error(getFirebaseErrorMessage(error));
+    } finally {
+      setTicketSubmitting(false);
+    }
   };
   const locationLabel = isClient
     ? formValues.location || 'Location not set'
@@ -483,13 +513,15 @@ const SettingsPage = () => {
             <Card className="space-y-4 rounded-[18px] p-4 sm:p-5">
               <FieldSectionTitle icon={Wrench} tone="amber">Work details</FieldSectionTitle>
               <div className="grid gap-3 sm:grid-cols-2">
-                <SelectField
+                <AutocompleteSelect
                   label="Work category"
-                  placeholder="Select category"
+                  placeholder="Select or type service"
                   disabled={profileFieldsDisabled}
                   value={formValues.category}
                   options={workCategories}
                   onChange={(event) => updateFormValue('category', event.target.value)}
+                  allowCustom
+                  customOptionLabel="Add service"
                 />
                 <InputField
                   label="Experience (yrs)"
@@ -559,22 +591,34 @@ const SettingsPage = () => {
           ) : null}
 
           <Card className="space-y-4 rounded-[18px] p-4 sm:p-5">
-            <FieldSectionTitle icon={Settings} tone="slate">Settings</FieldSectionTitle>
-            <div className="overflow-hidden rounded-[14px] border border-slate-200 bg-white">
-              {[
-                { label: 'About Slivz', icon: Info },
-                { label: 'Notifications', icon: Bell },
-                { label: isLabour ? 'Browse labour' : 'Browse services', icon: Search }
-              ].map((item) => {
-                const Icon = item.icon;
-                return (
-                  <div key={item.label} className="flex items-center gap-3 border-b border-slate-100 px-3 py-3 last:border-b-0">
-                    <Icon size={18} className="text-slate-500" />
-                    <span className="min-w-0 flex-1 text-sm font-semibold text-slate-800">{item.label}</span>
-                    <ChevronRight size={17} className="text-slate-300" />
-                  </div>
-                );
-              })}
+            <FieldSectionTitle icon={Settings} tone="slate">Raise ticket</FieldSectionTitle>
+            {lastTicketNumber ? (
+              <div className="rounded-[14px] border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
+                Ticket number: {lastTicketNumber}
+              </div>
+            ) : null}
+            <div className="grid gap-3">
+              <InputField
+                label="Subject"
+                value={ticketForm.subject}
+                onChange={(event) => setTicketForm((prev) => ({ ...prev, subject: event.target.value }))}
+                placeholder="Payment, booking, profile, or account issue"
+              />
+              <TextAreaField
+                label="Description"
+                value={ticketForm.description}
+                onChange={(event) => setTicketForm((prev) => ({ ...prev, description: event.target.value }))}
+                placeholder="Describe what happened and what help you need."
+              />
+              <Button
+                type="button"
+                className="w-full sm:w-auto"
+                onClick={submitTicket}
+                disabled={ticketSubmitting || !ticketForm.subject.trim() || !ticketForm.description.trim()}
+              >
+                <Send size={16} />
+                {ticketSubmitting ? 'Sending...' : 'Send ticket'}
+              </Button>
             </div>
             <div className="rounded-[14px] border border-rose-100 bg-rose-50 p-3">
               <p className="mb-3 text-xs font-medium text-slate-500">
