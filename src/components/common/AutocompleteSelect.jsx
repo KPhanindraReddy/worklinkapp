@@ -133,7 +133,7 @@ export const AutocompleteSelect = ({
       ) : null}
 
       <div className="relative">
-        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition focus-within:border-brand-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-100">
+        <div className="flex items-center gap-2 rounded-2xl border-[3px] border-brand-500 bg-brand-50/40 px-3.5 py-2.5 shadow-[0_0_0_4px_rgba(37,99,235,0.10),0_10px_26px_rgba(37,99,235,0.14),inset_0_1px_0_rgba(255,255,255,0.9)] transition focus-within:border-brand-600 focus-within:bg-white focus-within:ring-4 focus-within:ring-brand-100">
           <input
             ref={inputRef}
             type="text"
@@ -144,7 +144,7 @@ export const AutocompleteSelect = ({
             onBlur={() => window.setTimeout(commitTypedValue, 0)}
             placeholder={placeholder}
             disabled={disabled}
-            className="min-h-6 min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 sm:text-[13px]"
+            className="min-h-7 min-w-0 flex-1 bg-transparent text-base font-extrabold text-brand-950 outline-none placeholder:font-bold placeholder:text-brand-500 sm:text-sm"
             autoComplete="off"
           />
           {(search || selectedLabel) && (

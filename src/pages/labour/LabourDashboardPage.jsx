@@ -726,11 +726,12 @@ const LabourDashboardPage = () => {
                             value={otpValues[booking.id] ?? ''}
                             onChange={(event) => handleOtpChange(booking.id, event.target.value)}
                             placeholder="6-digit OTP"
+                            inputClassName="border-2 border-brand-300 bg-white font-bold tracking-[0.18em] text-brand-950 focus:border-brand-500 focus:ring-brand-100"
                           />
                           <Button
                             type="button"
                             size="sm"
-                            className={`h-11 w-full sm:w-auto ${actionButtonClass}`}
+                            className={`h-11 w-full border-2 border-brand-500 sm:w-auto ${actionButtonClass}`}
                             disabled={startingBookingId === booking.id}
                             onClick={() => handleStartWork(booking)}
                           >
@@ -813,8 +814,9 @@ const LabourDashboardPage = () => {
                             value={otpValues[booking.id] ?? ''}
                             onChange={(event) => handleOtpChange(booking.id, event.target.value)}
                             placeholder="6-digit OTP"
+                            inputClassName="border-2 border-brand-300 bg-white font-bold tracking-[0.18em] text-brand-950 focus:border-brand-500 focus:ring-brand-100"
                           />
-                          <Button type="button" size="sm" className={`h-11 ${actionButtonClass}`} disabled={startingBookingId === booking.id} onClick={() => handleStartWork(booking)}>
+                          <Button type="button" size="sm" className={`h-11 border-2 border-brand-500 ${actionButtonClass}`} disabled={startingBookingId === booking.id} onClick={() => handleStartWork(booking)}>
                             {startingBookingId === booking.id ? 'Verifying...' : 'Start work'}
                           </Button>
                         </div>

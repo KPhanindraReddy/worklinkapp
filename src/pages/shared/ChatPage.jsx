@@ -16,7 +16,6 @@ import {
 } from '../../services/chatService';
 import { subscribeBookingById } from '../../services/bookingService';
 import { getLabourById } from '../../services/labourService';
-import { createNotification } from '../../services/notificationService';
 import { getUserProfile } from '../../services/userService';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 
@@ -266,22 +265,6 @@ const ChatPage = () => {
         text,
         type: 'text'
       });
-
-      if (recipientId && activeConversation.bookingId) {
-        try {
-          await createNotification({
-            userId: recipientId,
-            senderId: currentUser.uid,
-            bookingId: activeConversation.bookingId,
-            type: 'chat',
-            title: 'New message',
-            body: text.length > 48 ? `${text.slice(0, 45)}...` : text,
-            conversationId: activeConversation.id
-          });
-        } catch (notificationError) {
-          console.warn('[Slivz chat] notification write skipped', notificationError);
-        }
-      }
 
       const nextMessages = await getMessages(activeConversation.id);
       setMessages(nextMessages);
