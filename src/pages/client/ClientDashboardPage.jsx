@@ -100,7 +100,7 @@ const getDateKey = (value) => {
 };
 
 const getFirstAvailableLabour = (items) =>
-  items.find((labour) => labour.availability === 'Available') ?? null;
+  items.find((labour) => labour?.id && labour.availability === 'Available') ?? null;
 const buildDirectionsUrl = ({ origin, destination }) => {
   const normalizedOrigin = normalizeCoordinates(origin);
   const normalizedDestination = normalizeCoordinates(destination);
@@ -495,26 +495,31 @@ const ClientDashboardPage = () => {
   };
 
   const createDashboardBooking = async ({ labour, mode }) => {
+    if (!labour?.id) {
+      throw new Error('Choose an available labour before sending this request.');
+    }
+
+    const serviceType = String(selectedService || '').trim();
+    const labourName = labour.fullName || labour.displayName || 'Labour';
+    const clientName = userProfile?.fullName || currentUser.displayName || 'Client';
     const appointmentAt =
       mode === 'instant'
         ? new Date().toISOString()
         : buildAppointmentDateTime(selectedDate, selectedSlot);
     const routeGroupId = createRouteGroupId(currentUser.uid);
-
-    const bookingId = await createBooking({
+    const bookingPayload = {
       clientId: currentUser.uid,
-      clientName: userProfile?.fullName || currentUser.displayName || 'Client',
+      clientName,
       clientProfilePhoto:
         userProfile?.profilePhoto ||
-        buildProfileAvatarDataUrl(userProfile?.fullName || currentUser.displayName || 'Client'),
+        buildProfileAvatarDataUrl(clientName),
       clientPhoneNumber: userProfile?.phoneNumber || currentUser.phoneNumber || '',
       clientEmail: userProfile?.email || currentUser.email || '',
       labourId: labour.id,
-      labourName: labour.fullName,
-      labourProfilePhoto:
-        labour.profilePhoto || buildProfileAvatarDataUrl(labour.fullName || 'Labour'),
+      labourName,
+      labourProfilePhoto: labour.profilePhoto || buildProfileAvatarDataUrl(labourName),
       labourPhoneNumber: labour.phoneNumber || '',
-      serviceType: selectedService,
+      serviceType,
       serviceDetails:
         mode === 'instant'
           ? 'Instant request from client home.'
@@ -535,8 +540,9 @@ const ClientDashboardPage = () => {
       requestFlow: mode === 'instant' ? 'client_dashboard_instant' : 'client_dashboard_schedule',
       routeGroupId,
       previousLabourIds: []
-    });
+    };
 
+    const bookingId = await createBooking(bookingPayload);
     const notificationDelivered = await notifyLabour({ bookingId, labour, requestMode: mode });
 
     return { bookingId, notificationDelivered };
@@ -545,10 +551,6 @@ const ClientDashboardPage = () => {
   const loadServiceLabours = async () => {
     if (!clientOrigin) {
       return [];
-    }
-
-    if (serviceLabours.length) {
-      return serviceLabours;
     }
 
     setLaboursLoading(true);
@@ -563,7 +565,9 @@ const ClientDashboardPage = () => {
         },
         clientOrigin
       );
-      const nearbyItems = filterNearbyLabours(items, radiusKm);
+      const nearbyItems = filterNearbyLabours(items, radiusKm).filter(
+        (labour) => labour?.id && labour.availability === 'Available'
+      );
 
       setServiceLabours(nearbyItems);
       setSelectedLabourId(getFirstAvailableLabour(nearbyItems)?.id ?? '');

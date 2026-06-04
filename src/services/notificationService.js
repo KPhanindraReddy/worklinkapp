@@ -63,6 +63,15 @@ export const createNotification = async (payload) => {
     return null;
   }
 
+  if (!payload?.userId) {
+    debugNotifications('skipped create because notification user id is missing', {
+      senderId: payload?.senderId,
+      bookingId: payload?.bookingId,
+      type: payload?.type
+    });
+    return null;
+  }
+
   debugNotifications('create requested', {
     userId: payload.userId,
     senderId: payload.senderId,

@@ -102,6 +102,17 @@ export const AutocompleteSelect = ({
     onChange?.({ target: { value: '' } });
   };
 
+  const commitTypedValue = () => {
+    const typedValue = search.trim();
+
+    if (!allowCustom || !typedValue) {
+      return;
+    }
+
+    onChange?.({ target: { value: typedValue } });
+    setSearch('');
+  };
+
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
@@ -130,6 +141,7 @@ export const AutocompleteSelect = ({
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             onFocus={() => !disabled && !selectedLabel && setIsOpen(true)}
+            onBlur={() => window.setTimeout(commitTypedValue, 0)}
             placeholder={placeholder}
             disabled={disabled}
             className="min-h-6 min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 sm:text-[13px]"
@@ -160,7 +172,10 @@ export const AutocompleteSelect = ({
                 <button
                   key={optValue}
                   type="button"
-                  onClick={() => handleSelect(option)}
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    handleSelect(option);
+                  }}
                   className={`w-full px-3 py-2.5 text-left text-sm transition ${
                     index === highlightedIndex
                       ? 'bg-brand-50 text-brand-900'

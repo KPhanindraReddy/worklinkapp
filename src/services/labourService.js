@@ -120,7 +120,7 @@ const fetchLabourCandidates = async (filters, resolvedCategory) => {
         continue;
       }
 
-      return snapshot.docs.map((item) => normalizeLabourProfile({ id: item.id, ...item.data() }));
+      return snapshot.docs.map((item) => normalizeLabourProfile({ ...item.data(), id: item.id }));
     } catch (error) {
       lastError = error;
       console.warn('[Slivz labour search] candidate query failed', {
@@ -200,7 +200,7 @@ export const fetchFeaturedLabours = async (count = 6) => {
   );
   const snapshot = await getDocs(labourQuery);
 
-  return snapshot.docs.map((item) => normalizeLabourProfile({ id: item.id, ...item.data() }));
+  return snapshot.docs.map((item) => normalizeLabourProfile({ ...item.data(), id: item.id }));
 };
 
 export const searchLabours = async (filters = {}, origin) => {
@@ -283,7 +283,7 @@ export const getLabourById = async (labourId) => {
   }
 
   const snapshot = await getDoc(doc(db, 'labours', labourId));
-  return snapshot.exists() ? normalizeLabourProfile({ id: snapshot.id, ...snapshot.data() }) : null;
+  return snapshot.exists() ? normalizeLabourProfile({ ...snapshot.data(), id: snapshot.id }) : null;
 };
 
 export const subscribeLabourById = (labourId, onNext, onError) => {
@@ -300,7 +300,7 @@ export const subscribeLabourById = (labourId, onNext, onError) => {
   return onSnapshot(
     doc(db, 'labours', labourId),
     (snapshot) => {
-      onNext(snapshot.exists() ? normalizeLabourProfile({ id: snapshot.id, ...snapshot.data() }) : null);
+      onNext(snapshot.exists() ? normalizeLabourProfile({ ...snapshot.data(), id: snapshot.id }) : null);
     },
     onError
   );

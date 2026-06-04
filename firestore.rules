@@ -82,8 +82,15 @@ service cloud.firestore {
         bookingPartiesUnchanged() &&
         bookingOtpUnchanged() &&
         resource.data.status == 'pending' &&
-        onlyBookingFieldsChanged(['status', 'updatedAt']) &&
-        request.resource.data.status in ['accepted', 'rejected'];
+        ((request.resource.data.status == 'accepted' &&
+          onlyBookingFieldsChanged([
+            'status',
+            'clientPhoneNumber',
+            'labourPhoneNumber',
+            'updatedAt'
+          ])) ||
+         (request.resource.data.status == 'rejected' &&
+          onlyBookingFieldsChanged(['status', 'updatedAt'])));
     }
 
     function labourCanStartBooking() {

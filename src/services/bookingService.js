@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDocs,
   limit,
   onSnapshot,
   query,
@@ -29,6 +30,26 @@ const sortBookingsByAppointmentDesc = (items) =>
 
     return dateB - dateA;
   });
+
+const removeUndefinedFields = (value) => {
+  if (Array.isArray(value)) {
+    return value.map(removeUndefinedFields).filter((item) => item !== undefined);
+  }
+
+  if (value && Object.prototype.toString.call(value) === '[object Object]') {
+    return Object.entries(value).reduce((result, [key, item]) => {
+      const normalizedItem = removeUndefinedFields(item);
+
+      if (normalizedItem !== undefined) {
+        result[key] = normalizedItem;
+      }
+
+      return result;
+    }, {});
+  }
+
+  return value === undefined ? undefined : value;
+};
 
 const buildUserBookingsQuery = (userId, role) => {
   const key = role === 'labour' ? 'labourId' : 'clientId';
@@ -112,13 +133,22 @@ export const createBooking = async (payload) => {
   );
   const privateClientPhoneNumber = normalizeWhatsAppPhoneNumber(payload.clientPhoneNumber);
   const privateLabourPhoneNumber = normalizeWhatsAppPhoneNumber(payload.labourPhoneNumber);
-  const normalizedPayload = {
+  const normalizedPayload = removeUndefinedFields({
     ...payload,
+    clientId: String(payload.clientId || '').trim(),
+    labourId: String(payload.labourId || '').trim(),
+    serviceType: String(payload.serviceType || '').trim(),
     clientPhoneNumber: '',
     labourPhoneNumber: '',
     privateClientPhoneNumber,
     privateLabourPhoneNumber
-  };
+  });
+
+  const activeClientBookingsSnapshot = await getDocs(activeClientBookingsQuery);
+
+  if (!activeClientBookingsSnapshot.empty) {
+    throw new Error('Finish or cancel your current request before sending another one.');
+  }
 
   debugBookingService('create booking transaction started', {
     bookingId: bookingRef.id,
@@ -128,12 +158,6 @@ export const createBooking = async (payload) => {
   });
 
   await runTransaction(db, async (transaction) => {
-    const activeClientBookingsSnapshot = await transaction.get(activeClientBookingsQuery);
-
-    if (!activeClientBookingsSnapshot.empty) {
-      throw new Error('Finish or cancel your current request before sending another one.');
-    }
-
     const labourSnapshot = await transaction.get(labourRef);
 
     if (!labourSnapshot.exists()) {
