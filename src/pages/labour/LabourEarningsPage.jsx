@@ -175,15 +175,15 @@ const LabourEarningsPage = () => {
                 </Badge>
               </div>
 
-              <div className="mt-4 space-y-2">
+              <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
                 {loading ? (
-                  <>
+                  <div className="space-y-2 p-3">
                     <Skeleton className="h-24 w-full rounded-2xl" />
                     <Skeleton className="h-24 w-full rounded-2xl" />
-                  </>
+                  </div>
                 ) : filteredPaidBookings.length ? (
                   <>
-                    <div className="hidden rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-500 md:grid md:grid-cols-[1fr_1fr_0.85fr_0.85fr_0.55fr] md:gap-3">
+                    <div className="grid min-w-[760px] grid-cols-[1fr_1fr_0.85fr_0.85fr_0.55fr] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
                       <span>Client</span>
                       <span>Service</span>
                       <span>Date</span>
@@ -191,34 +191,30 @@ const LabourEarningsPage = () => {
                       <span>Status</span>
                     </div>
                     {filteredPaidBookings.map((booking) => (
-                      <div key={booking.id} className="rounded-2xl border border-slate-200 bg-white p-4">
-                        <div className="grid gap-3 md:grid-cols-[1fr_1fr_0.85fr_0.85fr_0.55fr] md:items-center">
+                      <div key={booking.id} className="min-w-[760px] border-b border-slate-200 bg-white p-4 last:border-b-0">
+                        <div className="grid grid-cols-[1fr_1fr_0.85fr_0.85fr_0.55fr] items-center gap-3">
                           <div className="min-w-0">
-                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Client</p>
                             <h3 className="truncate font-semibold text-slate-950">{booking.clientName || 'Client'}</h3>
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Service</p>
                             <p className="truncate text-sm font-semibold text-slate-800">{booking.serviceType}</p>
                             <p className="mt-1 truncate text-xs text-slate-500">
                               {getDisplayLocationText(booking.location, 'Live location shared')}
                             </p>
                           </div>
                           <div>
-                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Date</p>
                             <span className="inline-flex items-center gap-2 text-sm text-slate-600">
                               <CalendarClock size={15} />
                               {formatDate(getPaymentDate(booking))}
                             </span>
                           </div>
                           <div>
-                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Amount</p>
                             <span className="inline-flex items-center gap-2 font-semibold text-brand-700">
                               <IndianRupee size={15} />
                               {formatCurrency(booking.amount)}
                             </span>
                           </div>
-                          <div className="flex justify-start md:justify-end">
+                          <div className="flex justify-end">
                             <Badge tone="emerald">Paid</Badge>
                           </div>
                         </div>
@@ -241,33 +237,32 @@ const LabourEarningsPage = () => {
               <p className="mt-2 text-sm text-slate-600">
                 These jobs are finished by you, but the client still needs to enter the paid amount.
               </p>
-              <div className="mt-4 space-y-2">
+              <div className="mt-4 overflow-x-auto rounded-2xl border border-amber-200 bg-amber-50">
                 {loading ? (
-                  <Skeleton className="h-24 w-full rounded-2xl" />
+                  <div className="p-3">
+                    <Skeleton className="h-24 w-full rounded-2xl" />
+                  </div>
                 ) : awaitingPaymentBookings.length ? (
                   <>
-                    <div className="hidden rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-amber-700 md:grid md:grid-cols-[1fr_1fr_0.9fr_0.75fr] md:gap-3">
+                    <div className="grid min-w-[640px] grid-cols-[1fr_1fr_0.9fr_0.75fr] gap-3 border-b border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-amber-700">
                       <span>Client</span>
                       <span>Service</span>
                       <span>Finished</span>
                       <span>Status</span>
                     </div>
                     {awaitingPaymentBookings.slice(0, 6).map((booking) => (
-                      <div key={booking.id} className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                        <div className="grid gap-3 md:grid-cols-[1fr_1fr_0.9fr_0.75fr] md:items-center">
+                      <div key={booking.id} className="min-w-[640px] border-b border-amber-200 bg-amber-50 p-4 last:border-b-0">
+                        <div className="grid grid-cols-[1fr_1fr_0.9fr_0.75fr] items-center gap-3">
                           <div className="min-w-0">
-                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-amber-700 md:hidden">Client</p>
                             <p className="truncate font-semibold text-amber-950">{booking.clientName || 'Client'}</p>
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-amber-700 md:hidden">Service</p>
                             <p className="truncate text-sm font-semibold text-amber-900">{booking.serviceType}</p>
                           </div>
                           <div>
-                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-amber-700 md:hidden">Finished</p>
                             <p className="text-sm text-amber-900">{formatDate(booking.workFinishedAt || booking.appointmentAt)}</p>
                           </div>
-                          <div className="flex justify-start md:justify-end">
+                          <div className="flex justify-end">
                             <Badge tone="amber">Amount pending</Badge>
                           </div>
                         </div>

@@ -11,26 +11,28 @@ export const AutocompleteSelect = ({
   getAvailability = null
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [search, setSearch] = useState('');
+  const [inputValue, setInputValue] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const inputRef = useRef(null);
   const containerRef = useRef(null);
-
-  const filteredOptions = search
-    ? options.filter(opt => {
-        const label = typeof opt === 'string' ? opt : opt.label;
-        return label.toLowerCase().startsWith(search.toLowerCase());
-      })
-    : options;
 
   const selectedLabel = value
     ? (options.find(opt => (typeof opt === 'string' ? opt : opt.value) === value)?.label ?? value)
     : '';
 
+  const isShowingSelectedValue = Boolean(value && inputValue === selectedLabel);
+  const filteredOptions = inputValue
+    ? options.filter(opt => {
+        const label = typeof opt === 'string' ? opt : opt.label;
+        return label.toLowerCase().startsWith(inputValue.toLowerCase());
+      })
+    : options;
+
   const handleSelect = (option) => {
     const val = typeof option === 'string' ? option : option.value;
+    const label = typeof option === 'string' ? option : option.label;
     onChange?.({ target: { value: val } });
-    setSearch('');
+    setInputValue(label ?? val);
     setIsOpen(false);
   };
 
@@ -61,7 +63,7 @@ export const AutocompleteSelect = ({
       case 'Escape':
         e.preventDefault();
         setIsOpen(false);
-        setSearch('');
+        setInputValue(selectedLabel);
         break;
       default:
         break;
@@ -69,15 +71,22 @@ export const AutocompleteSelect = ({
   };
 
   const handleInputChange = (e) => {
-    setSearch(e.target.value);
+    const nextValue = e.target.value;
+    setInputValue(nextValue);
     setHighlightedIndex(0);
     setIsOpen(true);
+
+    if (value && nextValue !== selectedLabel) {
+      onChange?.({ target: { value: '' } });
+    }
   };
 
   const handleClear = (e) => {
     e.stopPropagation();
-    setSearch('');
+    setInputValue('');
     onChange?.({ target: { value: '' } });
+    setIsOpen(true);
+    inputRef.current?.focus();
   };
 
   useEffect(() => {
@@ -90,6 +99,17 @@ export const AutocompleteSelect = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (value) {
+      setInputValue(selectedLabel);
+      return;
+    }
+
+    if (document.activeElement !== inputRef.current) {
+      setInputValue('');
+    }
+  }, [selectedLabel, value]);
 
   return (
     <label className={`block min-w-0 max-w-full space-y-1.5 ${className}`} ref={containerRef}>
@@ -104,15 +124,15 @@ export const AutocompleteSelect = ({
           <input
             ref={inputRef}
             type="text"
-            value={search || selectedLabel}
+            value={inputValue}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            onFocus={() => setIsOpen(true)}
+            onFocus={() => setIsOpen(!isShowingSelectedValue)}
             placeholder={placeholder}
             className="min-h-6 min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 sm:text-[13px]"
             autoComplete="off"
           />
-          {(search || selectedLabel) && (
+          {inputValue && (
             <button
               type="button"
               onClick={handleClear}
@@ -125,7 +145,7 @@ export const AutocompleteSelect = ({
           <ChevronDown size={16} className="flex-none text-slate-400" />
         </div>
 
-        {isOpen && filteredOptions.length > 0 && (
+        {isOpen && !isShowingSelectedValue && filteredOptions.length > 0 && (
           <div className="absolute top-full z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
             {filteredOptions.map((option, index) => {
               const optLabel = typeof option === 'string' ? option : option.label;
@@ -163,9 +183,9 @@ export const AutocompleteSelect = ({
           </div>
         )}
 
-        {isOpen && filteredOptions.length === 0 && search && (
+        {isOpen && !isShowingSelectedValue && filteredOptions.length === 0 && inputValue && (
           <div className="absolute top-full z-10 mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-center text-sm text-slate-500 shadow-lg">
-            No matches for "{search}"
+            No matches for "{inputValue}"
           </div>
         )}
       </div>

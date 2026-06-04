@@ -239,8 +239,8 @@ const RecentServicesPage = () => {
               <Skeleton className="h-28 w-full" />
             </div>
           ) : bookings.length ? (
-            <div className="space-y-3">
-              <div className="hidden rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-500 md:grid md:grid-cols-[1.1fr_1fr_0.85fr_0.85fr_0.8fr] md:gap-3">
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+              <div className="grid min-w-[760px] grid-cols-[1.1fr_1fr_0.85fr_0.85fr_0.8fr] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
                 <span>Name</span>
                 <span>Service</span>
                 <span>Time</span>
@@ -248,21 +248,15 @@ const RecentServicesPage = () => {
                 <span>Status</span>
               </div>
               {bookings.map((booking) => (
-                <Card key={booking.id} className="rounded-2xl p-4">
-                  <div className="grid gap-3 md:grid-cols-[1.1fr_1fr_0.85fr_0.85fr_0.8fr] md:items-center">
+                <Card key={booking.id} className="min-w-[760px] rounded-none border-x-0 border-t-0 p-4 shadow-none last:border-b-0">
+                  <div className="grid grid-cols-[1.1fr_1fr_0.85fr_0.85fr_0.8fr] items-center gap-3">
                     <div className="min-w-0">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">
-                        Name
-                      </p>
                       <h2 className="truncate text-sm font-semibold text-slate-950">
                         {role === 'labour' ? booking.clientName || 'Client' : booking.labourName || 'Worker'}
                       </h2>
                       <p className="mt-1 text-xs text-slate-500">{subjectLabel}</p>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">
-                        Service
-                      </p>
                       <p className="truncate text-sm font-semibold text-slate-800">{booking.serviceType}</p>
                       <p className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-slate-500">
                         <MapPin size={13} className="flex-none" />
@@ -276,18 +270,12 @@ const RecentServicesPage = () => {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">
-                        Time
-                      </p>
                       <p className="inline-flex items-center gap-1.5 text-sm text-slate-600">
                         <CalendarClock size={14} />
                         {formatDate(booking.appointmentAt)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">
-                        Money
-                      </p>
                       <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700">
                         <WalletCards size={14} />
                         {booking.status === 'completed' && Number(booking.amount) > 0
@@ -297,7 +285,7 @@ const RecentServicesPage = () => {
                             : 'Charge pending'}
                       </p>
                     </div>
-                    <div className="flex justify-start md:justify-end">
+                    <div className="flex justify-end">
                       <Badge tone={getStatusTone(booking.status)}>
                         {formatStatusLabel(booking.status)}
                       </Badge>
