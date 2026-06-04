@@ -18,8 +18,9 @@ export const LabourCard = ({ labour, showMatchScore = false, onQuickBook, compac
   const { userProfile } = useAuth();
   const isClient = userProfile?.role === 'client';
   const isLabour = userProfile?.role === 'labour';
+  const profilePath = labour?.id ? `/labour/${labour.id}` : '/search';
   const isAvailable = labour.availability === 'Available';
-  const canQuickBook = Boolean(isClient && isAvailable && onQuickBook);
+  const canQuickBook = Boolean(isClient && isAvailable && labour?.id && onQuickBook);
   const hasLocationCoordinates = Boolean(normalizeCoordinates(labour.liveCoordinates || labour.coordinates));
   const locationLabel = getDisplayLocationText(
     labour.currentLocation || labour.location,
@@ -33,7 +34,7 @@ export const LabourCard = ({ labour, showMatchScore = false, onQuickBook, compac
       <Card className="overflow-hidden rounded-2xl p-2.5 md:p-3">
         <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
           <Link
-            to={`/labour/${labour.id}`}
+            to={profilePath}
             className="flex min-w-0 touch-manipulation items-center gap-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-100"
           >
             <img
@@ -91,7 +92,7 @@ export const LabourCard = ({ labour, showMatchScore = false, onQuickBook, compac
             ) : (
               <Button
                 as={Link}
-                to={isClient ? `/labour/${labour.id}` : '/auth?role=client&mode=signup'}
+                to={isClient ? profilePath : '/auth?role=client&mode=signup'}
                 size="sm"
                 variant="outline"
                 className="w-full min-w-0 px-2 sm:w-auto sm:min-w-[104px] sm:px-3"
@@ -153,7 +154,7 @@ export const LabourCard = ({ labour, showMatchScore = false, onQuickBook, compac
       </div>
 
       <div className="mt-auto flex flex-wrap gap-2">
-        <Button as={Link} to={`/labour/${labour.id}`} className="flex-1">
+        <Button as={Link} to={profilePath} className="flex-1">
           View profile
         </Button>
         {isLabour ? (
@@ -177,7 +178,7 @@ export const LabourCard = ({ labour, showMatchScore = false, onQuickBook, compac
         ) : (
           <Button
             as={Link}
-            to={isClient ? `/labour/${labour.id}` : '/auth?role=client&mode=signup'}
+            to={isClient ? profilePath : '/auth?role=client&mode=signup'}
             variant="outline"
             className="flex-1"
           >

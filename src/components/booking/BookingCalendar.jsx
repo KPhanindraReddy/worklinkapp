@@ -2,32 +2,43 @@ import { CalendarDays, Clock3 } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { Card } from '../common/Card';
 
-const clampNumber = (value, min, max, fallback) => {
-  const numericValue = Number(value);
+const timeSlots = [
+  '08:00 AM',
+  '09:00 AM',
+  '10:00 AM',
+  '11:00 AM',
+  '12:00 PM',
+  '01:00 PM',
+  '02:00 PM',
+  '03:00 PM',
+  '04:00 PM',
+  '05:00 PM',
+  '06:00 PM',
+  '07:00 PM',
+  '08:00 PM'
+];
 
-  if (!Number.isFinite(numericValue)) {
-    return fallback;
+const getTodayKey = () => new Date().toISOString().slice(0, 10);
+
+const isPastSlot = (selectedDate, slot) => {
+  if (!selectedDate || selectedDate !== getTodayKey()) {
+    return false;
   }
 
-  return Math.min(Math.max(Math.round(numericValue), min), max);
-};
-
-const parseSelectedSlot = (value) => {
-  const match = /^(\d{1,2}):(\d{1,2})\s*(AM|PM)$/i.exec(String(value || '').trim());
-
+  const match = /^(\d{1,2}):00\s*(AM|PM)$/i.exec(slot);
   if (!match) {
-    return { hour: 9, minute: 0, period: 'AM' };
+    return false;
   }
 
-  return {
-    hour: clampNumber(match[1], 1, 12, 9),
-    minute: clampNumber(match[2], 0, 59, 0),
-    period: match[3].toUpperCase()
-  };
-};
+  let hour = Number(match[1]);
+  hour %= 12;
 
-const formatSlot = ({ hour, minute, period }) =>
-  `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')} ${period}`;
+  if (match[2].toUpperCase() === 'PM') {
+    hour += 12;
+  }
+
+  return hour <= new Date().getHours();
+};
 
 export const BookingCalendar = ({
   selectedDate,
@@ -35,28 +46,28 @@ export const BookingCalendar = ({
   onDateChange,
   onSlotChange
 }) => {
-  const timeParts = useMemo(() => parseSelectedSlot(selectedSlot), [selectedSlot]);
+  const availableSlots = useMemo(
+    () => timeSlots.filter((slot) => !isPastSlot(selectedDate, slot)),
+    [selectedDate]
+  );
 
   useEffect(() => {
-    if (!selectedSlot) {
-      onSlotChange(formatSlot(timeParts));
+    if (!selectedDate) {
+      return;
     }
-  }, [onSlotChange, selectedSlot, timeParts]);
 
-  const updateTimePart = (key, value) => {
-    const nextParts = {
-      ...timeParts,
-      [key]:
-        key === 'period'
-          ? value
-          : clampNumber(value, key === 'hour' ? 1 : 0, key === 'hour' ? 12 : 59, timeParts[key])
-    };
+    if (!availableSlots.includes(selectedSlot)) {
+      onSlotChange(availableSlots[0] || '');
+    }
+  }, [availableSlots, onSlotChange, selectedDate, selectedSlot]);
 
-    onSlotChange(formatSlot(nextParts));
+  const handleDateChange = (event) => {
+    onDateChange(event.target.value);
+    onSlotChange('');
   };
 
   return (
-    <Card className="grid gap-4 sm:gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+    <Card className="grid gap-4 sm:gap-6 lg:grid-cols-[0.82fr_1.18fr]">
       <div className="space-y-3">
         <div className="flex items-center gap-2 text-brand-600">
           <CalendarDays size={18} />
@@ -65,55 +76,43 @@ export const BookingCalendar = ({
         <input
           type="date"
           value={selectedDate}
-          min={new Date().toISOString().slice(0, 10)}
-          onChange={(event) => onDateChange(event.target.value)}
+          min={getTodayKey()}
+          onChange={handleDateChange}
           className="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-200 sm:text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:ring-brand-500/20"
         />
       </div>
       <div className="space-y-3">
         <div className="flex items-center gap-2 text-brand-600">
           <Clock3 size={18} />
-          <p className="font-semibold">Pick time</p>
+          <p className="font-semibold">Pick 1 hour slot</p>
         </div>
-        <div className="grid grid-cols-[1fr_1fr_92px] gap-2">
-          <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-slate-500">Hour</span>
-            <input
-              type="number"
-              min="1"
-              max="12"
-              step="1"
-              inputMode="numeric"
-              value={timeParts.hour}
-              onChange={(event) => updateTimePart('hour', event.target.value)}
-              className="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-base font-semibold text-slate-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-200 sm:text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-slate-500">Min</span>
-            <input
-              type="number"
-              min="0"
-              max="59"
-              step="5"
-              inputMode="numeric"
-              value={timeParts.minute}
-              onChange={(event) => updateTimePart('minute', event.target.value)}
-              className="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-base font-semibold text-slate-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-200 sm:text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-slate-500">AM/PM</span>
-            <select
-              value={timeParts.period}
-              onChange={(event) => updateTimePart('period', event.target.value)}
-              className="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-base font-semibold text-slate-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-200 sm:text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
-            >
-              <option value="AM">AM</option>
-              <option value="PM">PM</option>
-            </select>
-          </label>
-        </div>
+        {selectedDate ? (
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {availableSlots.map((slot) => (
+              <button
+                key={slot}
+                type="button"
+                className={`min-h-11 rounded-2xl border px-3 py-2 text-sm font-semibold transition ${
+                  selectedSlot === slot
+                    ? 'border-brand-500 bg-brand-600 text-white shadow-sm'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-brand-300 hover:bg-brand-50'
+                }`}
+                onClick={() => onSlotChange(slot)}
+              >
+                {slot}
+              </button>
+            ))}
+            {!availableSlots.length ? (
+              <div className="col-span-full rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
+                No slots left today. Pick another date.
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-600">
+            Pick a date first.
+          </div>
+        )}
       </div>
     </Card>
   );

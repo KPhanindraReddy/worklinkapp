@@ -86,6 +86,22 @@ export const createBooking = async (payload) => {
     throw new Error('Firebase must be configured before creating bookings.');
   }
 
+  if (!payload?.clientId) {
+    throw new Error('Sign in as a client before sending a booking request.');
+  }
+
+  if (!payload?.labourId) {
+    throw new Error('Choose an available labour before sending this request.');
+  }
+
+  if (!String(payload?.serviceType || '').trim()) {
+    throw new Error('Choose a service before sending this request.');
+  }
+
+  if (payload?.requestMode === 'scheduled' && !parseDateValue(payload.appointmentAt)) {
+    throw new Error('Pick a valid date and time before scheduling this service.');
+  }
+
   const bookingRef = doc(collection(db, 'bookings'));
   const labourRef = doc(db, 'labours', payload.labourId);
   const activeClientBookingsQuery = query(

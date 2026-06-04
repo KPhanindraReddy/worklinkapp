@@ -173,6 +173,10 @@ export const Navbar = () => {
   const primaryPath = currentUser ? routeByRole(userProfile?.role) : '/';
   const profileLabel = userProfile?.role === 'admin' ? 'Admin profile' : 'Profile';
   const profilePhoto = userProfile?.profilePhoto || currentUser?.photoURL || '';
+  const profileInitial = String(userProfile?.fullName || currentUser?.displayName || profileLabel || 'P')
+    .trim()
+    .charAt(0)
+    .toUpperCase() || 'P';
   const handleLogout = async () => {
     await logout();
     setIsOpen(false);

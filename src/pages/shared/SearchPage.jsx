@@ -1,6 +1,6 @@
-import { LocateFixed, LoaderCircle, MapPin, Mic, SlidersHorizontal } from 'lucide-react';
+import { LocateFixed, LoaderCircle, MapPin } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Link, Navigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { LabourCard } from '../../components/cards/LabourCard';
 import { QuickBookingDialog } from '../../components/booking/QuickBookingDialog';
 import { AutocompleteSelect } from '../../components/common/AutocompleteSelect';
@@ -8,45 +8,34 @@ import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { EmptyState } from '../../components/common/EmptyState';
-import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
 import { SelectField } from '../../components/common/SelectField';
-import { SectionHeading } from '../../components/common/SectionHeading';
 import { AppShell } from '../../components/layout/AppShell';
 import { LocationPermissionPrompt, isLocationPermissionDenied } from '../../components/location/LocationPermissionPrompt';
 import { useAuth } from '../../context/AuthContext';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { useLocationName } from '../../hooks/useLocationName';
-import { useVoiceSearch } from '../../hooks/useVoiceSearch';
 import { searchLabours } from '../../services/labourService';
 import { resolvePostAuthPath } from '../../utils/authFlow';
-import { formatDistanceKm } from '../../utils/formatters';
+import { DEFAULT_LABOUR_RADIUS_KM, labourRadiusOptions, workCategories } from '../../utils/constants';
 import { getLocationLabel, normalizeCoordinates } from '../../utils/location';
-import { availabilityOptions, NEARBY_LABOUR_RADIUS_KM, workCategories } from '../../utils/constants';
 
 const SearchPage = () => {
   const [searchParams] = useSearchParams();
   const { currentUser, userProfile } = useAuth();
   const [filters, setFilters] = useState({
     query: searchParams.get('query') ?? '',
-    category: searchParams.get('category') ?? '',
-    availability: 'Available',
-    minRating: '',
-    minExperience: ''
+    category: searchParams.get('category') ?? ''
   });
+  const [radiusKm, setRadiusKm] = useState(DEFAULT_LABOUR_RADIUS_KM);
   const [results, setResults] = useState([]);
-  const [selectedLabour, setSelectedLabour] = useState(null);
   const [quickBookState, setQuickBookState] = useState(null);
   const [searching, setSearching] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const debouncedFilters = useDebounce(filters, 300);
   const geolocation = useGeolocation();
-  const { isListening, startListening } = useVoiceSearch({
-    lang: 'en-IN',
-    onResult: (value) => setFilters((prev) => ({ ...prev, query: value }))
-  });
   const shouldRedirectRole = currentUser && userProfile?.role && userProfile.role !== 'client';
+  const selectedService = (filters.category || filters.query).trim();
   const savedOrigin = useMemo(
     () => normalizeCoordinates(userProfile?.coordinates) || null,
     [userProfile?.coordinates]
@@ -69,6 +58,10 @@ const SearchPage = () => {
   const searchOrigin = useMemo(() => liveOrigin || savedOrigin, [liveOrigin, savedOrigin]);
   const resolvedLocationName = useLocationName(searchOrigin);
   const locationPermissionDenied = isLocationPermissionDenied(geolocation);
+  const radiusSelectOptions = useMemo(
+    () => labourRadiusOptions.map((km) => ({ label: `${km} km`, value: String(km) })),
+    []
+  );
   const activeLocationLabel = useMemo(() => {
     if (searchOrigin) {
       return savedLocationLabel || resolvedLocationName || 'Live location captured';
@@ -86,38 +79,34 @@ const SearchPage = () => {
       return undefined;
     }
 
+    const serviceSearch = (debouncedFilters.category || debouncedFilters.query).trim();
+
+    if (!serviceSearch) {
+      setResults([]);
+      setSearching(false);
+      return undefined;
+    }
+
     let isActive = true;
     setSearching(true);
 
     searchLabours(
       {
-        skill: debouncedFilters.query,
+        skill: serviceSearch,
         category: debouncedFilters.category,
-        availability: debouncedFilters.availability,
-        minRating: debouncedFilters.minRating,
-        minExperience: debouncedFilters.minExperience,
-        maxDistanceKm: NEARBY_LABOUR_RADIUS_KM
+        availability: 'Available',
+        maxDistanceKm: radiusKm
       },
       searchOrigin
     )
       .then((items) => {
-        if (!isActive) {
-          return;
+        if (isActive) {
+          setResults(items);
         }
-
-        setResults(items);
-        setSelectedLabour(
-          (prev) =>
-            items.find((item) => item.id === prev?.id) ??
-            items.find((item) => item.availability === 'Available') ??
-            items[0] ??
-            null
-        );
       })
       .catch(() => {
         if (isActive) {
           setResults([]);
-          setSelectedLabour(null);
         }
       })
       .finally(() => {
@@ -129,7 +118,7 @@ const SearchPage = () => {
     return () => {
       isActive = false;
     };
-  }, [debouncedFilters, searchOrigin, shouldRedirectRole]);
+  }, [debouncedFilters, radiusKm, searchOrigin, shouldRedirectRole]);
 
   const availableResults = useMemo(
     () =>
@@ -152,22 +141,10 @@ const SearchPage = () => {
         }),
     [results]
   );
-  const availableServiceOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(availableResults.map((labour) => labour.category).filter(Boolean))
-      ).sort((a, b) => a.localeCompare(b)),
-    [availableResults]
-  );
   const defaultQuickBookService = useMemo(
-    () => filters.query.trim() || filters.category || selectedLabour?.category || '',
-    [filters.category, filters.query, selectedLabour?.category]
+    () => selectedService || quickBookState?.labour?.category || '',
+    [quickBookState?.labour?.category, selectedService]
   );
-
-  const getServiceAvailability = (service) => {
-    const labourWithService = availableResults.find(l => l.category === service);
-    return labourWithService?.availability || null;
-  };
 
   const handleRefreshLocation = async () => {
     return geolocation.requestLocation({ force: true });
@@ -176,8 +153,13 @@ const SearchPage = () => {
   const handleQuickBook = (labour) => {
     setQuickBookState({
       labour,
-      defaultService: filters.query.trim() || filters.category || labour.category || '',
+      defaultService: selectedService || labour.category || '',
     });
+  };
+
+  const handleServiceChange = (event) => {
+    const service = event.target.value;
+    setFilters({ category: service, query: service });
   };
 
   if (shouldRedirectRole) {
@@ -188,210 +170,102 @@ const SearchPage = () => {
     <AppShell>
       <PageSEO
         title="Search labour"
-        description="Find skilled labour professionals by category, distance, rating, and live availability."
+        description="Find available labour professionals near your location by service and distance."
       />
 
       <section className="section-space">
-        <div className="page-shell">
-          <SectionHeading
-            eyebrow="Discovery"
-            title="Search, filter, and shortlist labour in real time"
-            description="Choose a service, confirm what is available near your saved location, and book a worker."
-          />
+        <div className="page-shell max-w-5xl">
+          <Card className="space-y-4 rounded-[18px] p-4 sm:p-5">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_9rem_auto] lg:items-end">
+              <AutocompleteSelect
+                label="Search service"
+                placeholder="Type or choose service"
+                options={workCategories}
+                value={selectedService}
+                onChange={handleServiceChange}
+                allowCustom
+                customOptionLabel="Search"
+              />
+              <SelectField
+                label="Distance"
+                options={radiusSelectOptions}
+                value={String(radiusKm)}
+                onChange={(event) => setRadiusKm(Number(event.target.value) || DEFAULT_LABOUR_RADIUS_KM)}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="h-12 w-full lg:w-auto"
+                onClick={handleRefreshLocation}
+                disabled={geolocation.loading}
+              >
+                {geolocation.loading ? <LoaderCircle size={17} className="animate-spin" /> : <LocateFixed size={17} />}
+                {searchOrigin ? 'Update location' : 'Allow location'}
+              </Button>
+            </div>
 
-          <div className="mt-5 grid gap-4 sm:mt-8 lg:grid-cols-[320px_1fr] lg:gap-6">
-            <Card className="h-fit space-y-4 lg:sticky lg:top-24">
-              <div className="flex items-center justify-between gap-3 text-slate-950 dark:text-white">
-                <div className="flex min-w-0 items-center gap-2">
-                  <SlidersHorizontal size={18} className="flex-none" />
-                  <div className="min-w-0">
-                    <h3 className="text-lg font-semibold">Filters</h3>
-                    <p className="text-xs text-slate-500 lg:hidden">
-                      {filters.query || filters.category
-                        ? 'Your filters are active'
-                        : 'Tap to narrow results'}
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="lg:hidden"
-                  onClick={() => setFiltersOpen((prev) => !prev)}
-                  aria-expanded={filtersOpen}
-                >
-                  {filtersOpen ? 'Hide filters' : 'Show filters'}
-                </Button>
+            <div className="rounded-2xl bg-brand-50 p-3 text-sm font-medium text-brand-900 dark:bg-brand-500/10 dark:text-brand-100">
+              <div className="flex items-center gap-2">
+                <MapPin size={16} />
+                Labour within {radiusKm} km
               </div>
+              <p className="mt-2">
+                {searchOrigin
+                  ? `Using location${activeLocationLabel ? `: ${activeLocationLabel}` : ''}.`
+                  : currentUser
+                    ? 'Allow live location or save your area in profile to show nearby workers.'
+                    : 'Sign in or allow live location to show nearby workers.'}
+              </p>
+              {locationPermissionDenied ? (
+                <LocationPermissionPrompt
+                  geolocation={geolocation}
+                  onRequest={handleRefreshLocation}
+                  className="mt-3"
+                  compact
+                />
+              ) : null}
+            </div>
+          </Card>
 
-              <div className={filtersOpen ? 'space-y-4 lg:block' : 'hidden space-y-4 lg:block'}>
-                <InputField
-                  label="Search by service or skill"
-                  value={filters.query}
-                  placeholder="Electrician, painter, plumbing..."
-                  onChange={(event) => setFilters((prev) => ({ ...prev, query: event.target.value }))}
-                />
-                <Button type="button" variant="outline" className="w-full" onClick={startListening}>
-                  <Mic size={16} />
-                  {isListening ? 'Listening...' : 'Voice search'}
-                </Button>
-                <AutocompleteSelect
-                  label="Service"
-                  placeholder="Choose a service"
-                  options={workCategories}
-                  value={filters.category}
-                  onChange={(event) => setFilters((prev) => ({ ...prev, category: event.target.value }))}
-                />
-                <SelectField
-                  label="Availability"
-                  placeholder="Any status"
-                  options={availabilityOptions}
-                  value={filters.availability}
-                  onChange={(event) =>
-                    setFilters((prev) => ({ ...prev, availability: event.target.value }))
-                  }
-                />
-                <InputField
-                  label="Minimum rating"
-                  type="number"
-                  min="0"
-                  max="5"
-                  step="0.1"
-                  value={filters.minRating}
-                  onChange={(event) => setFilters((prev) => ({ ...prev, minRating: event.target.value }))}
-                />
-                <InputField
-                  label="Minimum experience"
-                  type="number"
-                  min="0"
-                  value={filters.minExperience}
-                  onChange={(event) =>
-                    setFilters((prev) => ({ ...prev, minExperience: event.target.value }))
-                  }
-                />
-                <div className="rounded-2xl bg-brand-50 p-4 text-sm text-brand-900 dark:bg-brand-500/10 dark:text-brand-100">
-                  <div className="flex items-center gap-2 font-semibold">
-                    <MapPin size={16} />
-                    Nearby labour within {NEARBY_LABOUR_RADIUS_KM} km
-                  </div>
-                  <p className="mt-2">
-                    {searchOrigin
-                      ? `Using live location${activeLocationLabel ? `: ${activeLocationLabel}` : ''}. Only nearby workers are shown.`
-                      : currentUser
-                        ? 'Use live location or save your area in profile to show nearby workers.'
-                        : 'Sign in or allow live location to show nearby workers.'}
-                  </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="mt-3 w-full border-brand-200 bg-white text-brand-800 hover:bg-brand-50"
-                    onClick={handleRefreshLocation}
-                    disabled={geolocation.loading}
-                  >
-                    {geolocation.loading ? <LoaderCircle size={15} className="animate-spin" /> : <LocateFixed size={15} />}
-                    {searchOrigin ? 'Update live location' : 'Use live location'}
-                  </Button>
-                  {locationPermissionDenied ? (
-                    <LocationPermissionPrompt
-                      geolocation={geolocation}
-                      onRequest={handleRefreshLocation}
-                      className="mt-3"
-                      compact
-                    />
-                  ) : null}
-                </div>
+          <div className="mt-5 space-y-5 sm:mt-6">
+            <Card className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] p-4 sm:p-5">
+              <div>
+                <h1 className="text-xl font-semibold text-slate-950 dark:text-white">
+                  {selectedService ? `${selectedService} labour` : 'Choose a service'}
+                </h1>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                  {selectedService
+                    ? `Available workers within ${radiusKm} km are shown below.`
+                    : 'Search a service to see available labour near you.'}
+                </p>
               </div>
+              <Badge tone={availableResults.length ? 'emerald' : 'slate'}>
+                {searching ? 'Checking' : `${availableResults.length} available`}
+              </Badge>
             </Card>
 
-            <div className="space-y-5 sm:space-y-8">
-              <Card>
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div>
-                    <h3 className="text-xl font-semibold text-slate-950 dark:text-white">
-                      Services within {NEARBY_LABOUR_RADIUS_KM} km
-                    </h3>
-                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                      Choose a service to see only matching available labour near your live location.
-                    </p>
-                  </div>
-                  <Badge tone={availableServiceOptions.length ? 'emerald' : 'slate'}>
-                    {searching ? 'Checking' : `${availableServiceOptions.length} available`}
-                  </Badge>
-                </div>
-
-                {availableServiceOptions.length ? (
-                  <AutocompleteSelect
-                    label="Available service"
-                    placeholder="All available services"
-                    options={availableServiceOptions}
-                    value={filters.category}
-                    className="mt-5"
-                    onChange={(event) => {
-                      const service = event.target.value;
-                      setFilters((prev) => ({ ...prev, category: service, query: service }));
-                      setSelectedLabour(null);
-                    }}
-                    getAvailability={getServiceAvailability}
+            {availableResults.length ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {availableResults.map((labour) => (
+                  <LabourCard
+                    key={labour.id}
+                    labour={labour}
+                    compact
+                    showMatchScore
+                    onQuickBook={handleQuickBook}
                   />
-                ) : (
-                  <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm font-medium text-slate-600">
-                    No service available within {NEARBY_LABOUR_RADIUS_KM} km right now.
-                  </div>
-                )}
-              </Card>
-
-              {selectedLabour ? (
-                <Card className="border-brand-200 bg-brand-50/60">
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700">
-                        Selected labour
-                      </p>
-                      <h3 className="mt-2 text-2xl font-semibold text-slate-950">
-                        {selectedLabour.fullName}
-                      </h3>
-                      <div className="mt-3 flex flex-wrap gap-2 text-sm text-slate-700">
-                        <Badge tone="emerald">{selectedLabour.availability}</Badge>
-                        <Badge tone="slate">{formatDistanceKm(selectedLabour.distanceKm)}</Badge>
-                      </div>
-                    </div>
-                    <div className="grid gap-3 sm:flex sm:flex-wrap">
-                      <Button type="button" className="w-full sm:w-auto" onClick={() => handleQuickBook(selectedLabour)}>
-                        Send request
-                      </Button>
-                      <Button as={Link} to={`/labour/${selectedLabour.id}`} variant="outline" className="w-full sm:w-auto">
-                        View full profile
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              ) : null}
-
-              <div>
-                <h3 className="text-xl font-semibold text-slate-950 dark:text-white">Selected labour</h3>
-                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                  We keep one clear match on screen so the client can book quickly without a long nearby list.
-                </p>
-                <div className="mt-4">
-                  {selectedLabour ? (
-                    <LabourCard
-                      labour={selectedLabour}
-                      compact
-                      showMatchScore
-                      onQuickBook={handleQuickBook}
-                    />
-                  ) : (
-                    <EmptyState
-                      title="No labour selected yet"
-                      description="Type a service name or choose a category to load the best match."
-                    />
-                  )}
-                </div>
+                ))}
               </div>
-
-            </div>
+            ) : (
+              <EmptyState
+                title={selectedService ? 'No available labour found' : 'Search a service'}
+                description={
+                  selectedService
+                    ? `${selectedService} is not available within ${radiusKm} km right now. Try another distance or update location.`
+                    : 'Type or choose a service, then the available labour will appear here.'
+                }
+              />
+            )}
           </div>
         </div>
       </section>

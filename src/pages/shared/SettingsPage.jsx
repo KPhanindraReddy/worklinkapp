@@ -115,7 +115,7 @@ const SettingsPage = () => {
   const { currentUser, userProfile, createOrUpdateUserProfile, logout } = useAuth();
   const [formValues, setFormValues] = useState(() => buildProfileForm(userProfile, currentUser));
   const [savingProfile, setSavingProfile] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [editingSection, setEditingSection] = useState('');
   const [availabilityOverride, setAvailabilityOverride] = useState('');
   const [labourBookings, setLabourBookings] = useState([]);
   const [labourBookingsLoaded, setLabourBookingsLoaded] = useState(false);
@@ -128,13 +128,13 @@ const SettingsPage = () => {
   const [ticketsLoading, setTicketsLoading] = useState(false);
 
   useEffect(() => {
-    if (!isEditing) {
+    if (!editingSection) {
       setFormValues({
         ...buildProfileForm(userProfile, currentUser),
         ...(availabilityOverride ? { availability: availabilityOverride } : {})
       });
     }
-  }, [availabilityOverride, currentUser, isEditing, userProfile]);
+  }, [availabilityOverride, currentUser, editingSection, userProfile]);
 
   useEffect(() => {
     if (availabilityOverride && userProfile?.availability === availabilityOverride) {
@@ -204,7 +204,10 @@ const SettingsPage = () => {
             (formValues.location.trim() || formValues.coordinates)
         )
       : Boolean(formValues.fullName.trim() && (formValues.phoneNumber.trim() || formValues.email.trim()));
-  const profileFieldsDisabled = !isEditing || savingProfile;
+  const isEditingPersonal = editingSection === 'personal';
+  const isEditingWork = editingSection === 'work';
+  const personalFieldsDisabled = !isEditingPersonal || savingProfile;
+  const workFieldsDisabled = !isEditingWork || savingProfile;
 
   const updateFormValue = (key, value) =>
     setFormValues((prev) => ({
@@ -214,6 +217,17 @@ const SettingsPage = () => {
 
   const saveProfile = async () => {
     if (!currentUser || !userProfile?.role) {
+      return;
+    }
+
+    if (!canSaveProfile) {
+      if (isLabour) {
+        toast.error('Enter name, phone or email, service, skills, and location before saving.');
+      } else if (isClient) {
+        toast.error('Enter name, phone or email, and location before saving.');
+      } else {
+        toast.error('Enter name and phone or email before saving.');
+      }
       return;
     }
 
@@ -230,7 +244,7 @@ const SettingsPage = () => {
         previousWorkHistory: isLabour ? formValues.previousWorkHistory : ''
       });
       toast.success('Profile updated successfully.');
-      setIsEditing(false);
+      setEditingSection('');
     } catch (error) {
       toast.error(getFirebaseErrorMessage(error));
     } finally {
@@ -240,7 +254,7 @@ const SettingsPage = () => {
 
   const cancelProfileEdit = () => {
     setFormValues(buildProfileForm(userProfile, currentUser));
-    setIsEditing(false);
+    setEditingSection('');
   };
 
   const changeAvailability = async (nextAvailability) => {
@@ -253,7 +267,7 @@ const SettingsPage = () => {
     setAvailabilityOverride(nextAvailability);
     setFormValues((prev) => ({ ...prev, availability: nextAvailability }));
 
-    if (isEditing) {
+    if (editingSection) {
       return;
     }
 
@@ -346,17 +360,6 @@ const SettingsPage = () => {
         <div className="page-shell max-w-[860px] space-y-3 sm:space-y-4">
           <div className="rounded-[18px] border border-slate-200 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.08)]">
             <div className="relative rounded-t-[18px] bg-slate-800 px-4 pb-6 pt-5 text-white sm:px-5 sm:py-7">
-              <Button
-                type="button"
-                variant={isEditing ? 'secondary' : 'ghost'}
-                className="absolute right-4 top-5 h-10 w-10 rounded-xl border border-white/15 bg-white/10 p-0 text-white hover:bg-white/15"
-                onClick={() => (isEditing ? cancelProfileEdit() : setIsEditing(true))}
-                disabled={savingProfile}
-                aria-label={isEditing ? 'Cancel editing' : 'Edit profile details'}
-                title={isEditing ? 'Cancel editing' : 'Edit profile'}
-              >
-                {isEditing ? <X size={18} /> : <Pencil size={17} />}
-              </Button>
               <div className="flex min-w-0 items-center gap-3 pr-12 sm:gap-4">
                 <ProfilePhotoUploader
                   compact
@@ -366,7 +369,7 @@ const SettingsPage = () => {
                   value={profilePhotoUrl}
                   fullName={formValues.fullName || userProfile?.fullName || currentUser?.displayName || 'Profile'}
                   avatarClassName="h-16 w-16 sm:h-20 sm:w-20"
-                  disabled={!isEditing || savingProfile}
+                  disabled={!isEditingPersonal || savingProfile}
                   onChange={(url) => updateFormValue('profilePhotoUrl', url)}
                   onError={(error) => toast.error(getFirebaseErrorMessage(error))}
                 />
@@ -439,25 +442,46 @@ const SettingsPage = () => {
           </div>
 
           <Card className="space-y-4 rounded-[18px] p-4 sm:p-5">
-            <FieldSectionTitle icon={UserRound}>Personal details</FieldSectionTitle>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <FieldSectionTitle icon={UserRound}>Personal details</FieldSectionTitle>
+              <div className="flex gap-2">
+                {isEditingPersonal ? (
+                  <>
+                    <Button type="button" size="sm" variant="outline" onClick={cancelProfileEdit} disabled={savingProfile}>
+                      <X size={15} />
+                      Cancel
+                    </Button>
+                    <Button type="button" size="sm" onClick={saveProfile} disabled={savingProfile}>
+                      <CheckCircle2 size={15} />
+                      {savingProfile ? 'Saving...' : 'Save'}
+                    </Button>
+                  </>
+                ) : (
+                  <Button type="button" size="sm" variant="outline" onClick={() => setEditingSection('personal')} disabled={savingProfile || Boolean(editingSection)}>
+                    <Pencil size={15} />
+                    Edit
+                  </Button>
+                )}
+              </div>
+            </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <InputField
                 label="Full name"
-                disabled={profileFieldsDisabled}
+                disabled={personalFieldsDisabled}
                 value={formValues.fullName}
                 onChange={(event) => updateFormValue('fullName', event.target.value)}
                 placeholder="Your full name"
               />
               <PhoneInputField
                 label="Phone number"
-                disabled={profileFieldsDisabled}
+                disabled={personalFieldsDisabled}
                 value={formValues.phoneNumber}
                 onChange={(event) => updateFormValue('phoneNumber', event.target.value)}
               />
               <InputField
                 label="Email"
                 type="email"
-                disabled={profileFieldsDisabled}
+                disabled={personalFieldsDisabled}
                 value={formValues.email}
                 onChange={(event) => updateFormValue('email', event.target.value)}
                 placeholder="name@example.com"
@@ -466,7 +490,7 @@ const SettingsPage = () => {
                 <SelectField
                   label="Gender"
                   placeholder="Select gender"
-                  disabled={profileFieldsDisabled}
+                  disabled={personalFieldsDisabled}
                   value={formValues.gender}
                   options={['Male', 'Female', 'Other']}
                   onChange={(event) => updateFormValue('gender', event.target.value)}
@@ -474,7 +498,7 @@ const SettingsPage = () => {
                 <InputField
                   label="Age"
                   type="number"
-                  disabled={profileFieldsDisabled}
+                  disabled={personalFieldsDisabled}
                   value={formValues.age}
                   onChange={(event) => updateFormValue('age', event.target.value)}
                   placeholder="28"
@@ -489,7 +513,7 @@ const SettingsPage = () => {
               <>
                 <InputField
                   label="Current location"
-                  disabled={profileFieldsDisabled}
+                  disabled={personalFieldsDisabled}
                   value={formValues.location}
                   onChange={(event) => updateFormValue('location', event.target.value)}
                   placeholder="Gachibowli, Hyderabad"
@@ -498,7 +522,7 @@ const SettingsPage = () => {
                   roleLabel="client"
                   locationValue={formValues.location}
                   savedCoordinates={formValues.coordinates}
-                  disabled={profileFieldsDisabled}
+                  disabled={personalFieldsDisabled}
                   onApplyLocation={({ label, coordinates }) =>
                     setFormValues((prev) => ({
                       ...prev,
@@ -512,7 +536,7 @@ const SettingsPage = () => {
               <>
                 <InputField
                   label="Current location"
-                  disabled={profileFieldsDisabled}
+                  disabled={personalFieldsDisabled}
                   value={formValues.currentLocation}
                   onChange={(event) => updateFormValue('currentLocation', event.target.value)}
                   placeholder="Madhapur, Hyderabad"
@@ -521,7 +545,7 @@ const SettingsPage = () => {
                   roleLabel="labour"
                   locationValue={formValues.currentLocation}
                   savedCoordinates={formValues.coordinates}
-                  disabled={profileFieldsDisabled}
+                  disabled={personalFieldsDisabled}
                   onApplyLocation={({ label, coordinates }) =>
                     setFormValues((prev) => ({
                       ...prev,
@@ -537,12 +561,33 @@ const SettingsPage = () => {
 
           {isLabour ? (
             <Card className="space-y-4 rounded-[18px] p-4 sm:p-5">
-              <FieldSectionTitle icon={Wrench} tone="amber">Work details</FieldSectionTitle>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <FieldSectionTitle icon={Wrench} tone="amber">Work details</FieldSectionTitle>
+                <div className="flex gap-2">
+                  {isEditingWork ? (
+                    <>
+                      <Button type="button" size="sm" variant="outline" onClick={cancelProfileEdit} disabled={savingProfile}>
+                        <X size={15} />
+                        Cancel
+                      </Button>
+                      <Button type="button" size="sm" onClick={saveProfile} disabled={savingProfile}>
+                        <CheckCircle2 size={15} />
+                        {savingProfile ? 'Saving...' : 'Save'}
+                      </Button>
+                    </>
+                  ) : (
+                    <Button type="button" size="sm" variant="outline" onClick={() => setEditingSection('work')} disabled={savingProfile || Boolean(editingSection)}>
+                      <Pencil size={15} />
+                      Edit
+                    </Button>
+                  )}
+                </div>
+              </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <AutocompleteSelect
                   label="Work category"
                   placeholder="Select or type service"
-                  disabled={profileFieldsDisabled}
+                  disabled={workFieldsDisabled}
                   value={formValues.category}
                   options={workCategories}
                   onChange={(event) => updateFormValue('category', event.target.value)}
@@ -552,14 +597,14 @@ const SettingsPage = () => {
                 <InputField
                   label="Experience (yrs)"
                   type="number"
-                  disabled={profileFieldsDisabled}
+                  disabled={workFieldsDisabled}
                   value={formValues.experienceYears}
                   onChange={(event) => updateFormValue('experienceYears', event.target.value)}
                   placeholder="5"
                 />
                 <InputField
                   label="Education"
-                  disabled={profileFieldsDisabled}
+                  disabled={workFieldsDisabled}
                   value={formValues.education}
                   onChange={(event) => updateFormValue('education', event.target.value)}
                   placeholder="SSC / ITI / Diploma / Degree"
@@ -567,7 +612,7 @@ const SettingsPage = () => {
                 />
                 <InputField
                   label="Skills"
-                  disabled={profileFieldsDisabled}
+                  disabled={workFieldsDisabled}
                   value={formValues.skills}
                   onChange={(event) => updateFormValue('skills', event.target.value)}
                   placeholder="Arc welding, MIG welding..."
@@ -576,7 +621,7 @@ const SettingsPage = () => {
                 />
                 <InputField
                   label="Languages known"
-                  disabled={profileFieldsDisabled}
+                  disabled={workFieldsDisabled}
                   value={formValues.languages}
                   onChange={(event) => updateFormValue('languages', event.target.value)}
                   placeholder={languageOptions.join(', ')}
@@ -585,7 +630,7 @@ const SettingsPage = () => {
                 />
                 <TextAreaField
                   label="About"
-                  disabled={profileFieldsDisabled}
+                  disabled={workFieldsDisabled}
                   value={formValues.about}
                   onChange={(event) => updateFormValue('about', event.target.value)}
                   placeholder="Describe your work style, strengths..."
@@ -593,7 +638,7 @@ const SettingsPage = () => {
                 />
                 <TextAreaField
                   label="Previous work history"
-                  disabled={profileFieldsDisabled}
+                  disabled={workFieldsDisabled}
                   value={formValues.previousWorkHistory}
                   onChange={(event) => updateFormValue('previousWorkHistory', event.target.value)}
                   placeholder="Apartment rewiring, RO repair..."
@@ -601,19 +646,6 @@ const SettingsPage = () => {
                 />
               </div>
             </Card>
-          ) : null}
-
-          {isEditing ? (
-            <div className="grid gap-2 sm:flex sm:justify-end">
-              <Button type="button" variant="outline" onClick={cancelProfileEdit} disabled={savingProfile}>
-                <X size={16} />
-                Cancel
-              </Button>
-              <Button type="button" onClick={saveProfile} disabled={savingProfile || !canSaveProfile}>
-                <CheckCircle2 size={16} />
-                {savingProfile ? 'Saving...' : 'Save profile'}
-              </Button>
-            </div>
           ) : null}
 
           <Card className="space-y-4 rounded-[18px] p-4 sm:p-5">

@@ -379,7 +379,7 @@ export const createOrUpdateUserProfile = async (user, formValues) => {
       {
         ...baseProfile,
         ...labourProfileFields,
-        verified: existingLabour?.verified ?? false,
+        verified: existingLabourSnapshot.exists() ? (existingLabour?.verified ?? false) : false,
         rating: existingLabour?.rating ?? 0,
         reviewsCount: existingLabour?.reviewsCount ?? 0,
         completedJobs: existingLabour?.completedJobs ?? 0

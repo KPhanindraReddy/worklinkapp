@@ -633,6 +633,14 @@ const ClientDashboardPage = () => {
         labours.find((labour) => labour.id === selectedLabourId && labour.availability === 'Available') ??
         getFirstAvailableLabour(labours);
 
+      if (!targetLabour) {
+        toast.error(`${selectedService} is not available within ${radiusKm} km. Try increasing distance.`);
+        await recordUnavailableDemand(selectedService);
+        return;
+      }
+
+      setSelectedLabourId(targetLabour.id);
+
       if (requestMode === 'scheduled' && selectedDate && selectedSlot && targetLabour) {
         await handleScheduleLabour(targetLabour);
         return;
@@ -652,6 +660,11 @@ const ClientDashboardPage = () => {
 
   const handleScheduleLabour = async (labour) => {
     if (!canCreateRequest()) {
+      return;
+    }
+
+    if (!labour?.id) {
+      toast.error('Choose an available labour before scheduling.');
       return;
     }
 

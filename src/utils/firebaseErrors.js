@@ -23,5 +23,12 @@ const errorCodeMap = {
     'Firestore permissions are blocking this action. Deploy the Slivz Firestore rules or switch the database to test mode while setting up.'
 };
 
-export const getFirebaseErrorMessage = (error) =>
-  errorCodeMap[error?.code] ?? error?.message ?? 'Something went wrong. Please try again.';
+export const getFirebaseErrorMessage = (error) => {
+  const rawMessage = String(error?.message || '');
+
+  if (/cannot read properties of undefined.*path/i.test(rawMessage)) {
+    return 'Some booking details were missing. Choose a service and available labour, then try again.';
+  }
+
+  return errorCodeMap[error?.code] ?? rawMessage ?? 'Something went wrong. Please try again.';
+};
