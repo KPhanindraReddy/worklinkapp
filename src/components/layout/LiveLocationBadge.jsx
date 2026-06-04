@@ -31,11 +31,10 @@ export const LiveLocationBadge = ({ currentUser, userProfile, compact = false, c
   const hasSavedCoordinates = hasCoordinates(userProfile?.coordinates);
   const hasLiveCoordinates = hasCoordinates(userProfile?.liveCoordinates);
   const locationLabel = areaLabel || 'Location unavailable';
-  const caption =
-    hasLiveCoordinates
-      ? `${getRoleLabel(role)} live location`
-      : areaLabel || hasSavedCoordinates
-        ? `${getRoleLabel(role)} saved location`
+  const caption = hasLiveCoordinates
+    ? `${getRoleLabel(role)} live location`
+    : areaLabel || hasSavedCoordinates
+      ? `${getRoleLabel(role)} saved location`
       : `Add ${getRoleLabel(role).toLowerCase()} location`;
   const mapsUrl = buildMapsUrl(userProfile?.coordinates, areaLabel);
   const Container = mapsUrl ? 'a' : 'div';

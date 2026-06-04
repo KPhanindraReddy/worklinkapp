@@ -90,7 +90,7 @@ const BookingPage = () => {
   );
   const clientLocation = requestCoordinates;
   const savedProfileLocation = useMemo(
-    () => getLocationLabel(userProfile, { fallback: '' }),
+    () => getLocationLabel(userProfile, { fallback: '', includeCoordinates: true }),
     [userProfile]
   );
   const resolvedLocationName = useLocationName(clientLocation);

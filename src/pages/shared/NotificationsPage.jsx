@@ -71,40 +71,49 @@ const NotificationsPage = () => {
           </Card>
 
           {notifications.length ? (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {notifications.map((notification) => {
                 const target = getNotificationTarget(notification);
                 const Wrapper = target ? Link : 'button';
 
                 return (
-                <Wrapper
-                  key={notification.id}
-                  to={target || undefined}
-                  type={target ? undefined : 'button'}
-                  className="block text-left"
-                  onClick={() => markNotificationRead(notification.id)}
-                >
-                <Card className="flex items-start gap-4 rounded-[28px] transition hover:border-brand-200 hover:bg-brand-50/40">
-                  <div className="grid h-10 w-10 place-items-center rounded-2xl bg-brand-100 text-brand-700 dark:bg-brand-500/10 dark:text-brand-200">
-                    <BellRing size={16} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <h3 className="text-base font-semibold text-slate-950 dark:text-white">
-                        {notification.title}
-                      </h3>
-                      <Badge tone={notification.read ? 'slate' : 'blue'}>
-                        {notification.read ? 'Read' : 'New'}
-                      </Badge>
-                    </div>
-                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{notification.body}</p>
-                    <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                      {formatDate(notification.createdAt)}
-                    </p>
-                  </div>
-                </Card>
-                </Wrapper>
-              );
+                  <Wrapper
+                    key={notification.id}
+                    to={target || undefined}
+                    type={target ? undefined : 'button'}
+                    className="block text-left"
+                    onClick={() => markNotificationRead(notification.id)}
+                  >
+                    <Card className="rounded-[18px] px-3 py-2.5 transition hover:bg-slate-50">
+                      <div className="grid gap-2 sm:grid-cols-[auto_1fr_auto] sm:items-center">
+                        <div className="flex items-center gap-2">
+                          <div className="grid h-8 w-8 place-items-center rounded-xl bg-brand-100 text-brand-700">
+                            <BellRing size={15} />
+                          </div>
+                          <Badge tone={notification.read ? 'slate' : 'blue'} className="sm:hidden">
+                            {notification.read ? 'Read' : 'New'}
+                          </Badge>
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="truncate text-sm font-semibold text-slate-950 dark:text-white">
+                              {notification.title}
+                            </h3>
+                            <Badge tone={notification.read ? 'slate' : 'blue'} className="hidden sm:inline-flex">
+                              {notification.read ? 'Read' : 'New'}
+                            </Badge>
+                          </div>
+                          <p className="mt-1 truncate text-[12px] text-slate-600 dark:text-slate-300">
+                            {notification.body}
+                          </p>
+                        </div>
+                        <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 sm:text-right">
+                          {formatDate(notification.createdAt)}
+                        </p>
+                      </div>
+                    </Card>
+                  </Wrapper>
+                );
               })}
             </div>
           ) : (

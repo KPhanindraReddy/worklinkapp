@@ -52,7 +52,8 @@ const SearchPage = () => {
   const savedLocationLabel = useMemo(
     () =>
       getLocationLabel(userProfile, {
-        fallback: ''
+        fallback: '',
+        includeCoordinates: true
       }),
     [userProfile]
   );
@@ -163,6 +164,25 @@ const SearchPage = () => {
     () => filters.query.trim() || filters.category || selectedLabour?.category || '',
     [filters.category, filters.query, selectedLabour?.category]
   );
+  const serviceAvailabilityMessage = useMemo(() => {
+    const typedService = filters.category || filters.query.trim();
+
+    if (!typedService) {
+      return 'Type a service name or pick one of the available services below.';
+    }
+
+    if (searching) {
+      return `Checking whether ${typedService} is available nearby...`;
+    }
+
+    if (!availableResults.length) {
+      return `${typedService} is not available within ${NEARBY_LABOUR_RADIUS_KM} km right now.`;
+    }
+
+    return availableServiceOptions.includes(typedService)
+      ? `${typedService} is available nearby.`
+      : `Nearby workers match "${typedService}".`;
+  }, [availableResults.length, availableServiceOptions, filters.category, filters.query, searching]);
 
   const handleRefreshLocation = async () => {
     await geolocation.requestLocation({ force: true });
@@ -331,56 +351,38 @@ const SearchPage = () => {
                     No service available within {NEARBY_LABOUR_RADIUS_KM} km right now.
                   </div>
                 )}
+                <p className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-300">
+                  {serviceAvailabilityMessage}
+                </p>
               </Card>
 
               {selectedLabour ? (
-                <Card className="border-brand-200 bg-brand-50/60">
-                  <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700">
-                        Selected labour
+                      <h3 className="text-xl font-semibold text-slate-950 dark:text-white">Selected labour</h3>
+                      <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                        Only one selected worker stays on screen so the client can book without duplicates.
                       </p>
-                      <h3 className="mt-2 text-2xl font-semibold text-slate-950">
-                        {selectedLabour.fullName}
-                      </h3>
-                      <div className="mt-3 flex flex-wrap gap-2 text-sm text-slate-700">
-                        <Badge tone="emerald">{selectedLabour.availability}</Badge>
-                        <Badge tone="slate">{formatDistanceKm(selectedLabour.distanceKm)}</Badge>
-                      </div>
                     </div>
-                    <div className="grid gap-3 sm:flex sm:flex-wrap">
-                      <Button type="button" className="w-full sm:w-auto" onClick={() => handleQuickBook(selectedLabour)}>
-                        Send request
-                      </Button>
-                      <Button as={Link} to={`/labour/${selectedLabour.id}`} variant="outline" className="w-full sm:w-auto">
-                        View full profile
-                      </Button>
+                    <div className="flex flex-wrap gap-2 text-xs font-semibold">
+                      <Badge tone="emerald">{selectedLabour.availability}</Badge>
+                      <Badge tone="slate">{formatDistanceKm(selectedLabour.distanceKm)}</Badge>
                     </div>
                   </div>
-                </Card>
-              ) : null}
-
-              <div>
-                <h3 className="text-xl font-semibold text-slate-950 dark:text-white">Selected labour</h3>
-                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                  We keep one clear match on screen so the client can book quickly without a long nearby list.
-                </p>
-                <div className="mt-4">
-                  {selectedLabour ? (
-                    <LabourCard
-                      labour={selectedLabour}
-                      compact
-                      showMatchScore
-                      onQuickBook={handleQuickBook}
-                    />
-                  ) : (
-                    <EmptyState
-                      title="No labour selected yet"
-                      description="Type a service name or choose a category to load the best match."
-                    />
-                  )}
+                  <LabourCard
+                    labour={selectedLabour}
+                    compact
+                    showMatchScore
+                    onQuickBook={handleQuickBook}
+                  />
                 </div>
-              </div>
+              ) : (
+                <EmptyState
+                  title="No labour selected yet"
+                  description="Type a service name or choose a category to load the best match."
+                />
+              )}
 
             </div>
           </div>

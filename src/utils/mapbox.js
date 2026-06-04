@@ -82,3 +82,47 @@ export const fetchMapboxCoordinatesForAddress = async (address) => {
     label: String(feature?.place_name ?? trimmedAddress).trim()
   };
 };
+
+export const fetchMapboxAddressSuggestions = async (address, { limit = 5 } = {}) => {
+  const mapboxToken = getMapboxAccessToken();
+  const trimmedAddress = String(address ?? '').trim();
+
+  if (!trimmedAddress || !mapboxToken) {
+    return [];
+  }
+
+  const query = new URLSearchParams({
+    access_token: mapboxToken,
+    limit: String(Math.min(Math.max(Number(limit) || 5, 1), 10)),
+    country: 'in',
+    autocomplete: 'true',
+    types: 'address,neighborhood,locality,place,district'
+  });
+  const response = await fetch(
+    `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(trimmedAddress)}.json?${query.toString()}`
+  );
+
+  if (!response.ok) {
+    return [];
+  }
+
+  const payload = await response.json();
+
+  return Array.isArray(payload?.features)
+    ? payload.features
+        .map((feature) => {
+          const longitude = Number(feature?.center?.[0]);
+          const latitude = Number(feature?.center?.[1]);
+
+          if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+            return null;
+          }
+
+          return {
+            coordinates: { latitude, longitude },
+            label: String(feature?.place_name ?? '').trim()
+          };
+        })
+        .filter(Boolean)
+    : [];
+};

@@ -53,7 +53,7 @@ export const QuickBookingDialog = ({
   const clientLocation = requestCoordinates;
   const isClient = userProfile?.role === 'client';
   const savedLocationLabel = useMemo(
-    () => getLocationLabel(userProfile, { fallback: '' }),
+    () => getLocationLabel(userProfile, { fallback: '', includeCoordinates: true }),
     [userProfile]
   );
   const resolvedLocationName = useLocationName(clientLocation);

@@ -23,7 +23,7 @@ import { PhoneInputField } from '../../components/common/PhoneInputField';
 import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
 import { isHiddenAdminAccount } from '../../utils/adminAccount';
-import { isProfileComplete, resolvePostAuthPath } from '../../utils/authFlow';
+import { isProfileComplete, resolvePostAuthPath, routeByRole } from '../../utils/authFlow';
 import { roles } from '../../utils/constants';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { readRedirectContext } from '../../utils/oauthRedirectContext';
@@ -331,14 +331,12 @@ const AuthPage = () => {
           email: formValues.email,
           password: formValues.password
         });
-        const profile = await ensureProfileRecord(user, { fallbackRole: role });
+        void ensureProfileRecord(user, { fallbackRole: role });
+        navigate(routeByRole(role), { replace: true });
 
         toast.success(
-          isProfileComplete(profile)
-            ? 'Welcome back to Slivz.'
-            : 'Login successful. Complete your profile to continue.'
+          'Welcome back to Slivz.'
         );
-        await redirectAfterAuth(profile, role);
       }
     } catch (error) {
       toast.error(getFirebaseErrorMessage(error));
@@ -380,19 +378,25 @@ const AuthPage = () => {
         return;
       }
 
-      const profile = await ensureProfileRecord(user, {
+      const profilePromise = ensureProfileRecord(user, {
         forceBaseWrite: mode === 'signup',
         fallbackRole: role
       });
 
+      if (mode === 'login') {
+        navigate(routeByRole(role), { replace: true });
+      }
+
+      const profile = await profilePromise;
+
       toast.success(
         mode === 'signup'
           ? 'Google sign up complete. Finish your profile on the next screen.'
-          : isProfileComplete(profile)
-            ? 'Google login complete.'
-            : 'Google login complete. Finish your profile to continue.'
+          : 'Google login complete.'
       );
-      await redirectAfterAuth(profile, role);
+      if (mode === 'signup') {
+        await redirectAfterAuth(profile, role);
+      }
     } catch (error) {
       toast.error(getFirebaseErrorMessage(error));
     } finally {
@@ -414,19 +418,25 @@ const AuthPage = () => {
         return;
       }
 
-      const profile = await ensureProfileRecord(user, {
+      const profilePromise = ensureProfileRecord(user, {
         forceBaseWrite: mode === 'signup',
         fallbackRole: role
       });
 
+      if (mode === 'login') {
+        navigate(routeByRole(role), { replace: true });
+      }
+
+      const profile = await profilePromise;
+
       toast.success(
         mode === 'signup'
           ? 'Apple sign up complete. Finish your profile on the next screen.'
-          : isProfileComplete(profile)
-            ? 'Apple login complete.'
-            : 'Apple login complete. Finish your profile to continue.'
+          : 'Apple login complete.'
       );
-      await redirectAfterAuth(profile, role);
+      if (mode === 'signup') {
+        await redirectAfterAuth(profile, role);
+      }
     } catch (error) {
       toast.error(getFirebaseErrorMessage(error));
     } finally {
@@ -461,19 +471,23 @@ const AuthPage = () => {
     setSubmitting(true);
     try {
       const user = await verifyPhoneOtp(confirmationResult, otp);
-      const profile = await ensureProfileRecord(user, {
+      const profilePromise = ensureProfileRecord(user, {
         forceBaseWrite: mode === 'signup',
         fallbackRole: role
       });
+      if (mode === 'login') {
+        navigate(routeByRole(role), { replace: true });
+      }
+      const profile = await profilePromise;
 
       toast.success(
         mode === 'signup'
           ? 'Phone verification complete. Finish your profile on the next screen.'
-          : isProfileComplete(profile)
-            ? 'Phone verification complete.'
-            : 'Phone verification complete. Finish your profile to continue.'
+          : 'Phone verification complete.'
       );
-      await redirectAfterAuth(profile, role);
+      if (mode === 'signup') {
+        await redirectAfterAuth(profile, role);
+      }
     } catch (error) {
       toast.error(getFirebaseErrorMessage(error));
     } finally {

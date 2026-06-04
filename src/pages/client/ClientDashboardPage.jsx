@@ -3,6 +3,7 @@ import {
   Clock3,
   LocateFixed,
   LoaderCircle,
+  MapPin,
   MessageCircle,
   Navigation,
   Search,
@@ -25,6 +26,7 @@ import { Skeleton } from '../../components/common/Skeleton';
 import { AppShell } from '../../components/layout/AppShell';
 import { ServiceRequestMap } from '../../components/map/ServiceRequestMap';
 import { useAuth } from '../../context/AuthContext';
+import { useDebounce } from '../../hooks/useDebounce';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { useLocationName } from '../../hooks/useLocationName';
 import {
@@ -51,7 +53,7 @@ import {
   getLocationLabel,
   normalizeCoordinates
 } from '../../utils/location';
-import { fetchMapboxCoordinatesForAddress } from '../../utils/mapbox';
+import { fetchMapboxAddressSuggestions, fetchMapboxCoordinatesForAddress } from '../../utils/mapbox';
 import { buildProfileAvatarDataUrl } from '../../utils/profileAvatar';
 import { createRouteGroupId } from '../../utils/requestRouting';
 
@@ -179,10 +181,12 @@ const ClientDashboardPage = () => {
   const [serviceLocationMode, setServiceLocationMode] = useState('live');
   const [serviceLocationInput, setServiceLocationInput] = useState('');
   const [manualServiceLocationLabel, setManualServiceLocationLabel] = useState('');
+  const [serviceLocationSuggestions, setServiceLocationSuggestions] = useState([]);
   const [resolvingServiceLocation, setResolvingServiceLocation] = useState(false);
   const [coverageMessage, setCoverageMessage] = useState('');
   const lastDemandKeyRef = useRef('');
   const lastLocationErrorRef = useRef('');
+  const debouncedServiceLocationInput = useDebounce(serviceLocationInput, 300);
 
   useEffect(() => {
     let isActive = true;
@@ -231,19 +235,45 @@ const ClientDashboardPage = () => {
     }
   }, [geolocation.hasLocation, geolocation.latitude, geolocation.longitude, serviceLocationMode]);
 
+  useEffect(() => {
+    let isActive = true;
+    const trimmedInput = debouncedServiceLocationInput.trim();
+
+    if (serviceLocationMode !== 'manual' || trimmedInput.length < 3) {
+      setServiceLocationSuggestions([]);
+      return undefined;
+    }
+
+    fetchMapboxAddressSuggestions(trimmedInput)
+      .then((suggestions) => {
+        if (isActive) {
+          setServiceLocationSuggestions(suggestions.slice(0, 5));
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setServiceLocationSuggestions([]);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [debouncedServiceLocationInput, serviceLocationMode]);
+
   const clientOrigin = useMemo(
     () => normalizeCoordinates(requestCoordinates) || null,
     [requestCoordinates]
   );
   const profileLocationLabel = useMemo(
-    () => getLocationLabel(userProfile, { fallback: '' }),
+    () => getLocationLabel(userProfile, { fallback: '', includeCoordinates: true }),
     [userProfile]
   );
   const resolvedLocationName = useLocationName(clientOrigin);
   const clientLocationLabel = useMemo(
     () => {
       if (clientOrigin) {
-        return manualServiceLocationLabel || resolvedLocationName || profileLocationLabel || 'Live location captured';
+        return manualServiceLocationLabel || resolvedLocationName || profileLocationLabel || 'Address not detected';
       }
 
       if (geolocation.loading) {
@@ -463,6 +493,7 @@ const ClientDashboardPage = () => {
 
     setServiceLocationMode('live');
     setManualServiceLocationLabel('');
+    setServiceLocationSuggestions([]);
     setRequestCoordinates(coordinates);
     setLiveCoordinates(coordinates);
     toast.success('Live location updated.');
@@ -478,6 +509,7 @@ const ClientDashboardPage = () => {
 
     setServiceLocationMode('live');
     setManualServiceLocationLabel('');
+    setServiceLocationSuggestions([]);
     setRequestCoordinates(coordinates);
     toast.success('Service location set to live GPS.');
   };
@@ -510,6 +542,19 @@ const ClientDashboardPage = () => {
     } finally {
       setResolvingServiceLocation(false);
     }
+  };
+
+  const handleSelectServiceLocationSuggestion = (suggestion) => {
+    if (!suggestion?.coordinates) {
+      return;
+    }
+
+    setServiceLocationMode('manual');
+    setManualServiceLocationLabel(suggestion.label || '');
+    setServiceLocationInput(suggestion.label || '');
+    setRequestCoordinates(suggestion.coordinates);
+    setServiceLocationSuggestions([]);
+    toast.success('Service location updated.');
   };
 
   const notifyLabour = async ({ bookingId, labour, requestMode: mode }) => {
@@ -816,6 +861,11 @@ const ClientDashboardPage = () => {
 
       <section className="bg-slate-100/80 pb-5 pt-4 sm:py-6">
         <div className="page-shell max-w-5xl space-y-3.5 sm:space-y-4">
+          <datalist id="client-service-options">
+            {serviceOptions.map((option) => (
+              <option key={option} value={option} />
+            ))}
+          </datalist>
           <LightPanel className="p-3.5 sm:p-5">
             <div className="flex items-center gap-3 sm:gap-4">
               <img
@@ -873,22 +923,29 @@ const ClientDashboardPage = () => {
             >
               <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
                 <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-                  <SelectField
+                  <InputField
                     label="Available service"
+                    list="client-service-options"
                     placeholder={
                       laboursLoading
                         ? 'Checking nearby services'
                         : serviceOptions.length
-                          ? 'Choose available service'
+                          ? 'Type or choose a service'
                           : `No services within ${NEARBY_LABOUR_RADIUS_KM} km`
                     }
-                    options={serviceOptions}
                     value={selectedService}
-                    disabled={laboursLoading || !serviceOptions.length}
+                    disabled={laboursLoading}
                     onChange={(event) => {
                       setSelectedService(event.target.value);
                       setRequestMode('instant');
                     }}
+                    hint={
+                      selectedService
+                        ? serviceOptions.includes(selectedService)
+                          ? 'This service is available nearby.'
+                          : 'We will check whether this service is available near you.'
+                        : 'Start typing to search by service name.'
+                    }
                   />
                   <Button type="button" variant="outline" size="sm" className="h-11 w-full sm:w-auto" onClick={handleRefreshLocation} disabled={geolocation.loading}>
                     {geolocation.loading ? <LoaderCircle size={15} className="animate-spin" /> : <LocateFixed size={15} />}
@@ -921,12 +978,40 @@ const ClientDashboardPage = () => {
                 </Badge>
               </div>
               <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
-                <InputField
-                  label="Another address"
-                  value={serviceLocationInput}
-                  onChange={(event) => setServiceLocationInput(event.target.value)}
-                  placeholder="House, area, city, pincode"
-                />
+                <div className="relative">
+                  <InputField
+                    label="Another address"
+                    value={serviceLocationInput}
+                    onChange={(event) => {
+                      setServiceLocationMode('manual');
+                      setServiceLocationInput(event.target.value);
+                    }}
+                    placeholder="House, area, city, pincode"
+                    hint="Start typing and pick the matching address."
+                  />
+                  {serviceLocationMode === 'manual' && serviceLocationSuggestions.length ? (
+                    <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
+                      {serviceLocationSuggestions.map((suggestion, index) => (
+                        <button
+                          key={`${suggestion.label}-${index}`}
+                          type="button"
+                          className="flex w-full items-start gap-3 px-3 py-2 text-left text-sm transition hover:bg-slate-50"
+                          onClick={() => handleSelectServiceLocationSuggestion(suggestion)}
+                        >
+                          <span className="mt-0.5 grid h-7 w-7 flex-none place-items-center rounded-lg bg-rose-50 text-rose-600">
+                            <MapPin size={14} />
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block truncate font-semibold text-slate-950">
+                              {suggestion.label}
+                            </span>
+                            <span className="block text-xs text-slate-500">Use this service address</span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
                 <Button type="button" variant="outline" size="sm" className="h-10 w-full sm:w-auto" onClick={handleApplyServiceAddress} disabled={resolvingServiceLocation}>
                   {resolvingServiceLocation ? <LoaderCircle size={15} className="animate-spin" /> : <Navigation size={15} />}
                   Use address
@@ -1023,7 +1108,7 @@ const ClientDashboardPage = () => {
                     {pendingBookings[0].labourName} received your {pendingBookings[0].serviceType} request.
                   </p>
                 </div>
-                <Button type="button" size="sm" variant="outline" className="w-full sm:w-auto" disabled={cancellingBookingId === pendingBookings[0].id} onClick={() => handleCancelBooking(pendingBookings[0])}>
+                <Button type="button" size="sm" variant="outline" className="w-full border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800 sm:w-auto" disabled={cancellingBookingId === pendingBookings[0].id} onClick={() => handleCancelBooking(pendingBookings[0])}>
                   {cancellingBookingId === pendingBookings[0].id ? 'Cancelling...' : 'Cancel request'}
                 </Button>
               </div>
@@ -1049,7 +1134,7 @@ const ClientDashboardPage = () => {
                 </div>
               ) : null}
               {activeBookings[0].status === 'accepted' ? (
-                <Button type="button" size="sm" variant="outline" className="mt-4 w-full sm:w-auto" disabled={cancellingBookingId === activeBookings[0].id} onClick={() => handleCancelBooking(activeBookings[0])}>
+                <Button type="button" size="sm" variant="outline" className="mt-4 w-full border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800 sm:w-auto" disabled={cancellingBookingId === activeBookings[0].id} onClick={() => handleCancelBooking(activeBookings[0])}>
                   {cancellingBookingId === activeBookings[0].id ? 'Cancelling...' : 'Cancel request'}
                 </Button>
               ) : null}
@@ -1304,7 +1389,7 @@ const ClientDashboardPage = () => {
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="w-full sm:w-auto"
+                  className="w-full border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800 sm:w-auto"
                   disabled={cancellingBookingId === pendingBookings[0].id}
                   onClick={() => handleCancelBooking(pendingBookings[0])}
                 >
@@ -1358,7 +1443,7 @@ const ClientDashboardPage = () => {
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="mt-4 w-full sm:w-auto"
+                  className="mt-4 w-full border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800 sm:w-auto"
                   disabled={cancellingBookingId === activeBookings[0].id}
                   onClick={() => handleCancelBooking(activeBookings[0])}
                 >
@@ -1634,7 +1719,7 @@ const ClientDashboardPage = () => {
                               type="button"
                               size="sm"
                               variant="outline"
-                              className="w-full sm:w-auto"
+                              className="w-full border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800 sm:w-auto"
                               disabled={cancellingBookingId === booking.id}
                               onClick={() => handleCancelBooking(booking)}
                             >
@@ -1648,7 +1733,7 @@ const ClientDashboardPage = () => {
                           type="button"
                           size="sm"
                           variant="outline"
-                          className="mt-4 w-full sm:w-auto"
+                          className="mt-4 w-full border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800 sm:w-auto"
                           disabled={cancellingBookingId === booking.id}
                           onClick={() => handleCancelBooking(booking)}
                         >
