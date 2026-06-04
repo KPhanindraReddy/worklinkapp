@@ -21,6 +21,7 @@ import { buildProfileAvatarDataUrl } from '../../utils/profileAvatar';
 import { createRouteGroupId } from '../../utils/requestRouting';
 
 const activeWorkStatuses = ['accepted', 'in_progress'];
+const openRequestStatuses = ['pending', 'accepted', 'in_progress', 'awaiting_payment'];
 const generateStartOtp = () => String(Math.floor(100000 + Math.random() * 900000));
 
 const buildInitialFormValues = ({ labour, userProfile, defaultService }) => ({
@@ -65,6 +66,10 @@ export const QuickBookingDialog = ({
     () => bookings.filter((booking) => booking.status === 'pending'),
     [bookings]
   );
+  const openBookings = useMemo(
+    () => bookings.filter((booking) => openRequestStatuses.includes(booking.status)),
+    [bookings]
+  );
   const inProgressBooking = useMemo(
     () => bookings.find((booking) => booking.status === 'in_progress') ?? null,
     [bookings]
@@ -77,7 +82,7 @@ export const QuickBookingDialog = ({
     isClient &&
       labour &&
       labour.availability === 'Available' &&
-      !pendingBookings.length &&
+      !openBookings.length &&
       !inProgressBooking &&
       formValues.serviceName.trim() &&
       formValues.address.trim() &&
@@ -176,6 +181,11 @@ export const QuickBookingDialog = ({
       return;
     }
 
+    if (openBookings.length) {
+      toast.error('Finish or cancel your current request before sending another one.');
+      return;
+    }
+
     if (!canSubmit) {
       toast.error(
         requestTiming === 'instant'
@@ -232,11 +242,8 @@ export const QuickBookingDialog = ({
         await createNotification({
           userId: targetLabour.id,
           senderId: currentUser.uid,
-          title: 'New service request',
-          body:
-            requestTiming === 'instant'
-              ? `${userProfile.fullName || 'A client'} requested ${serviceName} instantly.`
-              : `${userProfile.fullName || 'A client'} requested ${serviceName} on ${selectedDate} at ${selectedSlot}.`,
+          title: requestTiming === 'instant' ? 'New request' : 'Scheduled request',
+          body: serviceName,
           type: 'booking',
           bookingId
         });
@@ -314,9 +321,9 @@ export const QuickBookingDialog = ({
               </div>
             </div>
 
-            {pendingBookings.length ? (
+            {openBookings.length ? (
               <div className="rounded-[28px] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-                You already have a pending request with {pendingBookings[0].labourName}. Wait for that response before sending another one.
+                Finish or cancel your current request before sending another one.
               </div>
             ) : null}
 

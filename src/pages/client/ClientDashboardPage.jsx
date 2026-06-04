@@ -3,7 +3,6 @@ import {
   Clock3,
   LocateFixed,
   LoaderCircle,
-  MessageCircle,
   Search,
   Send,
   UserCheck,
@@ -20,6 +19,7 @@ import { AutocompleteSelect } from '../../components/common/AutocompleteSelect';
 import { EmptyState } from '../../components/common/EmptyState';
 import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
+import { SelectField } from '../../components/common/SelectField';
 import { Skeleton } from '../../components/common/Skeleton';
 import { AppShell } from '../../components/layout/AppShell';
 import { LocationText } from '../../components/location/LocationText';
@@ -44,7 +44,7 @@ import {
   parseDateValue
 } from '../../utils/formatters';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
-import { NEARBY_LABOUR_RADIUS_KM, workCategories } from '../../utils/constants';
+import { DEFAULT_LABOUR_RADIUS_KM, labourRadiusOptions, workCategories } from '../../utils/constants';
 import {
   buildMapsUrl,
   getDisplayLocationText,
@@ -110,8 +110,8 @@ const buildDirectionsUrl = ({ origin, destination }) => {
 
   return `https://www.google.com/maps/dir/?api=1&origin=${normalizedOrigin.latitude},${normalizedOrigin.longitude}&destination=${normalizedDestination.latitude},${normalizedDestination.longitude}&travelmode=driving`;
 };
-const filterNearbyLabours = (items) =>
-  items.filter((labour) => Number.isFinite(Number(labour.distanceKm)) && Number(labour.distanceKm) <= NEARBY_LABOUR_RADIUS_KM);
+const filterNearbyLabours = (items, radiusKm) =>
+  items.filter((labour) => Number.isFinite(Number(labour.distanceKm)) && Number(labour.distanceKm) <= radiusKm);
 
 const getInitials = (value) =>
   String(value || 'WL')
@@ -161,6 +161,7 @@ const ClientDashboardPage = () => {
   const [bookings, setBookings] = useState([]);
   const [bookingsLoading, setBookingsLoading] = useState(true);
   const [selectedService, setSelectedService] = useState('');
+  const [radiusKm, setRadiusKm] = useState(DEFAULT_LABOUR_RADIUS_KM);
   const [requestMode, setRequestMode] = useState('instant');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedSlot, setSelectedSlot] = useState('');
@@ -292,13 +293,13 @@ const ClientDashboardPage = () => {
     let isActive = true;
     setLaboursLoading(true);
 
-    searchLabours({ availability: 'Available', maxDistanceKm: NEARBY_LABOUR_RADIUS_KM }, clientOrigin)
+    searchLabours({ availability: 'Available', maxDistanceKm: radiusKm }, clientOrigin)
       .then((items) => {
         if (!isActive) {
           return;
         }
 
-        const nearbyItems = filterNearbyLabours(items);
+        const nearbyItems = filterNearbyLabours(items, radiusKm);
 
         setAvailableLabours(nearbyItems);
         if (nearbyItems.length) {
@@ -322,7 +323,7 @@ const ClientDashboardPage = () => {
     return () => {
       isActive = false;
     };
-  }, [clientOrigin]);
+  }, [clientOrigin, radiusKm]);
 
   useEffect(() => {
     const matchingLabours = selectedService
@@ -379,8 +380,12 @@ const ClientDashboardPage = () => {
   );
   const availableServiceSet = useMemo(() => new Set(serviceOptions), [serviceOptions]);
   const getServiceAvailability = (service) => (availableServiceSet.has(service) ? 'Available' : null);
+  const radiusSelectOptions = useMemo(
+    () => labourRadiusOptions.map((km) => ({ label: `${km} km`, value: String(km) })),
+    []
+  );
   const trackedBookings = useMemo(() => bookings.slice(0, 3), [bookings]);
-  const mapTitle = selectedService ? `${selectedService} within ${NEARBY_LABOUR_RADIUS_KM} km` : 'Service location';
+  const mapTitle = selectedService ? `${selectedService} within ${radiusKm} km` : 'Service location';
   const mapSubtitle = clientOrigin
     ? `Live location: ${clientLocationLabel}`
     : clientLocationLabel;
@@ -472,7 +477,7 @@ const ClientDashboardPage = () => {
     setCoverageMessage('');
 
     if (service && !availableServiceSet.has(service)) {
-      const message = `${service} is currently not available near your location.`;
+      const message = `${service} is not available within ${radiusKm} km. Try increasing distance.`;
       setCoverageMessage(message);
       toast.error(message);
       recordUnavailableDemand(service);
@@ -484,11 +489,8 @@ const ClientDashboardPage = () => {
       await createNotification({
         userId: labour.id,
         senderId: currentUser.uid,
-        title: mode === 'instant' ? 'Instant service request' : 'Scheduled service request',
-        body:
-          mode === 'instant'
-            ? `${userProfile?.fullName || 'A client'} needs ${selectedService} now.`
-            : `${userProfile?.fullName || 'A client'} scheduled ${selectedService} on ${selectedDate} at ${selectedSlot}.`,
+        title: mode === 'instant' ? 'New request' : 'Scheduled request',
+        body: selectedService,
         type: 'booking',
         bookingId
       });
@@ -564,16 +566,16 @@ const ClientDashboardPage = () => {
           availability: 'Available',
           category: selectedService,
           skill: selectedService,
-          maxDistanceKm: NEARBY_LABOUR_RADIUS_KM
+          maxDistanceKm: radiusKm
         },
         clientOrigin
       );
-      const nearbyItems = filterNearbyLabours(items);
+      const nearbyItems = filterNearbyLabours(items, radiusKm);
 
       setServiceLabours(nearbyItems);
       setSelectedLabourId(getFirstAvailableLabour(nearbyItems)?.id ?? '');
       if (!nearbyItems.length) {
-        const message = `${selectedService} is currently not available in this location: ${bookingAddress || clientLocationLabel}.`;
+        const message = `${selectedService} is not available within ${radiusKm} km. Try increasing distance.`;
         setCoverageMessage(message);
         toast.error(message);
         await recordUnavailableDemand(selectedService);
@@ -602,7 +604,7 @@ const ClientDashboardPage = () => {
         getFirstAvailableLabour(labours);
 
       if (!targetLabour) {
-        toast.error(`${selectedService} is not available near your location right now.`);
+        toast.error(`${selectedService} is not available within ${radiusKm} km.`);
         return;
       }
 
@@ -719,8 +721,8 @@ const ClientDashboardPage = () => {
           await createNotification({
             userId: booking.labourId,
             senderId: currentUser.uid,
-            title: 'Payment completed',
-            body: `${userProfile?.fullName || 'Client'} completed ${booking.serviceType} with ${formatCurrency(paidAmount)} paid.`,
+            title: 'Paid',
+            body: `${booking.serviceType} ${formatCurrency(paidAmount)}`,
             type: 'booking',
             bookingId: booking.id
           });
@@ -753,8 +755,8 @@ const ClientDashboardPage = () => {
           await createNotification({
             userId: booking.labourId,
             senderId: currentUser.uid,
-            title: 'Service request cancelled',
-            body: `${userProfile?.fullName || 'Client'} cancelled the ${booking.serviceType} request.`,
+            title: 'Cancelled',
+            body: booking.serviceType,
             type: 'booking',
             bookingId: booking.id
           });
@@ -825,7 +827,7 @@ const ClientDashboardPage = () => {
               title={mapTitle}
               subtitle={mapSubtitle}
               centerLabel={clientLocationLabel || 'Your live location'}
-              emptyLabel={`Choose a service below to show labour within ${NEARBY_LABOUR_RADIUS_KM} km`}
+              emptyLabel={`Choose a service below to show labour within ${radiusKm} km`}
               directionsUrl={selectedLabourDirectionsUrl}
               showCenterLabel={false}
               showCenterMarker={false}
@@ -839,7 +841,7 @@ const ClientDashboardPage = () => {
               sheetClassName="bottom-2 left-2 right-2 rounded-[14px] p-2.5 sm:rounded-[16px]"
             >
               <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_auto] sm:items-end">
                   <AutocompleteSelect
                     label="Available service"
                     placeholder={laboursLoading ? 'Checking nearby services' : 'Search service'}
@@ -847,6 +849,12 @@ const ClientDashboardPage = () => {
                     value={selectedService}
                     onChange={(event) => handleServiceChange(event.target.value)}
                     getAvailability={getServiceAvailability}
+                  />
+                  <SelectField
+                    label="Radius"
+                    options={radiusSelectOptions}
+                    value={String(radiusKm)}
+                    onChange={(event) => setRadiusKm(Number(event.target.value) || DEFAULT_LABOUR_RADIUS_KM)}
                   />
                   <Button type="button" variant="outline" size="sm" className="h-11 w-full sm:w-auto" onClick={handleRefreshLocation} disabled={geolocation.loading}>
                     {geolocation.loading ? <LoaderCircle size={15} className="animate-spin" /> : <LocateFixed size={15} />}
@@ -889,7 +897,7 @@ const ClientDashboardPage = () => {
               </div>
             ) : null}
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_auto] sm:items-end">
                 <AutocompleteSelect
                   label="Available service"
                   placeholder={laboursLoading ? 'Checking nearby services' : 'Search service'}
@@ -897,6 +905,12 @@ const ClientDashboardPage = () => {
                   value={selectedService}
                   onChange={(event) => handleServiceChange(event.target.value)}
                   getAvailability={getServiceAvailability}
+                />
+                <SelectField
+                  label="Radius"
+                  options={radiusSelectOptions}
+                  value={String(radiusKm)}
+                  onChange={(event) => setRadiusKm(Number(event.target.value) || DEFAULT_LABOUR_RADIUS_KM)}
                 />
                 <Button type="button" variant="outline" size="sm" className="h-11 w-full sm:w-auto" onClick={handleRefreshLocation} disabled={geolocation.loading}>
                   {geolocation.loading ? <LoaderCircle size={15} className="animate-spin" /> : <LocateFixed size={15} />}
@@ -943,7 +957,7 @@ const ClientDashboardPage = () => {
                       </button>
                     ))
                   ) : (
-                    <EmptyDashed>{selectedService ? 'No labour available for this service' : 'Choose a service'}</EmptyDashed>
+                    <EmptyDashed>{selectedService ? `No labour within ${radiusKm} km. Try increasing distance.` : 'Choose a service'}</EmptyDashed>
                   )}
                 </div>
               </LightPanel>
@@ -1032,10 +1046,6 @@ const ClientDashboardPage = () => {
             <LightPanel className="p-3.5 sm:p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-lg font-bold text-slate-950 sm:text-xl">Request tracking</h2>
-                <Button as={Link} to="/chat" variant="outline" size="sm" className="w-full sm:w-auto">
-                  <MessageCircle size={16} />
-                  Chat
-                </Button>
               </div>
               <div className="mt-3 space-y-2">
                 {bookingsLoading ? (
@@ -1045,8 +1055,8 @@ const ClientDashboardPage = () => {
                   </>
                 ) : trackedBookings.length ? (
                   <>
-                    <div className="hidden rounded-[14px] border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500 md:grid md:grid-cols-[1fr_1fr_0.8fr_0.8fr_0.75fr] md:gap-3">
-                      <span>Name</span>
+                    <div className="hidden rounded-[14px] border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500 md:grid md:grid-cols-[1.05fr_1fr_0.8fr_0.8fr_0.75fr] md:items-center md:gap-3">
+                      <span>Worker</span>
                       <span>Service</span>
                       <span>Time</span>
                       <span>Money</span>
@@ -1054,7 +1064,7 @@ const ClientDashboardPage = () => {
                     </div>
                     {trackedBookings.map((booking) => (
                       <div key={booking.id} className="rounded-[14px] border border-slate-200 bg-slate-50 p-2.5 sm:p-3">
-                        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 md:grid-cols-[1fr_1fr_0.8fr_0.8fr_0.75fr] md:gap-3">
+                        <div className="grid gap-2 md:grid-cols-[1.05fr_1fr_0.8fr_0.8fr_0.75fr] md:items-center md:gap-3">
                           <div className="min-w-0">
                             <h3 className="truncate text-sm font-bold text-slate-950">{booking.labourName || 'Labour'}</h3>
                             <p className="mt-0.5 text-xs font-medium text-slate-500">{booking.requestMode === 'scheduled' ? 'Scheduled' : 'Instant'}</p>
@@ -1088,22 +1098,10 @@ const ClientDashboardPage = () => {
                                   : 'Pending'}
                             </span>
                           </div>
-                          <div className="row-start-1 flex justify-end md:row-auto">
+                          <div className="flex justify-start md:justify-end">
                             <Badge tone={getBookingTone(booking.status)}>{booking.status}</Badge>
                           </div>
                         </div>
-                      {booking.labourId ? (
-                        <Button
-                          as={Link}
-                          to={`/chat?target=${encodeURIComponent(booking.labourId)}&booking=${encodeURIComponent(booking.id)}`}
-                          size="sm"
-                          variant="outline"
-                          className="mt-2 min-h-9 w-full sm:w-auto"
-                        >
-                          <MessageCircle size={15} />
-                          Chat labour
-                        </Button>
-                      ) : null}
                       </div>
                     ))}
                   </>
@@ -1138,7 +1136,7 @@ const ClientDashboardPage = () => {
                     </button>
                   ))
                 ) : (
-                  <EmptyDashed>Choose a service to show workers within {NEARBY_LABOUR_RADIUS_KM} km</EmptyDashed>
+                  <EmptyDashed>Choose a service to show workers within {radiusKm} km</EmptyDashed>
                 )}
               </div>
               <Button as={Link} to="/search" variant="outline" size="sm" className="mt-4 w-full">
@@ -1175,7 +1173,7 @@ const ClientDashboardPage = () => {
                       </button>
                     ))
                   ) : (
-                    <EmptyDashed>{selectedService ? 'No labour available for this service' : 'Choose a service'}</EmptyDashed>
+                    <EmptyDashed>{selectedService ? `No labour within ${radiusKm} km. Try increasing distance.` : 'Choose a service'}</EmptyDashed>
                   )}
                 </div>
               </LightPanel>

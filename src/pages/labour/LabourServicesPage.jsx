@@ -202,11 +202,8 @@ const LabourServicesPage = () => {
           await createNotification({
             userId: booking.clientId,
             senderId: currentUser.uid,
-            title: status === 'accepted' ? 'Service request accepted' : 'Service request rejected',
-            body:
-              status === 'accepted'
-                ? `${profileName} accepted your ${booking.serviceType} request.`
-                : `${profileName} rejected your ${booking.serviceType} request.`,
+            title: status === 'accepted' ? 'Accepted' : 'Rejected',
+            body: booking.serviceType,
             type: 'booking',
             bookingId: booking.id
           });
@@ -261,7 +258,7 @@ const LabourServicesPage = () => {
             userId: booking.clientId,
             senderId: currentUser.uid,
             title: 'Work finished',
-            body: `${profileName} finished your ${booking.serviceType}. Enter the paid amount to complete the service.`,
+            body: booking.serviceType,
             type: 'booking',
             bookingId: booking.id
           });
@@ -412,18 +409,6 @@ const LabourServicesPage = () => {
                         >
                           Reject
                         </Button>
-                        <Button
-                          as="a"
-                          href={booking.clientPhoneNumber ? `tel:${booking.clientPhoneNumber}` : undefined}
-                          size="sm"
-                          variant="outline"
-                          className={`w-full sm:w-auto ${
-                            !booking.clientPhoneNumber ? 'pointer-events-none opacity-60' : ''
-                          }`}
-                        >
-                          <Phone size={15} />
-                          Call
-                        </Button>
                       </div>
                     </div>
                     ))}
@@ -462,7 +447,10 @@ const LabourServicesPage = () => {
                       <span>Money</span>
                       <span>Status</span>
                     </div>
-                    {scheduledBookings.map((booking) => (
+                    {scheduledBookings.map((booking) => {
+                      const contactUnlocked = ['accepted', 'in_progress', 'awaiting_payment'].includes(booking.status);
+
+                      return (
                       <div key={booking.id} className="rounded-2xl border border-slate-200 bg-white p-4">
                         <div className="grid gap-3 md:grid-cols-[1fr_1fr_0.8fr_0.9fr_0.8fr] md:items-center">
                           <div className="min-w-0">
@@ -524,23 +512,24 @@ const LabourServicesPage = () => {
                         ) : null}
                         <Button
                           as="a"
-                          href={booking.clientPhoneNumber ? `tel:${booking.clientPhoneNumber}` : undefined}
+                          href={contactUnlocked && booking.clientPhoneNumber ? `tel:${booking.clientPhoneNumber}` : undefined}
                           size="sm"
                           variant="outline"
                           className={`w-full sm:w-auto ${
-                            !booking.clientPhoneNumber ? 'pointer-events-none opacity-60' : ''
+                            !contactUnlocked || !booking.clientPhoneNumber ? 'pointer-events-none opacity-60' : ''
                           }`}
                         >
                           <Phone size={15} />
                           Call
                         </Button>
                         <Button
-                          as={Link}
-                          to={`/chat?target=${encodeURIComponent(booking.clientId)}&booking=${encodeURIComponent(booking.id)}`}
+                          as={contactUnlocked ? Link : 'button'}
+                          to={contactUnlocked ? `/chat?target=${encodeURIComponent(booking.clientId)}&booking=${encodeURIComponent(booking.id)}` : undefined}
+                          type={contactUnlocked ? undefined : 'button'}
                           size="sm"
                           variant="outline"
-                          className="w-full sm:w-auto"
-                          onClick={() => handleOpenClientChat(booking)}
+                          className={`w-full sm:w-auto ${!contactUnlocked ? 'pointer-events-none opacity-60' : ''}`}
+                          onClick={() => contactUnlocked && handleOpenClientChat(booking)}
                         >
                           <MessageCircle size={15} />
                           Chat
@@ -594,7 +583,8 @@ const LabourServicesPage = () => {
                         </div>
                       ) : null}
                     </div>
-                    ))}
+                      );
+                    })}
                   </>
                 ) : (
                   <p className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">

@@ -450,11 +450,8 @@ const LabourDashboardPage = () => {
           await createNotification({
             userId: booking.clientId,
             senderId: currentUser.uid,
-            title: status === 'accepted' ? 'Service request accepted' : 'Service request rejected',
-            body:
-              status === 'accepted'
-                ? `${dashboardProfile.fullName} accepted your ${booking.serviceType} request.`
-                : `${dashboardProfile.fullName} rejected your ${booking.serviceType} request.`,
+            title: status === 'accepted' ? 'Accepted' : 'Rejected',
+            body: booking.serviceType,
             type: 'booking',
             bookingId: booking.id
           });
@@ -502,7 +499,7 @@ const LabourDashboardPage = () => {
             userId: booking.clientId,
             senderId: currentUser.uid,
             title: 'Work started',
-            body: `${dashboardProfile.fullName} started your ${booking.serviceType} work after OTP verification.`,
+            body: booking.serviceType,
             type: 'booking',
             bookingId: booking.id
           });
@@ -552,7 +549,7 @@ const LabourDashboardPage = () => {
             userId: booking.clientId,
             senderId: currentUser.uid,
             title: 'Work finished',
-            body: `${dashboardProfile.fullName} finished your ${booking.serviceType}. Enter the paid amount to complete the service.`,
+            body: booking.serviceType,
             type: 'booking',
             bookingId: booking.id
           });
@@ -676,6 +673,7 @@ const LabourDashboardPage = () => {
               {scheduledClientBookings.length ? (
                 scheduledClientBookings.map((booking) => {
                   const routeUnlocked = ['accepted', 'in_progress'].includes(booking.status);
+                  const contactUnlocked = ['accepted', 'in_progress', 'awaiting_payment'].includes(booking.status);
 
                   return (
                     <div key={booking.id} className="rounded-[18px] border border-slate-200 bg-slate-50 p-4">
@@ -710,11 +708,11 @@ const LabourDashboardPage = () => {
                             </Button>
                           </>
                         )}
-                        <Button as="a" href={booking.clientPhoneNumber ? `tel:${booking.clientPhoneNumber}` : undefined} size="sm" variant="outline" className={`w-full sm:w-auto ${!booking.clientPhoneNumber ? 'pointer-events-none opacity-60' : ''}`}>
+                        <Button as="a" href={contactUnlocked && booking.clientPhoneNumber ? `tel:${booking.clientPhoneNumber}` : undefined} size="sm" variant="outline" className={`w-full sm:w-auto ${!contactUnlocked || !booking.clientPhoneNumber ? 'pointer-events-none opacity-60' : ''}`}>
                           <Phone size={15} />
                           Call
                         </Button>
-                        <Button as={Link} to={`/chat?target=${encodeURIComponent(booking.clientId)}&booking=${encodeURIComponent(booking.id)}`} size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => handleOpenClientChat(booking)}>
+                        <Button as={contactUnlocked ? Link : 'button'} to={contactUnlocked ? `/chat?target=${encodeURIComponent(booking.clientId)}&booking=${encodeURIComponent(booking.id)}` : undefined} type={contactUnlocked ? undefined : 'button'} size="sm" variant="outline" className={`w-full sm:w-auto ${!contactUnlocked ? 'pointer-events-none opacity-60' : ''}`} onClick={() => contactUnlocked && handleOpenClientChat(booking)}>
                           <MessageCircle size={15} />
                           Chat
                         </Button>
@@ -833,21 +831,6 @@ const LabourDashboardPage = () => {
             </div>
           </LightPanel>
 
-          <LightPanel id="labour-profile">
-            <h2 className="text-xl font-bold text-slate-950 sm:text-[1.35rem]">Reviews & work proof</h2>
-            <div className="mt-5 space-y-3">
-              {(dashboardProfile.reviews ?? []).length ? (
-                dashboardProfile.reviews.map((review) => (
-                  <div key={review.id} className="rounded-[18px] border border-slate-200 bg-slate-50 p-4">
-                    <p className="font-semibold text-slate-950">{review.clientName}</p>
-                    <p className="mt-2 text-sm text-slate-600">{review.comment}</p>
-                  </div>
-                ))
-              ) : (
-                <EmptyDashed>No reviews yet</EmptyDashed>
-              )}
-            </div>
-          </LightPanel>
         </div>
       </section>
     </AppShell>

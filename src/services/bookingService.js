@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  limit,
   onSnapshot,
   query,
   runTransaction,
@@ -16,6 +17,8 @@ import { normalizeWhatsAppPhoneNumber } from '../utils/phone';
 const debugBookingService = (message, payload = {}) => {
   console.debug(`[Slivz booking service] ${message}`, payload);
 };
+
+const activeClientRequestStatuses = ['pending', 'accepted', 'in_progress', 'awaiting_payment'];
 
 const sortBookingsByAppointmentDesc = (items) =>
   [...items].sort((a, b) => {
@@ -83,10 +86,20 @@ export const createBooking = async (payload) => {
 
   const bookingRef = doc(collection(db, 'bookings'));
   const labourRef = doc(db, 'labours', payload.labourId);
+  const activeClientBookingsQuery = query(
+    collection(db, 'bookings'),
+    where('clientId', '==', payload.clientId),
+    where('status', 'in', activeClientRequestStatuses),
+    limit(1)
+  );
+  const privateClientPhoneNumber = normalizeWhatsAppPhoneNumber(payload.clientPhoneNumber);
+  const privateLabourPhoneNumber = normalizeWhatsAppPhoneNumber(payload.labourPhoneNumber);
   const normalizedPayload = {
     ...payload,
-    clientPhoneNumber: normalizeWhatsAppPhoneNumber(payload.clientPhoneNumber),
-    labourPhoneNumber: normalizeWhatsAppPhoneNumber(payload.labourPhoneNumber)
+    clientPhoneNumber: '',
+    labourPhoneNumber: '',
+    privateClientPhoneNumber,
+    privateLabourPhoneNumber
   };
 
   debugBookingService('create booking transaction started', {
@@ -97,6 +110,12 @@ export const createBooking = async (payload) => {
   });
 
   await runTransaction(db, async (transaction) => {
+    const activeClientBookingsSnapshot = await transaction.get(activeClientBookingsQuery);
+
+    if (!activeClientBookingsSnapshot.empty) {
+      throw new Error('Finish or cancel your current request before sending another one.');
+    }
+
     const labourSnapshot = await transaction.get(labourRef);
 
     if (!labourSnapshot.exists()) {
@@ -139,7 +158,30 @@ export const updateBookingStatus = async (bookingId, status, extra = {}) => {
     extraKeys: Object.keys(extra)
   });
 
-  await updateDoc(doc(db, 'bookings', bookingId), {
+  const bookingRef = doc(db, 'bookings', bookingId);
+
+  if (status === 'accepted') {
+    await runTransaction(db, async (transaction) => {
+      const bookingSnapshot = await transaction.get(bookingRef);
+
+      if (!bookingSnapshot.exists()) {
+        throw new Error('Booking was not found.');
+      }
+
+      const booking = bookingSnapshot.data();
+
+      transaction.update(bookingRef, {
+        status,
+        clientPhoneNumber: booking.privateClientPhoneNumber || booking.clientPhoneNumber || '',
+        labourPhoneNumber: booking.privateLabourPhoneNumber || booking.labourPhoneNumber || '',
+        ...extra,
+        updatedAt: serverTimestamp()
+      });
+    });
+    return;
+  }
+
+  await updateDoc(bookingRef, {
     status,
     ...extra,
     updatedAt: serverTimestamp()

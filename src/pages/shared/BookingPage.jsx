@@ -22,6 +22,7 @@ import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
+import { SelectField } from '../../components/common/SelectField';
 import { TextAreaField } from '../../components/common/TextAreaField';
 import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
@@ -36,7 +37,7 @@ import {
 import { ensureConversation } from '../../services/chatService';
 import { getLabourById, searchLabours } from '../../services/labourService';
 import { createNotification } from '../../services/notificationService';
-import { NEARBY_LABOUR_RADIUS_KM, workCategories } from '../../utils/constants';
+import { DEFAULT_LABOUR_RADIUS_KM, labourRadiusOptions, workCategories } from '../../utils/constants';
 import {
   buildAppointmentDateTime,
   formatCurrency,
@@ -75,6 +76,7 @@ const BookingPage = () => {
   const [bookings, setBookings] = useState([]);
   const [searched, setSearched] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [radiusKm, setRadiusKm] = useState(DEFAULT_LABOUR_RADIUS_KM);
   const [submitting, setSubmitting] = useState(false);
   const [autoRetriedRejectionId, setAutoRetriedRejectionId] = useState('');
   const [paymentAmounts, setPaymentAmounts] = useState({});
@@ -175,6 +177,10 @@ const BookingPage = () => {
   );
   const clientIsBusy = Boolean(inProgressBooking);
   const currentService = formValues.serviceName.trim();
+  const radiusSelectOptions = useMemo(
+    () => labourRadiusOptions.map((km) => ({ label: `${km} km`, value: String(km) })),
+    []
+  );
   const serviceBookingIds = useMemo(
     () =>
       new Set(
@@ -276,7 +282,7 @@ const BookingPage = () => {
     }
 
     if (!clientLocation) {
-      toast.error(`Use live location before checking labour within ${NEARBY_LABOUR_RADIUS_KM} km.`);
+      toast.error(`Use live location before checking labour within ${radiusKm} km.`);
       return;
     }
 
@@ -294,7 +300,7 @@ const BookingPage = () => {
           skill: serviceName,
           category: workCategories.includes(serviceName) ? serviceName : initialCategory,
           availability: 'Available',
-          maxDistanceKm: NEARBY_LABOUR_RADIUS_KM
+          maxDistanceKm: radiusKm
         },
         clientLocation
       );
@@ -315,7 +321,7 @@ const BookingPage = () => {
       });
 
       if (!results.length) {
-        toast.error(`${serviceName} is not available within ${NEARBY_LABOUR_RADIUS_KM} km right now.`);
+        toast.error(`${serviceName} is not available within ${radiusKm} km.`);
       }
     } catch (error) {
       console.error('[Slivz booking] search failed', error);
@@ -471,11 +477,8 @@ const BookingPage = () => {
         await createNotification({
           userId: selectedLabour.id,
           senderId: currentUser.uid,
-          title: 'New service request',
-          body:
-            requestTiming === 'instant'
-              ? `${userProfile.fullName} requested ${formValues.serviceName} instantly at ${formValues.address}.`
-              : `${userProfile.fullName} requested ${formValues.serviceName} at ${formValues.address}.`,
+          title: requestTiming === 'instant' ? 'New request' : 'Scheduled request',
+          body: formValues.serviceName,
           type: 'booking',
           bookingId
         });
@@ -572,7 +575,7 @@ const BookingPage = () => {
                       Request service
                     </h1>
                     <p className="mt-3 max-w-2xl text-sm font-medium leading-7 text-slate-700">
-                      Share the work, set the address, find available labour within {NEARBY_LABOUR_RADIUS_KM} km, and send one clear request.
+                      Share the work, set the address, find available labour within {radiusKm} km, and send one clear request.
                     </p>
                   </div>
                     <Badge tone={clientLocation ? 'emerald' : 'amber'} className="justify-center">
@@ -721,13 +724,21 @@ const BookingPage = () => {
               <form onSubmit={handleSubmit} className="space-y-6">
                 <Card className="rounded-[28px] border-slate-300 p-4 shadow-sm sm:p-6 md:p-8">
                   <div className="grid gap-4">
-                    <SelectField
-                      label="Service name"
-                      placeholder="Choose a service"
-                      options={workCategories}
-                      value={workCategories.includes(formValues.serviceName) ? formValues.serviceName : ''}
-                      onChange={(event) => updateFormValue('serviceName', event.target.value)}
-                    />
+                    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem]">
+                      <SelectField
+                        label="Service name"
+                        placeholder="Choose a service"
+                        options={workCategories}
+                        value={workCategories.includes(formValues.serviceName) ? formValues.serviceName : ''}
+                        onChange={(event) => updateFormValue('serviceName', event.target.value)}
+                      />
+                      <SelectField
+                        label="Radius"
+                        options={radiusSelectOptions}
+                        value={String(radiusKm)}
+                        onChange={(event) => setRadiusKm(Number(event.target.value) || DEFAULT_LABOUR_RADIUS_KM)}
+                      />
+                    </div>
                     <div className="md:col-span-2">
                       <InputField
                         label="Address"
@@ -750,7 +761,7 @@ const BookingPage = () => {
                         <p className="text-xs font-medium text-slate-600">
                           {clientLocation
                             ? locationStatusLabel
-                            : `Use live location to search labour within ${NEARBY_LABOUR_RADIUS_KM} km.`}
+                            : `Use live location to search labour within ${radiusKm} km.`}
                         </p>
                       </div>
                     </div>
@@ -766,7 +777,7 @@ const BookingPage = () => {
                   <div className="mt-6 grid gap-3 sm:flex sm:flex-wrap">
                     <Button type="button" className="w-full sm:w-auto" onClick={() => handleSearchLabour()} disabled={searching || !canSearch || hasOpenRequest}>
                       <Search size={16} />
-                      {searching ? 'Checking...' : `Check labour within ${NEARBY_LABOUR_RADIUS_KM} km`}
+                      {searching ? 'Checking...' : `Check labour within ${radiusKm} km`}
                     </Button>
                     {selectedLabour ? (
                       <Badge tone="blue" className="px-4 py-2">
@@ -874,7 +885,7 @@ const BookingPage = () => {
                   ) : (
                     <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm font-medium leading-7 text-slate-700">
                       {searched
-                        ? `${formValues.serviceName || 'This service'} is not available within ${NEARBY_LABOUR_RADIUS_KM} km right now.`
+                        ? `No labour within ${radiusKm} km. Try increasing distance.`
                         : 'Search labour after adding service, address, and live location.'}
                     </div>
                   )}

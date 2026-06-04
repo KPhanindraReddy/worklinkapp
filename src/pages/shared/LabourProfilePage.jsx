@@ -77,12 +77,7 @@ const LabourProfilePage = () => {
   }, [currentUser?.uid, labourId, userProfile?.role]);
 
   const isClient = userProfile?.role === 'client';
-  const canRevealContact = Boolean(isClient && labour?.verified);
-  const callButtonLabel = canRevealContact
-    ? 'Call now'
-    : isClient
-      ? 'Labour verification required'
-      : 'Client account required';
+  const callButtonLabel = isClient ? 'Call after accept' : 'Client account required';
   const profileReviews = reviews.length ? reviews : labour?.reviews ?? [];
   const completedJobs = Number(labour?.completedJobs || 0);
   const canEditPhoto = Boolean(currentUser?.uid && labour?.id && currentUser.uid === labour.id);
@@ -212,17 +207,16 @@ const LabourProfilePage = () => {
                     </Button>
                   )}
                   <Button
-                    as="a"
-                    href={canRevealContact ? `tel:${labour.phoneNumber}` : undefined}
+                    type="button"
                     variant="outline"
-                    className={`w-full sm:w-auto ${!canRevealContact ? 'pointer-events-none opacity-60' : ''}`}
+                    className="w-full pointer-events-none opacity-60 sm:w-auto"
                   >
                     <Phone size={16} />
                     {callButtonLabel}
                   </Button>
                 </div>
                 <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">
-                  Direct phone access unlocks after the labour profile is verified.
+                  Phone and chat unlock after the labour accepts your request.
                 </p>
               </div>
             </div>

@@ -33,7 +33,12 @@ const buildNextBookingPayload = ({ booking, currentUser, nextLabour, userProfile
     booking.clientProfilePhoto ||
     userProfile?.profilePhoto ||
     buildProfileAvatarDataUrl(userProfile?.fullName || currentUser.displayName || 'Client'),
-  clientPhoneNumber: booking.clientPhoneNumber || userProfile?.phoneNumber || currentUser.phoneNumber || '',
+  clientPhoneNumber:
+    booking.privateClientPhoneNumber ||
+    booking.clientPhoneNumber ||
+    userProfile?.phoneNumber ||
+    currentUser.phoneNumber ||
+    '',
   clientEmail: booking.clientEmail || userProfile?.email || currentUser.email || '',
   labourId: nextLabour.id,
   labourName: nextLabour.fullName,
@@ -168,8 +173,8 @@ export const RequestRoutingController = () => {
           await createNotification({
             userId: nextLabour.id,
             senderId: currentUser.uid,
-            title: 'New service request',
-            body: `${userProfile?.fullName || 'A client'} requested ${serviceType}.`,
+            title: 'New request',
+            body: serviceType,
             type: 'booking',
             bookingId
           });

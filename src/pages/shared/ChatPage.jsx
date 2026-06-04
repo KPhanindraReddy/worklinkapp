@@ -104,15 +104,13 @@ const ChatPage = () => {
             currentUserProfile: {
               fullName: userProfile?.fullName,
               role: userProfile?.role,
-              phoneNumber: userProfile?.phoneNumber || currentUser.phoneNumber || ''
+              phoneNumber: ''
             },
             otherUserProfile: {
               fullName: otherProfile?.fullName,
               role: otherProfile?.role || otherProfile?.category || 'Slivz user',
-              phoneNumber: otherProfile?.phoneNumber || '',
-              whatsAppLink: otherProfile?.phoneNumber
-                ? `https://wa.me/${otherProfile.phoneNumber.replace(/\D/g, '')}`
-                : ''
+              phoneNumber: '',
+              whatsAppLink: ''
             }
           }
         })
@@ -176,8 +174,27 @@ const ChatPage = () => {
     return undefined;
   }, [bookingId, conversations, targetConversationId, targetUserId]);
 
-  const chatLocked = activeBooking?.status === 'completed';
-  const chatLockedMessage = chatLocked ? 'Chat is closed after the service is completed.' : '';
+  const contactUnlocked = ['accepted', 'in_progress', 'awaiting_payment'].includes(activeBooking?.status);
+  const chatLocked =
+    activeBooking?.status === 'completed' ||
+    (activeConversation?.bookingId && (!activeBooking || !contactUnlocked));
+  const chatLockedMessage =
+    activeBooking?.status === 'completed'
+      ? 'Chat is closed after the service is completed.'
+      : chatLocked
+        ? 'Chat unlocks after the request is accepted.'
+        : '';
+  const activeConversationForWindow =
+    activeConversation?.bookingId
+      ? {
+          ...activeConversation,
+          phoneNumber: contactUnlocked && activeBooking
+            ? userProfile?.role === 'labour'
+              ? activeBooking.clientPhoneNumber || ''
+              : activeBooking.labourPhoneNumber || ''
+            : ''
+        }
+      : activeConversation;
 
   useEffect(() => {
     setActiveConversation((prev) => {
@@ -257,8 +274,8 @@ const ChatPage = () => {
             senderId: currentUser.uid,
             bookingId: activeConversation.bookingId,
             type: 'chat',
-            title: `New message from ${userProfile?.fullName || 'Slivz user'}`,
-            body: text.length > 120 ? `${text.slice(0, 117)}...` : text,
+            title: 'New message',
+            body: text.length > 48 ? `${text.slice(0, 45)}...` : text,
             conversationId: activeConversation.id
           });
         } catch (notificationError) {
@@ -295,7 +312,7 @@ const ChatPage = () => {
               </div>
             ) : null}
             <ChatWindow
-              conversation={activeConversation}
+              conversation={activeConversationForWindow}
               messages={messages}
               currentUserId={currentUser?.uid}
               currentUserRole={userProfile?.role}

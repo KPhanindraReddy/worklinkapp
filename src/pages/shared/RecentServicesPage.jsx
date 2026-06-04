@@ -10,7 +10,6 @@ import { EmptyState } from '../../components/common/EmptyState';
 import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
 import { Skeleton } from '../../components/common/Skeleton';
-import { TextAreaField } from '../../components/common/TextAreaField';
 import { AppShell } from '../../components/layout/AppShell';
 import { LocationText } from '../../components/location/LocationText';
 import { useAuth } from '../../context/AuthContext';
@@ -79,7 +78,7 @@ const RecentServicesPage = () => {
   const summaryItems = useMemo(
     () => [
       {
-        label: 'New requests',
+        label: 'New services',
         value: bookings.filter((item) => item.status === 'pending').length
       },
       {
@@ -89,10 +88,6 @@ const RecentServicesPage = () => {
       {
         label: 'Completed',
         value: bookings.filter((item) => item.status === 'completed').length
-      },
-      {
-        label: 'Declined',
-        value: bookings.filter((item) => ['rejected', 'cancelled', 'timed_out'].includes(item.status)).length
       }
     ],
     [bookings]
@@ -212,17 +207,25 @@ const RecentServicesPage = () => {
             </div>
           </Card>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {summaryItems.map((item) => (
-              <Card key={item.label} className="rounded-[24px]">
-                <p className="text-[12px] text-slate-500">{item.label}</p>
+          <div className="grid grid-cols-3 gap-2">
+            {summaryItems.map((item, index) => {
+              const toneClass = [
+                'border-amber-300 bg-amber-50 text-amber-800',
+                'border-sky-300 bg-sky-50 text-sky-800',
+                'border-emerald-300 bg-emerald-50 text-emerald-800'
+              ][index];
+
+              return (
+              <div key={item.label} className={`rounded-xl border-2 p-2.5 text-center shadow-sm sm:p-3 ${toneClass}`}>
+                <p className="truncate text-[11px] font-extrabold uppercase tracking-[0.08em]">{item.label}</p>
                 {bookingsLoading ? (
-                  <Skeleton className="mt-3 h-8 w-16" />
+                  <Skeleton className="mx-auto mt-2 h-7 w-12" />
                 ) : (
-                  <p className="mt-2 font-display text-2xl font-bold text-slate-950">{item.value}</p>
+                  <p className="mt-1 font-display text-2xl font-black leading-none sm:text-3xl">{item.value}</p>
                 )}
-              </Card>
-            ))}
+              </div>
+              );
+            })}
           </div>
 
           {bookingsLoading ? (
@@ -283,24 +286,6 @@ const RecentServicesPage = () => {
                       </p>
                     </div>
                   </div>
-
-                  {role === 'client' && booking.status === 'completed' && Number(booking.amount) > 0 ? (
-                    <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-slate-950">
-                            {booking.paymentStatus === 'paid' ? 'Payment paid' : 'Payment due'}
-                          </p>
-                          <p className="mt-1 text-xs font-medium text-slate-500">
-                            Final charge: {formatCurrency(booking.amount)}
-                          </p>
-                        </div>
-                        <Badge tone={booking.paymentStatus === 'paid' ? 'emerald' : 'amber'}>
-                          {booking.paymentStatus === 'paid' ? 'Paid' : 'Waiting'}
-                        </Badge>
-                      </div>
-                    </div>
-                  ) : null}
 
                   {role === 'client' && booking.status === 'awaiting_payment' ? (
                     <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
@@ -370,16 +355,11 @@ const RecentServicesPage = () => {
                           ))}
                           Rated {booking.reviewRating}/5
                         </div>
-                        {booking.reviewComment ? (
-                          <p className="mt-2 text-[13px] leading-6 text-amber-950">
-                            {booking.reviewComment}
-                          </p>
-                        ) : null}
                       </div>
                     ) : (
-                      <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
                         <p className="text-sm font-semibold text-slate-950">Rate this service</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
+                        <div className="mt-2 flex flex-wrap gap-2">
                           {Array.from({ length: 5 }).map((_, index) => {
                             const value = index + 1;
                             const selected = Number(reviewDrafts[booking.id]?.rating ?? 0) >= value;
@@ -401,19 +381,10 @@ const RecentServicesPage = () => {
                             );
                           })}
                         </div>
-                        <TextAreaField
-                          label="Review"
-                          value={reviewDrafts[booking.id]?.comment ?? ''}
-                          onChange={(event) =>
-                            updateReviewDraft(booking.id, 'comment', event.target.value)
-                          }
-                          placeholder="Share a short note about the service."
-                          className="mt-3"
-                        />
                         <Button
                           type="button"
                           size="sm"
-                          className="mt-3 w-full sm:w-auto"
+                          className="mt-3 min-h-10 w-full sm:w-auto"
                           disabled={submittingReviewId === booking.id}
                           onClick={() => handleSubmitReview(booking)}
                         >

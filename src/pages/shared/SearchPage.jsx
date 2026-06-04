@@ -10,6 +10,7 @@ import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { EmptyState } from '../../components/common/EmptyState';
 import { PageSEO } from '../../components/common/PageSEO';
+import { SelectField } from '../../components/common/SelectField';
 import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -18,7 +19,7 @@ import { useLocationName } from '../../hooks/useLocationName';
 import { searchLabours } from '../../services/labourService';
 import { resolvePostAuthPath } from '../../utils/authFlow';
 import { getLocationLabel, normalizeCoordinates } from '../../utils/location';
-import { NEARBY_LABOUR_RADIUS_KM, workCategories } from '../../utils/constants';
+import { DEFAULT_LABOUR_RADIUS_KM, labourRadiusOptions, workCategories } from '../../utils/constants';
 
 const SearchPage = () => {
   const [searchParams] = useSearchParams();
@@ -34,6 +35,7 @@ const SearchPage = () => {
   const [selectedLabour, setSelectedLabour] = useState(null);
   const [quickBookState, setQuickBookState] = useState(null);
   const [searching, setSearching] = useState(false);
+  const [radiusKm, setRadiusKm] = useState(DEFAULT_LABOUR_RADIUS_KM);
   const debouncedFilters = useDebounce(filters, 300);
   const geolocation = useGeolocation();
   const shouldRedirectRole = currentUser && userProfile?.role && userProfile.role !== 'client';
@@ -73,6 +75,10 @@ const SearchPage = () => {
     return geolocation.error || '';
   }, [geolocation.error, geolocation.loading, resolvedLocationName, savedLocationLabel, searchOrigin]);
   const selectedService = filters.category || filters.query.trim();
+  const radiusSelectOptions = useMemo(
+    () => labourRadiusOptions.map((km) => ({ label: `${km} km`, value: String(km) })),
+    []
+  );
 
   useEffect(() => {
     if (shouldRedirectRole) {
@@ -89,7 +95,7 @@ const SearchPage = () => {
         availability: debouncedFilters.availability,
         minRating: debouncedFilters.minRating,
         minExperience: debouncedFilters.minExperience,
-        maxDistanceKm: NEARBY_LABOUR_RADIUS_KM
+        maxDistanceKm: radiusKm
       },
       searchOrigin
     )
@@ -124,7 +130,7 @@ const SearchPage = () => {
     return () => {
       isActive = false;
     };
-  }, [debouncedFilters, searchOrigin, selectedService, shouldRedirectRole]);
+  }, [debouncedFilters, radiusKm, searchOrigin, selectedService, shouldRedirectRole]);
 
   const availableResults = useMemo(
     () =>
@@ -169,7 +175,7 @@ const SearchPage = () => {
     setSelectedLabour(null);
 
     if (service && !availableServiceSet.has(service) && !searching) {
-      toast.error(`${service} is not available for scheduling near your location right now.`);
+      toast.error(`${service} is not available within ${radiusKm} km.`);
     }
   };
 
@@ -198,7 +204,7 @@ const SearchPage = () => {
       <section className="section-space">
         <div className="page-shell max-w-4xl space-y-5">
           <Card className="border-emerald-200 bg-emerald-50/70">
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_8rem_auto] lg:items-end">
               <AutocompleteSelect
                 label="Search service"
                 placeholder={searching ? 'Checking services nearby' : 'Search service for scheduling'}
@@ -206,6 +212,12 @@ const SearchPage = () => {
                 value={filters.category || filters.query}
                 onChange={(event) => handleServiceSearchChange(event.target.value)}
                 getAvailability={getServiceAvailability}
+              />
+              <SelectField
+                label="Radius"
+                options={radiusSelectOptions}
+                value={String(radiusKm)}
+                onChange={(event) => setRadiusKm(Number(event.target.value) || DEFAULT_LABOUR_RADIUS_KM)}
               />
               <Badge tone={availableServiceOptions.length ? 'emerald' : 'slate'} className="min-h-10 px-4">
                 {searching ? 'Checking' : `${availableServiceOptions.length} available`}
@@ -258,11 +270,11 @@ const SearchPage = () => {
               </Card>
             ) : (
               <EmptyState
-                title={searching ? 'Checking availability' : 'No labour available'}
+                title={searching ? 'Checking availability' : `No labour within ${radiusKm} km`}
                 description={
                   searching
-                    ? `Looking for available ${selectedService} labour.`
-                    : `${selectedService} is not available for scheduling near your location right now.`
+                    ? `Looking for ${selectedService}.`
+                    : 'Try increasing distance.'
                 }
               />
             )

@@ -5,7 +5,11 @@ export const roles = [
 
 export const availabilityOptions = ['Available', 'Busy', 'Offline'];
 
-export const NEARBY_LABOUR_RADIUS_KM = 50;
+export const labourRadiusOptions = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+
+export const DEFAULT_LABOUR_RADIUS_KM = 25;
+
+export const NEARBY_LABOUR_RADIUS_KM = DEFAULT_LABOUR_RADIUS_KM;
 
 export const workCategories = [
   'Construction',
