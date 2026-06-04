@@ -66,8 +66,7 @@ const buildOwnLabourProfile = ({ currentUser, userProfile }) => {
   const fullName = userProfile?.fullName || currentUser?.displayName || 'Your labour profile';
   const currentLocation = getLocationLabel(userProfile, {
     preferCurrent: true,
-    fallback: 'Location not set',
-    includeCoordinates: true
+    fallback: 'Location not set'
   });
 
   return {
@@ -159,8 +158,7 @@ const LabourDashboardPage = () => {
       resolvedDashboardLocationName ||
       getLocationLabel(dashboardProfile, {
         preferCurrent: true,
-        fallback: 'Location not set',
-        includeCoordinates: true
+        fallback: 'Location not set'
       }),
     [dashboardProfile, resolvedDashboardLocationName]
   );

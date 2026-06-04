@@ -270,8 +270,8 @@ const SettingsPage = () => {
     navigate('/auth', { replace: true });
   };
   const locationLabel = isClient
-    ? formValues.location || getLocationLabel(userProfile, { fallback: 'Location not set', includeCoordinates: true })
-    : formValues.currentLocation || getLocationLabel(userProfile, { preferCurrent: true, fallback: 'Location not set', includeCoordinates: true });
+    ? formValues.location || getLocationLabel(userProfile, { fallback: 'Location not set' })
+    : formValues.currentLocation || getLocationLabel(userProfile, { preferCurrent: true, fallback: 'Location not set' });
   const primarySkill = formValues.category || 'Skill';
   const completedJobs = labourBookings.filter(
     (booking) => booking.status === 'completed' && booking.paymentStatus === 'paid'

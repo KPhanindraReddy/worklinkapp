@@ -266,7 +266,7 @@ const ClientDashboardPage = () => {
     [requestCoordinates]
   );
   const profileLocationLabel = useMemo(
-    () => getLocationLabel(userProfile, { fallback: '', includeCoordinates: true }),
+    () => getLocationLabel(userProfile, { fallback: '' }),
     [userProfile]
   );
   const resolvedLocationName = useLocationName(clientOrigin);

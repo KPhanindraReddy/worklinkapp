@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import { MapPin } from 'lucide-react';
+import { useLocationName } from '../../hooks/useLocationName';
 import {
   buildMapsUrl,
   getLocationLabel,
@@ -24,13 +25,14 @@ const getRoleLabel = (role) => {
 
 export const LiveLocationBadge = ({ currentUser, userProfile, compact = false, className }) => {
   const role = userProfile?.role;
+  const resolvedLocationName = useLocationName(userProfile?.liveCoordinates || userProfile?.coordinates);
   const areaLabel = getLocationLabel(userProfile, {
     preferCurrent: role === 'labour',
     fallback: ''
   });
   const hasSavedCoordinates = hasCoordinates(userProfile?.coordinates);
   const hasLiveCoordinates = hasCoordinates(userProfile?.liveCoordinates);
-  const locationLabel = areaLabel || 'Location unavailable';
+  const locationLabel = resolvedLocationName || areaLabel || 'Location unavailable';
   const caption = hasLiveCoordinates
     ? `${getRoleLabel(role)} live location`
     : areaLabel || hasSavedCoordinates

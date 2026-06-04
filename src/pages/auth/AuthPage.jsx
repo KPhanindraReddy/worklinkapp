@@ -23,7 +23,7 @@ import { PhoneInputField } from '../../components/common/PhoneInputField';
 import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
 import { isHiddenAdminAccount } from '../../utils/adminAccount';
-import { isProfileComplete, resolvePostAuthPath, routeByRole } from '../../utils/authFlow';
+import { isProfileComplete, resolvePostAuthPath } from '../../utils/authFlow';
 import { roles } from '../../utils/constants';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { readRedirectContext } from '../../utils/oauthRedirectContext';
@@ -105,6 +105,7 @@ const AuthPage = () => {
   const {
     currentUser,
     userProfile,
+    loading,
     isFirebaseConfigured,
     registerWithEmail,
     loginWithApple,
@@ -139,12 +140,12 @@ const AuthPage = () => {
       : Boolean(formValues.email.trim() && formValues.password.trim());
 
   useEffect(() => {
-    if (!processingRedirectAuth && currentUser && !submitting) {
+    if (!processingRedirectAuth && currentUser && !loading && !submitting) {
       navigate(resolvePostAuthPath({ profile: userProfile, fallbackRole: role }), {
         replace: true
       });
     }
-  }, [currentUser, navigate, processingRedirectAuth, role, submitting, userProfile]);
+  }, [currentUser, loading, navigate, processingRedirectAuth, role, submitting, userProfile]);
 
   useEffect(() => {
     const nextMode = resolveInitialMode(queryMode);
@@ -331,8 +332,8 @@ const AuthPage = () => {
           email: formValues.email,
           password: formValues.password
         });
-        void ensureProfileRecord(user, { fallbackRole: role });
-        navigate(routeByRole(role), { replace: true });
+        const profile = await ensureProfileRecord(user, { fallbackRole: role });
+        await redirectAfterAuth(profile, role);
 
         toast.success(
           'Welcome back to Slivz.'
@@ -383,10 +384,6 @@ const AuthPage = () => {
         fallbackRole: role
       });
 
-      if (mode === 'login') {
-        navigate(routeByRole(role), { replace: true });
-      }
-
       const profile = await profilePromise;
 
       toast.success(
@@ -394,9 +391,7 @@ const AuthPage = () => {
           ? 'Google sign up complete. Finish your profile on the next screen.'
           : 'Google login complete.'
       );
-      if (mode === 'signup') {
-        await redirectAfterAuth(profile, role);
-      }
+      await redirectAfterAuth(profile, role);
     } catch (error) {
       toast.error(getFirebaseErrorMessage(error));
     } finally {
@@ -423,10 +418,6 @@ const AuthPage = () => {
         fallbackRole: role
       });
 
-      if (mode === 'login') {
-        navigate(routeByRole(role), { replace: true });
-      }
-
       const profile = await profilePromise;
 
       toast.success(
@@ -434,9 +425,7 @@ const AuthPage = () => {
           ? 'Apple sign up complete. Finish your profile on the next screen.'
           : 'Apple login complete.'
       );
-      if (mode === 'signup') {
-        await redirectAfterAuth(profile, role);
-      }
+      await redirectAfterAuth(profile, role);
     } catch (error) {
       toast.error(getFirebaseErrorMessage(error));
     } finally {
@@ -475,9 +464,6 @@ const AuthPage = () => {
         forceBaseWrite: mode === 'signup',
         fallbackRole: role
       });
-      if (mode === 'login') {
-        navigate(routeByRole(role), { replace: true });
-      }
       const profile = await profilePromise;
 
       toast.success(
@@ -485,9 +471,7 @@ const AuthPage = () => {
           ? 'Phone verification complete. Finish your profile on the next screen.'
           : 'Phone verification complete.'
       );
-      if (mode === 'signup') {
-        await redirectAfterAuth(profile, role);
-      }
+      await redirectAfterAuth(profile, role);
     } catch (error) {
       toast.error(getFirebaseErrorMessage(error));
     } finally {
