@@ -33,7 +33,7 @@ import { updateAvailability } from '../../services/labourService';
 import { subscribeReviewsForLabour } from '../../services/reviewService';
 import { availabilityOptions, languageOptions, workCategories } from '../../utils/constants';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
-import { getDisplayLocationText, getLocationLabel } from '../../utils/location';
+import { getDisplayLocationText } from '../../utils/location';
 import { buildProfileAvatarDataUrl } from '../../utils/profileAvatar';
 
 const toCommaText = (value) => (Array.isArray(value) ? value.join(', ') : value || '');
@@ -270,8 +270,8 @@ const SettingsPage = () => {
     navigate('/auth', { replace: true });
   };
   const locationLabel = isClient
-    ? formValues.location || getLocationLabel(userProfile, { fallback: 'Location not set' })
-    : formValues.currentLocation || getLocationLabel(userProfile, { preferCurrent: true, fallback: 'Location not set' });
+    ? formValues.location || 'Location not set'
+    : formValues.currentLocation || 'Location not set';
   const primarySkill = formValues.category || 'Skill';
   const completedJobs = labourBookings.filter(
     (booking) => booking.status === 'completed' && booking.paymentStatus === 'paid'

@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { updateLiveUserLocation } from '../../services/userService';
-import { fetchMapboxLocationName } from '../../utils/mapbox';
 import {
   hasMovedBeyondThreshold,
   normalizeCoordinates
@@ -40,12 +39,6 @@ export const LiveLocationSync = ({ currentUser, userProfile }) => {
       const previousCoordinates =
         lastSyncedCoordinatesRef.current || normalizeCoordinates(userProfile?.coordinates);
 
-      const resolvedLocationLabel =
-        (await fetchMapboxLocationName(normalizedCoordinates)) ||
-        userProfile?.currentLocation ||
-        userProfile?.location ||
-        '';
-
       if (
         !force &&
         previousCoordinates &&
@@ -58,8 +51,7 @@ export const LiveLocationSync = ({ currentUser, userProfile }) => {
         await updateLiveUserLocation({
           uid: currentUser.uid,
           role: userProfile.role,
-          coordinates: normalizedCoordinates,
-          locationLabel: resolvedLocationLabel
+          coordinates: normalizedCoordinates
         });
         lastSyncedCoordinatesRef.current = normalizedCoordinates;
         lastSyncAtRef.current = Date.now();

@@ -55,7 +55,6 @@ export const LabourCard = ({ labour, showMatchScore = false, onQuickBook, compac
                   <Star size={11} className="text-amber-500" />
                   {labour.rating || 0}
                 </span>
-                {labour.reviewsCount ? <span>{labour.reviewsCount} reviews</span> : null}
                 {labour.distanceKm !== undefined ? <span>{formatDistanceKm(labour.distanceKm)}</span> : null}
               </div>
               <div className="mt-1 flex min-w-0 items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">

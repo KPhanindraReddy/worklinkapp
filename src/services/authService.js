@@ -28,14 +28,7 @@ import {
 
 let recaptchaVerifier = null;
 
-const shouldUseRedirectAuth = () => {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-
-  const host = window.location.hostname;
-  return !['localhost', '127.0.0.1', '::1'].includes(host);
-};
+const shouldUseRedirectAuth = () => false;
 const getCreatedAtValue = (user) =>
   user?.metadata?.creationTime ? new Date(user.metadata.creationTime) : serverTimestamp();
 
@@ -96,18 +89,7 @@ const buildBaseProfile = (user, formValues = {}, existingProfile = null) => {
     email: isHiddenAdmin ? 'admin@gmail.com' : formValues.email || user.email || '',
     profilePhoto: profilePhotoUrl,
     role: resolvedRole,
-    location:
-      formValues.location ||
-      formValues.currentLocation ||
-      existingProfile?.location ||
-      existingProfile?.currentLocation ||
-      '',
-    currentLocation:
-      formValues.currentLocation ||
-      formValues.location ||
-      existingProfile?.currentLocation ||
-      existingProfile?.location ||
-      '',
+    location: formValues.currentLocation || formValues.location || existingProfile?.location || '',
     coordinates:
       normalizeCoordinates(formValues.coordinates) ||
       normalizeCoordinates(existingProfile?.coordinates) ||
@@ -328,12 +310,6 @@ export const createOrUpdateUserProfile = async (user, formValues) => {
   const baseProfile = {
     ...buildBaseProfile(user, mergedBaseValues, existingUser),
     role: resolvedRole,
-    location:
-      getFormValue(formValues, 'location', existingUser?.location || existingUser?.currentLocation || '') ||
-      getFormValue(formValues, 'currentLocation', existingUser?.currentLocation || existingUser?.location || ''),
-    currentLocation:
-      getFormValue(formValues, 'currentLocation', existingUser?.currentLocation || existingUser?.location || '') ||
-      getFormValue(formValues, 'location', existingUser?.location || existingUser?.currentLocation || ''),
     coordinates:
       normalizeCoordinates(formValues.coordinates) ||
       normalizeCoordinates(existingUser?.coordinates) ||
@@ -343,11 +319,11 @@ export const createOrUpdateUserProfile = async (user, formValues) => {
     profileComplete: true
   };
 
-    await setDoc(
-      userRef,
-      {
-        ...baseProfile,
-        createdAt: existingUser?.createdAt ?? getCreatedAtValue(user)
+  await setDoc(
+    userRef,
+    {
+      ...baseProfile,
+      createdAt: existingUser?.createdAt ?? getCreatedAtValue(user)
     },
     { merge: true }
   );
@@ -415,8 +391,7 @@ export const createOrUpdateUserProfile = async (user, formValues) => {
       userRef,
       {
         ...labourProfileFields,
-        location: labourProfileFields.currentLocation || baseProfile.location || '',
-        currentLocation: labourProfileFields.currentLocation || baseProfile.currentLocation || ''
+        location: labourProfileFields.currentLocation || baseProfile.location || ''
       },
       { merge: true }
     );
@@ -430,8 +405,6 @@ export const createOrUpdateUserProfile = async (user, formValues) => {
       clientRef,
       {
         ...baseProfile,
-        location: baseProfile.location || '',
-        currentLocation: baseProfile.currentLocation || baseProfile.location || '',
         coordinates:
           normalizeCoordinates(formValues.coordinates) ||
           normalizeCoordinates(existingClient?.coordinates) ||

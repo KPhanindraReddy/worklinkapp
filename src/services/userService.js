@@ -78,17 +78,14 @@ export const updateUserProfilePhoto = async (uid, role, profilePhoto) => {
   ]);
 };
 
-export const updateLiveUserLocation = async ({ uid, role, coordinates, locationLabel = '' }) => {
+export const updateLiveUserLocation = async ({ uid, role, coordinates }) => {
   const normalizedCoordinates = normalizeCoordinates(coordinates);
-  const normalizedLocationLabel = String(locationLabel ?? '').trim();
 
   if (!uid || !role || !normalizedCoordinates || !isFirebaseConfigured || !db) {
     return;
   }
 
   const basePayload = {
-    location: normalizedLocationLabel,
-    currentLocation: normalizedLocationLabel,
     coordinates: normalizedCoordinates,
     liveCoordinates: normalizedCoordinates,
     liveLocationUpdatedAt: serverTimestamp(),
