@@ -103,9 +103,9 @@ export const BottomDockNav = () => {
   );
 
   return (
-    <div className="app-bottom-dock pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center lg:hidden">
+    <div className="app-bottom-dock pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-2 lg:hidden">
       <nav
-        className="pointer-events-auto w-full border-t border-slate-200 bg-white/95 px-3 py-1 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur-2xl"
+        className="pointer-events-auto w-full max-w-[460px] rounded-[26px] border border-slate-200 bg-white/95 px-2 py-1.5 shadow-[0_-10px_32px_rgba(15,23,42,0.12)] backdrop-blur-2xl"
         aria-label="Mobile primary navigation"
       >
         <div
@@ -122,16 +122,16 @@ export const BottomDockNav = () => {
                 to={item.to}
                 aria-current={isActive ? 'page' : undefined}
                 className={clsx(
-                  'min-h-[3rem] touch-manipulation rounded-none border border-transparent px-1 py-1 text-center transition duration-200',
+                  'min-h-[3.25rem] touch-manipulation rounded-2xl border border-transparent px-1 py-1 text-center transition duration-200',
                   isActive
-                    ? 'bg-white text-brand-900'
-                    : 'bg-white text-slate-300 hover:text-slate-500'
+                    ? 'bg-brand-50 text-brand-900'
+                    : 'bg-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-600'
                 )}
               >
                 <span
                   className={clsx(
-                    'mx-auto grid h-6 w-6 place-items-center rounded-none transition',
-                    isActive ? 'text-brand-900' : 'text-slate-300'
+                    'mx-auto grid h-7 w-7 place-items-center rounded-xl transition',
+                    isActive ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-400'
                   )}
                 >
                   <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />

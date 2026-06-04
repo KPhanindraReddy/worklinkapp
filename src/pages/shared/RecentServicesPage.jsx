@@ -2,6 +2,7 @@ import { CalendarClock, History, MapPin, Star, WalletCards } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import clsx from 'clsx';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
@@ -22,34 +23,25 @@ import { submitServiceReview } from '../../services/reviewService';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 
-const getStatusTone = (status) => {
-  if (['accepted', 'in_progress'].includes(status)) {
-    return 'emerald';
-  }
-
-  if (status === 'awaiting_payment') {
-    return 'amber';
-  }
-
+const getBookingRowTone = (status) => {
   if (status === 'completed') {
-    return 'blue';
+    return 'border-emerald-200 bg-emerald-50/80';
   }
 
-  if (['rejected', 'cancelled'].includes(status)) {
-    return 'rose';
+  if (['rejected', 'timed_out'].includes(status)) {
+    return 'border-rose-200 bg-rose-50/80';
   }
 
-  if (status === 'timed_out') {
-    return 'slate';
+  if (['cancelled', 'awaiting_payment', 'pending'].includes(status)) {
+    return 'border-amber-200 bg-amber-50/80';
   }
 
-  return 'amber';
+  if (['accepted', 'in_progress'].includes(status)) {
+    return 'border-sky-200 bg-sky-50/80';
+  }
+
+  return 'border-slate-200 bg-white';
 };
-
-const formatStatusLabel = (status) =>
-  String(status || '')
-    .replaceAll('_', ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase());
 
 const RecentServicesPage = () => {
   const { currentUser, userProfile } = useAuth();
@@ -239,17 +231,22 @@ const RecentServicesPage = () => {
               <Skeleton className="h-28 w-full" />
             </div>
           ) : bookings.length ? (
-            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-              <div className="grid min-w-[760px] grid-cols-[1.1fr_1fr_0.85fr_0.85fr_0.8fr] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+            <div className="space-y-2 sm:overflow-x-auto sm:rounded-2xl sm:border sm:border-slate-200 sm:bg-white">
+              <div className="hidden min-w-[680px] grid-cols-[1.1fr_1fr_0.85fr_0.85fr] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-500 sm:grid">
                 <span>Name</span>
                 <span>Service</span>
                 <span>Time</span>
                 <span>Money</span>
-                <span>Status</span>
               </div>
               {bookings.map((booking) => (
-                <Card key={booking.id} className="min-w-[760px] rounded-none border-x-0 border-t-0 p-4 shadow-none last:border-b-0">
-                  <div className="grid grid-cols-[1.1fr_1fr_0.85fr_0.85fr_0.8fr] items-center gap-3">
+                <Card
+                  key={booking.id}
+                  className={clsx(
+                    'rounded-2xl p-3 shadow-sm sm:min-w-[680px] sm:rounded-none sm:border-x-0 sm:border-t-0 sm:p-4 sm:shadow-none sm:last:border-b-0',
+                    getBookingRowTone(booking.status)
+                  )}
+                >
+                  <div className="grid gap-2 sm:grid-cols-[1.1fr_1fr_0.85fr_0.85fr] sm:gap-3">
                     <div className="min-w-0">
                       <h2 className="truncate text-sm font-semibold text-slate-950">
                         {role === 'labour' ? booking.clientName || 'Client' : booking.labourName || 'Worker'}
@@ -270,13 +267,13 @@ const RecentServicesPage = () => {
                       </p>
                     </div>
                     <div>
-                      <p className="inline-flex items-center gap-1.5 text-sm text-slate-600">
+                      <p className="inline-flex items-center gap-1.5 text-xs text-slate-500 sm:text-sm sm:text-slate-600">
                         <CalendarClock size={14} />
                         {formatDate(booking.appointmentAt)}
                       </p>
                     </div>
                     <div>
-                      <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700">
+                      <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-700 sm:text-sm">
                         <WalletCards size={14} />
                         {booking.status === 'completed' && Number(booking.amount) > 0
                           ? formatCurrency(booking.amount)
@@ -284,11 +281,6 @@ const RecentServicesPage = () => {
                             ? 'Enter paid amount'
                             : 'Charge pending'}
                       </p>
-                    </div>
-                    <div className="flex justify-end">
-                      <Badge tone={getStatusTone(booking.status)}>
-                        {formatStatusLabel(booking.status)}
-                      </Badge>
                     </div>
                   </div>
 

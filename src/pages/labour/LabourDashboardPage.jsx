@@ -5,7 +5,6 @@ import {
   House,
   IndianRupee,
   CalendarClock,
-  MapPin,
   MessageCircle,
   Navigation,
   Phone,
@@ -652,7 +651,7 @@ const LabourDashboardPage = () => {
                   </Badge>
                 </div>
                 <p className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700 sm:mt-4 sm:gap-2 sm:px-3 sm:py-1.5 sm:text-sm">
-                  <MapPin size={13} className="flex-none text-rose-500 sm:size-[15px]" />
+                  <span className="flex-none text-rose-500" aria-hidden="true">📍</span>
                   <span className="truncate">{dashboardLocationLabel}</span>
                 </p>
               </div>

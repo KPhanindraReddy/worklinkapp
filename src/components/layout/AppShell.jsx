@@ -37,12 +37,18 @@ const AppLiveLocationSync = () => {
   return <LiveLocationSync currentUser={currentUser} userProfile={userProfile} />;
 };
 
-export const AppShell = ({ children, contentClassName, hideBottomDock = false, hideFooter = false }) => {
+export const AppShell = ({
+  children,
+  contentClassName,
+  hideBottomDock = false,
+  hideFooter = false,
+  hideNavbar = false
+}) => {
   const { currentUser } = useAuth();
 
   return (
     <div className="min-h-screen">
-      <Navbar />
+      {hideNavbar ? null : <Navbar />}
       <NotificationToaster currentUser={currentUser} />
       <AppLiveLocationSync />
       <LazyRequestRoutingController />

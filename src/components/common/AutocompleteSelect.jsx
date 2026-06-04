@@ -120,7 +120,7 @@ export const AutocompleteSelect = ({
       ) : null}
 
       <div className="relative">
-        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition focus-within:border-brand-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-100">
+        <div className="flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition focus-within:border-brand-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-100 max-sm:min-h-12 max-sm:rounded-2xl">
           <input
             ref={inputRef}
             type="text"
@@ -129,7 +129,7 @@ export const AutocompleteSelect = ({
             onKeyDown={handleKeyDown}
             onFocus={() => setIsOpen(!isShowingSelectedValue)}
             placeholder={placeholder}
-            className="min-h-6 min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 sm:text-[13px]"
+            className="min-h-6 min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 sm:text-[13px] max-sm:text-base"
             autoComplete="off"
           />
           {inputValue && (

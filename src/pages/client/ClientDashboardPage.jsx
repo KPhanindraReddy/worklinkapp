@@ -3,7 +3,6 @@ import {
   Clock3,
   LocateFixed,
   LoaderCircle,
-  MapPin,
   MessageCircle,
   Search,
   Send,
@@ -1054,18 +1053,16 @@ const ClientDashboardPage = () => {
                       <span>Status</span>
                     </div>
                     {trackedBookings.map((booking) => (
-                      <div key={booking.id} className="rounded-[16px] border border-slate-200 bg-slate-50 p-3">
-                        <div className="grid gap-3 md:grid-cols-[1fr_1fr_0.8fr_0.8fr_0.75fr] md:items-center">
+                      <div key={booking.id} className="rounded-[14px] border border-slate-200 bg-slate-50 p-2.5 sm:p-3">
+                        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 md:grid-cols-[1fr_1fr_0.8fr_0.8fr_0.75fr] md:gap-3">
                           <div className="min-w-0">
-                            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Name</p>
                             <h3 className="truncate text-sm font-bold text-slate-950">{booking.labourName || 'Labour'}</h3>
                             <p className="mt-0.5 text-xs font-medium text-slate-500">{booking.requestMode === 'scheduled' ? 'Scheduled' : 'Instant'}</p>
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Service</p>
                             <p className="truncate text-sm font-semibold text-slate-800">{booking.serviceType}</p>
                             <p className="mt-1 flex min-w-0 items-center gap-1.5 text-xs font-medium text-slate-500">
-                              <MapPin size={13} className="flex-none" />
+                              <span className="flex-none" aria-hidden="true">📍</span>
                               <span className="truncate">
                                 <LocationText
                                   location={booking.location}
@@ -1075,15 +1072,13 @@ const ClientDashboardPage = () => {
                               </span>
                             </p>
                           </div>
-                          <div>
-                            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Time</p>
+                          <div className="text-xs md:text-sm">
                             <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600">
                               <Clock3 size={13} />
                               {formatDate(booking.appointmentAt)}
                             </span>
                           </div>
-                          <div>
-                            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 md:hidden">Money</p>
+                          <div className="text-xs md:text-sm">
                             <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-700">
                               <WalletCards size={13} />
                               {booking.status === 'completed' && Number(booking.amount) > 0
@@ -1093,7 +1088,7 @@ const ClientDashboardPage = () => {
                                   : 'Pending'}
                             </span>
                           </div>
-                          <div className="flex justify-start md:justify-end">
+                          <div className="row-start-1 flex justify-end md:row-auto">
                             <Badge tone={getBookingTone(booking.status)}>{booking.status}</Badge>
                           </div>
                         </div>
@@ -1103,7 +1098,7 @@ const ClientDashboardPage = () => {
                           to={`/chat?target=${encodeURIComponent(booking.labourId)}&booking=${encodeURIComponent(booking.id)}`}
                           size="sm"
                           variant="outline"
-                          className="mt-3 w-full sm:w-auto"
+                          className="mt-2 min-h-9 w-full sm:w-auto"
                         >
                           <MessageCircle size={15} />
                           Chat labour

@@ -1,14 +1,9 @@
 import {
   Apple,
   BriefcaseBusiness,
-  CheckCircle2,
   ChevronDown,
   ChevronUp,
   House,
-  Mail,
-  Phone,
-  ShieldCheck,
-  Sparkles,
   UserRound
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -483,7 +478,7 @@ const AuthPage = () => {
 
   if (processingRedirectAuth) {
     return (
-      <AppShell hideBottomDock hideFooter>
+      <AppShell hideBottomDock hideFooter hideNavbar>
         <PageSEO
           title="Login / Signup"
           description="Join Slivz as labour or client using phone OTP, Google login, Apple login, or email and password."
@@ -493,60 +488,32 @@ const AuthPage = () => {
   }
 
   return (
-    <AppShell hideBottomDock hideFooter>
+    <AppShell hideBottomDock hideFooter hideNavbar>
       <PageSEO
         title="Login / Signup"
         description="Join Slivz as labour or client using phone OTP, Google login, Apple login, or email and password."
       />
 
-      <section className="min-h-[calc(100dvh-4rem)] bg-white py-4 sm:py-6 lg:bg-slate-50 lg:py-8">
-        <div className="page-shell grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(420px,1fr)] lg:items-start">
-          <aside className="overflow-hidden rounded-2xl bg-slate-950 p-5 text-white shadow-soft sm:p-6 lg:sticky lg:top-24">
-            <Button as={Link} to="/" type="button" variant="secondary" size="sm" className="bg-white text-slate-950 hover:bg-slate-100">
-              <House size={15} />
-              Home
-            </Button>
-            <div className="mt-8 max-w-lg">
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-slate-200">
-                <Sparkles size={14} />
-                Slivz account
-              </span>
-              <h1 className="mt-4 font-display text-3xl font-bold leading-tight sm:text-4xl">
-                Login first. Start hiring or earning locally.
-              </h1>
-              <p className="mt-3 text-sm leading-6 text-slate-300">
-                Choose client or labour, sign in with email, Google, Apple, or phone OTP, and continue to the right dashboard.
-              </p>
-            </div>
-            <div className="mt-8 grid gap-3">
-              {[
-                ['Verified profiles', ShieldCheck],
-                ['Phone OTP support', Phone],
-                ['Email and social login', Mail]
-              ].map(([label, Icon]) => (
-                <div key={label} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/10 p-3">
-                  <span className="grid h-9 w-9 place-items-center rounded-lg bg-white text-slate-950">
-                    <Icon size={17} />
-                  </span>
-                  <span className="text-sm font-semibold text-slate-100">{label}</span>
-                  <CheckCircle2 size={16} className="ml-auto text-emerald-300" />
+      <section className="min-h-[100dvh] bg-slate-100 px-2 py-2 sm:px-4 sm:py-5">
+        <div className="mx-auto flex min-h-[calc(100dvh-1rem)] w-full max-w-[440px] flex-col sm:min-h-0">
+          <Card className="mobile-safe-bottom flex min-h-[calc(100dvh-1rem)] flex-col rounded-[28px] border-slate-200 bg-white p-3 shadow-[0_16px_40px_rgba(15,23,42,0.1)] sm:min-h-0 sm:p-5">
+            <div className="sticky top-0 z-10 -mx-3 -mt-3 rounded-t-[28px] border-b border-slate-100 bg-white/95 px-3 py-3 backdrop-blur sm:static sm:m-0 sm:border-b-0 sm:bg-transparent sm:p-0">
+              <div className="flex items-center justify-between gap-3">
+                <Button as={Link} to="/" type="button" variant="ghost" size="sm" className="h-10 w-10 p-0" aria-label="Home">
+                  <House size={17} />
+                </Button>
+                <div className="min-w-0 text-center">
+                  <p className="truncate text-xs font-semibold uppercase tracking-[0.14em] text-brand-600">
+                    {activeRole.label}
+                  </p>
+                  <h1 className="truncate text-xl font-bold text-slate-950">
+                    {mode === 'signup' ? 'Register' : 'Login'}
+                  </h1>
                 </div>
-              ))}
-            </div>
-          </aside>
-
-          <Card className="min-w-0 rounded-2xl p-3 shadow-[0_10px_28px_rgba(15,23,42,0.07)] sm:p-5 lg:p-6">
-            <div className="grid gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-600">
-                  {activeRole.label}
-                </p>
-                <h2 className="mt-1 text-2xl font-bold text-slate-950 sm:text-3xl">
-                  {mode === 'signup' ? 'Register your account' : 'Login'}
-                </h2>
+                <span className="h-10 w-10" aria-hidden="true" />
               </div>
 
-              <div className="grid grid-cols-2 rounded-xl border border-slate-200 bg-white p-1">
+              <div className="mt-3 grid grid-cols-2 rounded-2xl border border-slate-200 bg-slate-100 p-1">
                 {publicRoleOptions
                   .map((item) => {
                     const RoleIcon = item.value === 'client' ? UserRound : BriefcaseBusiness;
@@ -558,7 +525,7 @@ const AuthPage = () => {
                         className={clsx(
                           'inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-bold transition sm:px-3 sm:text-sm',
                           role === item.value
-                            ? 'bg-slate-950 text-white'
+                            ? 'bg-white text-slate-950 shadow-sm'
                             : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                         )}
                         onClick={() => switchAccount(item.value, mode)}
@@ -572,12 +539,12 @@ const AuthPage = () => {
             </div>
 
             {!isFirebaseConfigured ? (
-              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[13px] font-medium text-amber-900">
+              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-[13px] font-medium text-amber-900">
                 Firebase keys missing. Authentication is disabled.
               </div>
             ) : null}
 
-            <form className="mt-5 space-y-3" onSubmit={handleEmailAuth}>
+            <form className="mt-4 space-y-3" onSubmit={handleEmailAuth}>
               {mode === 'signup' ? (
                 <div className="grid gap-3 sm:grid-cols-2">
                   <InputField
@@ -624,7 +591,7 @@ const AuthPage = () => {
                 </div>
               ) : null}
 
-              <Button type="submit" size="lg" className="w-full" disabled={submitting || !canSubmitEmail}>
+              <Button type="submit" size="lg" className="h-12 w-full rounded-2xl" disabled={submitting || !canSubmitEmail}>
                 {submitting ? 'Please wait...' : `${actionLabel} as ${activeRole.label}`}
               </Button>
             </form>
@@ -649,35 +616,37 @@ const AuthPage = () => {
             </div>
 
             <div className="grid gap-3">
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-2 gap-2">
                 <Button
                   type="button"
                   variant="outline"
-                  size="lg"
+                  size="sm"
+                  className="min-h-12 rounded-2xl px-2"
                   onClick={handleGoogleAuth}
                   disabled={submitting}
                 >
                   <GoogleIcon />
-                  Sign in with Google
+                  Google
                 </Button>
 
                 <Button
                   type="button"
                   variant="outline"
-                  size="lg"
+                  size="sm"
+                  className="min-h-12 rounded-2xl px-2"
                   onClick={handleAppleAuth}
                   disabled={submitting}
                 >
                   <Apple size={16} />
-                  Sign in with Apple
+                  Apple
                 </Button>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-white p-2">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
                 <Button
                   type="button"
                   variant="ghost"
-                  className="w-full justify-between"
+                  className="min-h-11 w-full justify-between rounded-xl"
                   onClick={() => setShowOtpOptions((prev) => !prev)}
                 >
                   <span>Sign in with phone</span>
