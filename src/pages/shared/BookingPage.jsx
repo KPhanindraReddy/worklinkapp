@@ -53,7 +53,9 @@ import { createRouteGroupId } from '../../utils/requestRouting';
 const activeWorkStatuses = ['accepted', 'in_progress'];
 const generateStartOtp = () => String(Math.floor(100000 + Math.random() * 900000));
 const debugBooking = (message, payload = {}) => {
-  console.debug(`[Slivz booking] ${message}`, payload);
+  if (import.meta.env.DEV) {
+    console.debug(`[Slivz booking] ${message}`, payload);
+  }
 };
 
 const getBookingTime = (booking) =>

@@ -16,7 +16,6 @@ import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { AutocompleteSelect } from '../../components/common/AutocompleteSelect';
-import { EmptyState } from '../../components/common/EmptyState';
 import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
 import { SelectField } from '../../components/common/SelectField';
@@ -411,20 +410,6 @@ const ClientDashboardPage = () => {
         destination: selectedMapLabour.liveCoordinates || selectedMapLabour.coordinates
       })
     : '';
-  const metrics = useMemo(() => {
-    const completed = bookings.filter((item) => item.status === 'completed').length;
-    const scheduled = bookings.filter((item) => item.requestMode === 'scheduled').length;
-    const paymentsDue = bookings.filter((item) => item.status === 'awaiting_payment').length;
-
-    return [
-      { label: 'Open requests', value: openBookings.length },
-      { label: 'Scheduled visits', value: scheduled },
-      { label: 'Completed services', value: completed },
-      { label: 'Payments due', value: paymentsDue }
-    ];
-  }, [bookings, openBookings.length]);
-  const metricsLoading = bookingsLoading;
-
   const getKnownScheduleConflict = (labour) =>
     Boolean(
       selectedDate &&
@@ -1175,45 +1160,10 @@ const ClientDashboardPage = () => {
               </Button>
             </LightPanel>
           </div>
-
-          {false && requestMode === 'scheduled' ? (
-            <div ref={scheduleSectionRef} className="scroll-mt-24 grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
-              <BookingCalendar selectedDate={selectedDate} selectedSlot={selectedSlot} onDateChange={setSelectedDate} onSlotChange={setSelectedSlot} />
-              <LightPanel>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h2 className="text-xl font-bold text-slate-950 sm:text-[1.35rem]">Schedule {selectedService || 'service'} labour</h2>
-                  <Badge tone={serviceLabours.length ? 'emerald' : 'slate'}>{laboursLoading ? 'Checking' : `${serviceLabours.length} found`}</Badge>
-                </div>
-                <div className="mt-5 space-y-2.5">
-                  {serviceLabours.length ? (
-                    serviceLabours.map((labour) => (
-                      <button key={labour.id} type="button" className={`w-full rounded-[18px] border p-3 text-left transition ${selectedLabourId === labour.id ? 'border-brand-400 bg-brand-50' : 'border-slate-200 bg-white hover:border-brand-300'}`} onClick={() => handleScheduleLabour(labour)} disabled={Boolean(scheduleSubmittingId)}>
-                        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-                          <div className="flex min-w-0 items-center gap-3">
-                            <img src={labour.profilePhoto} alt={labour.fullName} width="48" height="48" loading="lazy" decoding="async" className="h-12 w-12 flex-none rounded-2xl object-cover" />
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-bold text-slate-950 sm:text-base">{labour.fullName}</p>
-                              <p className="mt-1 text-sm font-medium text-slate-500">{labour.category} · {formatDistanceKm(labour.distanceKm)}</p>
-                            </div>
-                          </div>
-                          <span className="inline-flex min-h-10 items-center justify-center rounded-xl bg-slate-950 px-3 text-xs font-bold text-white">
-                            {scheduleSubmittingId === labour.id ? 'Scheduling...' : getKnownScheduleConflict(labour) ? 'Not available' : selectedDate && selectedSlot ? 'Schedule' : 'Pick time'}
-                          </span>
-                        </div>
-                      </button>
-                    ))
-                  ) : (
-                    <EmptyDashed>{selectedService ? `No labour within ${radiusKm} km. Try increasing distance.` : 'Choose a service'}</EmptyDashed>
-                  )}
-                </div>
-              </LightPanel>
-            </div>
-          ) : null}
         </div>
       </section>
     </AppShell>
   );
-
 };
 
 export default ClientDashboardPage;

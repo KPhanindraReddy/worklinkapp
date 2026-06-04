@@ -14,7 +14,9 @@ import { db } from '../firebase/firestore';
 import { parseDateValue } from '../utils/formatters';
 
 const debugNotifications = (message, payload = {}) => {
-  console.debug(`[Slivz notifications] ${message}`, payload);
+  if (import.meta.env.DEV) {
+    console.debug(`[Slivz notifications] ${message}`, payload);
+  }
 };
 
 const sortNotificationsByCreatedAtDesc = (items) =>

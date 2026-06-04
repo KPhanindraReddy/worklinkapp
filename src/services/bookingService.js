@@ -15,7 +15,9 @@ import { parseDateValue } from '../utils/formatters';
 import { normalizeWhatsAppPhoneNumber } from '../utils/phone';
 
 const debugBookingService = (message, payload = {}) => {
-  console.debug(`[Slivz booking service] ${message}`, payload);
+  if (import.meta.env.DEV) {
+    console.debug(`[Slivz booking service] ${message}`, payload);
+  }
 };
 
 const activeClientRequestStatuses = ['pending', 'accepted', 'in_progress', 'awaiting_payment'];

@@ -24,9 +24,6 @@ import { buildLocationCacheKey, normalizeCoordinates } from '../utils/location';
 const SEARCH_RESULT_LIMIT = 80;
 const SEARCH_CACHE_TTL_MS = 30000;
 const labourSearchCache = new Map();
-const debugLabourSearch = (message, payload = {}) => {
-  console.debug(`[Slivz labour search] ${message}`, payload);
-};
 
 const normalizeAvailabilityValue = (value) => {
   const normalizedValue = String(value ?? '').trim().toLowerCase();
@@ -122,12 +119,6 @@ const fetchLabourCandidates = async (filters, resolvedCategory) => {
       if (!snapshot) {
         continue;
       }
-
-      debugLabourSearch('candidate query succeeded', {
-        filters,
-        resolvedCategory,
-        count: snapshot.size
-      });
 
       return snapshot.docs.map((item) => normalizeLabourProfile({ id: item.id, ...item.data() }));
     } catch (error) {
@@ -239,14 +230,6 @@ export const searchLabours = async (filters = {}, origin) => {
     }
 
     const items = await fetchLabourCandidates(filters, resolvedCategory);
-    debugLabourSearch('ranking candidates', {
-      filters,
-      resolvedCategory,
-      maxDistanceKm,
-      origin: normalizedOrigin,
-      candidateCount: items.length
-    });
-
     return recommendLabours(items, filters, normalizedOrigin)
       .filter((labour) => {
         const matchesKeywords = keywordQuery
