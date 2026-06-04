@@ -8,6 +8,7 @@ import { Button } from '../common/Button';
 import { InputField } from '../common/InputField';
 import { TextAreaField } from '../common/TextAreaField';
 import { VerificationBadge } from '../common/VerificationBadge';
+import { LocationPermissionPrompt } from '../location/LocationPermissionPrompt';
 import { useAuth } from '../../context/AuthContext';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { useLocationName } from '../../hooks/useLocationName';
@@ -152,7 +153,7 @@ export const QuickBookingDialog = ({
 
     if (!coordinates) {
       toast.error(geolocation.error || 'Allow browser location to update this request.');
-      return;
+      return null;
     }
 
     setRequestCoordinates(coordinates);
@@ -164,6 +165,7 @@ export const QuickBookingDialog = ({
       }));
     }
     toast.success('Location updated for this booking.');
+    return coordinates;
   };
 
   const handleSubmit = async (event) => {
@@ -375,6 +377,12 @@ export const QuickBookingDialog = ({
                   {clientLocation ? 'Update GPS' : 'Use GPS'}
                 </Button>
               </div>
+              <LocationPermissionPrompt
+                geolocation={geolocation}
+                onRequest={handleRefreshLocation}
+                className="md:col-span-2"
+                compact
+              />
               <TextAreaField
                 label="Notes (optional)"
                 value={formValues.serviceDetails}

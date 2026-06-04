@@ -29,7 +29,7 @@ import { useAuth } from '../../context/AuthContext';
 import { subscribeBookingsForUser } from '../../services/bookingService';
 import { updateAvailability } from '../../services/labourService';
 import { subscribeReviewsForLabour } from '../../services/reviewService';
-import { createSupportTicket } from '../../services/supportTicketService';
+import { createSupportTicket, listUserSupportTickets } from '../../services/supportTicketService';
 import { availabilityOptions, languageOptions, workCategories } from '../../utils/constants';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { getDisplayLocationText } from '../../utils/location';
@@ -123,6 +123,9 @@ const SettingsPage = () => {
   const [ticketForm, setTicketForm] = useState({ subject: '', description: '' });
   const [ticketSubmitting, setTicketSubmitting] = useState(false);
   const [lastTicketNumber, setLastTicketNumber] = useState('');
+  const [ticketDialogOpen, setTicketDialogOpen] = useState(false);
+  const [userTickets, setUserTickets] = useState([]);
+  const [ticketsLoading, setTicketsLoading] = useState(false);
 
   useEffect(() => {
     if (!isEditing) {
@@ -271,6 +274,28 @@ const SettingsPage = () => {
     await logout();
     navigate('/auth', { replace: true });
   };
+  const loadUserTickets = async () => {
+    if (!currentUser?.uid) {
+      setUserTickets([]);
+      return;
+    }
+
+    setTicketsLoading(true);
+
+    try {
+      setUserTickets(await listUserSupportTickets(currentUser.uid));
+    } catch (error) {
+      toast.error(getFirebaseErrorMessage(error));
+    } finally {
+      setTicketsLoading(false);
+    }
+  };
+
+  const openTicketDialog = async () => {
+    setTicketDialogOpen(true);
+    await loadUserTickets();
+  };
+
   const submitTicket = async () => {
     if (!currentUser || !userProfile?.role) {
       toast.error('Sign in before raising a ticket.');
@@ -292,6 +317,7 @@ const SettingsPage = () => {
 
       setLastTicketNumber(ticket?.ticketNumber || '');
       setTicketForm({ subject: '', description: '' });
+      await loadUserTickets();
       toast.success(ticket?.ticketNumber ? `Ticket ${ticket.ticketNumber} raised.` : 'Ticket raised.');
     } catch (error) {
       toast.error(getFirebaseErrorMessage(error));
@@ -591,35 +617,16 @@ const SettingsPage = () => {
           ) : null}
 
           <Card className="space-y-4 rounded-[18px] p-4 sm:p-5">
-            <FieldSectionTitle icon={Settings} tone="slate">Raise ticket</FieldSectionTitle>
+            <FieldSectionTitle icon={Settings} tone="slate">Support</FieldSectionTitle>
             {lastTicketNumber ? (
               <div className="rounded-[14px] border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
                 Ticket number: {lastTicketNumber}
               </div>
             ) : null}
-            <div className="grid gap-3">
-              <InputField
-                label="Subject"
-                value={ticketForm.subject}
-                onChange={(event) => setTicketForm((prev) => ({ ...prev, subject: event.target.value }))}
-                placeholder="Payment, booking, profile, or account issue"
-              />
-              <TextAreaField
-                label="Description"
-                value={ticketForm.description}
-                onChange={(event) => setTicketForm((prev) => ({ ...prev, description: event.target.value }))}
-                placeholder="Describe what happened and what help you need."
-              />
-              <Button
-                type="button"
-                className="w-full sm:w-auto"
-                onClick={submitTicket}
-                disabled={ticketSubmitting || !ticketForm.subject.trim() || !ticketForm.description.trim()}
-              >
-                <Send size={16} />
-                {ticketSubmitting ? 'Sending...' : 'Send ticket'}
-              </Button>
-            </div>
+            <Button type="button" className="w-full sm:w-auto" onClick={openTicketDialog}>
+              <Send size={16} />
+              Raise ticket
+            </Button>
             <div className="rounded-[14px] border border-rose-100 bg-rose-50 p-3">
               <p className="mb-3 text-xs font-medium text-slate-500">
                 Signed in to Slivz as <span className="font-bold text-slate-700">{formValues.fullName || 'user'}</span>
@@ -632,6 +639,86 @@ const SettingsPage = () => {
           </Card>
         </div>
       </section>
+
+      {ticketDialogOpen ? (
+        <div className="fixed inset-0 z-[60] grid place-items-end bg-slate-950/45 p-3 sm:place-items-center sm:p-5">
+          <Card className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-[22px] p-4 sm:p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-950">Raise ticket</h2>
+                <p className="mt-1 text-sm text-slate-500">Track old tickets or send another one.</p>
+              </div>
+              <button
+                type="button"
+                className="grid h-9 w-9 place-items-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50"
+                onClick={() => setTicketDialogOpen(false)}
+                aria-label="Close ticket popup"
+              >
+                <X size={17} />
+              </button>
+            </div>
+            {lastTicketNumber ? (
+              <div className="mt-4 rounded-[14px] border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
+                Ticket ID: {lastTicketNumber}
+              </div>
+            ) : null}
+            <div className="mt-4 rounded-[16px] border border-slate-200 bg-slate-50 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-bold text-slate-950">Your tickets</h3>
+                <Badge tone="slate">{userTickets.length} total</Badge>
+              </div>
+              <div className="mt-3 grid gap-2">
+                {ticketsLoading ? (
+                  <p className="text-sm font-medium text-slate-500">Loading tickets...</p>
+                ) : userTickets.length ? (
+                  userTickets.map((ticket) => (
+                    <div key={ticket.id} className="rounded-[14px] border border-slate-200 bg-white p-3">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-bold text-slate-950">{ticket.ticketNumber || ticket.id}</p>
+                          <p className="mt-1 truncate text-xs font-medium text-slate-500">{ticket.subject}</p>
+                        </div>
+                        <Badge tone={ticket.status === 'solved' ? 'emerald' : 'amber'}>
+                          {ticket.status === 'solved' ? 'Solved' : 'Pending'}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm font-medium text-slate-500">No tickets raised yet.</p>
+                )}
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3">
+              <InputField
+                label="Subject"
+                value={ticketForm.subject}
+                onChange={(event) => setTicketForm((prev) => ({ ...prev, subject: event.target.value }))}
+                placeholder="Payment, booking, profile, or account issue"
+              />
+              <TextAreaField
+                label="Description"
+                value={ticketForm.description}
+                onChange={(event) => setTicketForm((prev) => ({ ...prev, description: event.target.value }))}
+                placeholder="Describe what happened and what help you need."
+              />
+            </div>
+            <div className="mt-5 grid gap-2 sm:flex sm:justify-end">
+              <Button type="button" variant="outline" onClick={() => setTicketDialogOpen(false)} disabled={ticketSubmitting}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={submitTicket}
+                disabled={ticketSubmitting || !ticketForm.subject.trim() || !ticketForm.description.trim()}
+              >
+                <Send size={16} />
+                {ticketSubmitting ? 'Sending...' : 'Send ticket'}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      ) : null}
     </AppShell>
   );
 };

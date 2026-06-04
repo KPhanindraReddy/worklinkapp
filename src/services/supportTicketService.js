@@ -1,7 +1,10 @@
 import {
   addDoc,
   collection,
-  serverTimestamp
+  getDocs,
+  query,
+  serverTimestamp,
+  where
 } from 'firebase/firestore';
 import { isFirebaseConfigured } from '../firebase/env';
 import { db } from '../firebase/firestore';
@@ -45,4 +48,37 @@ export const createSupportTicket = async ({
     id: reference.id,
     ticketNumber
   };
+};
+
+const toMillis = (value) => {
+  if (!value) {
+    return 0;
+  }
+
+  if (typeof value?.toMillis === 'function') {
+    return value.toMillis();
+  }
+
+  if (typeof value?.toDate === 'function') {
+    return value.toDate().getTime();
+  }
+
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+export const listUserSupportTickets = async (userId) => {
+  if (!isFirebaseConfigured || !db || !userId) {
+    return [];
+  }
+
+  const ticketsQuery = query(
+    collection(db, 'supportTickets'),
+    where('userId', '==', userId)
+  );
+  const snapshot = await getDocs(ticketsQuery);
+
+  return snapshot.docs
+    .map((item) => ({ id: item.id, ...item.data() }))
+    .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
 };

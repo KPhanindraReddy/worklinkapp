@@ -22,6 +22,7 @@ import { PageSEO } from '../../components/common/PageSEO';
 import { SelectField } from '../../components/common/SelectField';
 import { Skeleton } from '../../components/common/Skeleton';
 import { AppShell } from '../../components/layout/AppShell';
+import { LocationPermissionPrompt } from '../../components/location/LocationPermissionPrompt';
 import { LocationText } from '../../components/location/LocationText';
 import { ServiceRequestMap } from '../../components/map/ServiceRequestMap';
 import { useAuth } from '../../context/AuthContext';
@@ -451,12 +452,13 @@ const ClientDashboardPage = () => {
 
     if (!coordinates) {
       toast.error(geolocation.error || 'Allow browser location to update this request.');
-      return;
+      return null;
     }
 
     setRequestCoordinates(coordinates);
     setLiveCoordinates(coordinates);
     toast.success('Live location updated.');
+    return coordinates;
   };
 
   const handleUseLiveServiceLocation = () => {
@@ -806,6 +808,12 @@ const ClientDashboardPage = () => {
                   <LocateFixed size={13} className="flex-none text-brand-600 sm:size-[15px]" />
                   <span className="truncate">{clientLocationLabel}</span>
                 </p>
+                <LocationPermissionPrompt
+                  geolocation={geolocation}
+                  onRequest={handleRefreshLocation}
+                  className="mt-2 max-w-xl"
+                  compact
+                />
               </div>
             </div>
           </LightPanel>
@@ -863,6 +871,12 @@ const ClientDashboardPage = () => {
                     Update GPS
                   </Button>
                 </div>
+                <LocationPermissionPrompt
+                  geolocation={geolocation}
+                  onRequest={handleRefreshLocation}
+                  className="lg:col-span-2"
+                  compact
+                />
                 <div className="grid grid-cols-2 gap-2">
                   <Button type="button" size="sm" className="h-10 w-full bg-slate-950 hover:bg-slate-800" onClick={handleInstantRequest} disabled={submittingInstant || bookingsLoading}>
                     {submittingInstant ? <LoaderCircle size={16} className="animate-spin" /> : <Send size={16} />}
@@ -921,6 +935,12 @@ const ClientDashboardPage = () => {
                   Update GPS
                 </Button>
               </div>
+              <LocationPermissionPrompt
+                geolocation={geolocation}
+                onRequest={handleRefreshLocation}
+                className="mt-3"
+                compact
+              />
               <div className="grid grid-cols-2 gap-2">
                 <Button type="button" size="sm" className="h-10 w-full bg-slate-950 hover:bg-slate-800" onClick={handleInstantRequest} disabled={submittingInstant || bookingsLoading}>
                   {submittingInstant ? <LoaderCircle size={16} className="animate-spin" /> : <Send size={16} />}

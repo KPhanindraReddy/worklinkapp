@@ -396,3 +396,14 @@ export const listSupportTickets = async ({ pageSize = 50 } = {}) => {
 
   return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
 };
+
+export const updateSupportTicketStatus = async (ticketId, status = 'open') => {
+  if (!isFirebaseConfigured || !db || !ticketId) {
+    return;
+  }
+
+  await updateDoc(doc(db, 'supportTickets', ticketId), {
+    status,
+    updatedAt: serverTimestamp()
+  });
+};

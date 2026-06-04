@@ -13,6 +13,7 @@ import { PageSEO } from '../../components/common/PageSEO';
 import { SelectField } from '../../components/common/SelectField';
 import { SectionHeading } from '../../components/common/SectionHeading';
 import { AppShell } from '../../components/layout/AppShell';
+import { LocationPermissionPrompt, isLocationPermissionDenied } from '../../components/location/LocationPermissionPrompt';
 import { useAuth } from '../../context/AuthContext';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useGeolocation } from '../../hooks/useGeolocation';
@@ -67,9 +68,7 @@ const SearchPage = () => {
   );
   const searchOrigin = useMemo(() => liveOrigin || savedOrigin, [liveOrigin, savedOrigin]);
   const resolvedLocationName = useLocationName(searchOrigin);
-  const locationPermissionDenied =
-    geolocation.permission === 'denied' ||
-    /permission denied/i.test(String(geolocation.error || ''));
+  const locationPermissionDenied = isLocationPermissionDenied(geolocation);
   const activeLocationLabel = useMemo(() => {
     if (searchOrigin) {
       return savedLocationLabel || resolvedLocationName || 'Live location captured';
@@ -171,7 +170,7 @@ const SearchPage = () => {
   };
 
   const handleRefreshLocation = async () => {
-    await geolocation.requestLocation({ force: true });
+    return geolocation.requestLocation({ force: true });
   };
 
   const handleQuickBook = (labour) => {
@@ -295,9 +294,12 @@ const SearchPage = () => {
                     {searchOrigin ? 'Update live location' : 'Use live location'}
                   </Button>
                   {locationPermissionDenied ? (
-                    <p className="mt-2 text-xs font-semibold text-rose-700">
-                      Location permission denied. Enable location access for this site in browser settings, then try again.
-                    </p>
+                    <LocationPermissionPrompt
+                      geolocation={geolocation}
+                      onRequest={handleRefreshLocation}
+                      className="mt-3"
+                      compact
+                    />
                   ) : null}
                 </div>
               </div>

@@ -23,6 +23,7 @@ import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
 import { SelectField } from '../../components/common/SelectField';
 import { TextAreaField } from '../../components/common/TextAreaField';
+import { LocationPermissionPrompt } from '../../components/location/LocationPermissionPrompt';
 import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
 import { useGeolocation } from '../../hooks/useGeolocation';
@@ -391,7 +392,7 @@ const BookingPage = () => {
 
     if (!coordinates) {
       toast.error(geolocation.error || 'Allow browser location to update this request.');
-      return;
+      return null;
     }
 
     setRequestCoordinates(coordinates);
@@ -403,6 +404,7 @@ const BookingPage = () => {
       }));
     }
     toast.success('Location updated for this request.');
+    return coordinates;
   };
 
   const handleSubmit = async (event) => {
@@ -753,6 +755,12 @@ const BookingPage = () => {
                             : `Use live location to search labour within ${NEARBY_LABOUR_RADIUS_KM} km.`}
                         </p>
                       </div>
+                      <LocationPermissionPrompt
+                        geolocation={geolocation}
+                        onRequest={handleRefreshLocation}
+                        className="mt-3"
+                        compact
+                      />
                     </div>
                     <TextAreaField
                       label="What is the service?"

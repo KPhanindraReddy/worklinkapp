@@ -1,6 +1,7 @@
 import { LoaderCircle, LocateFixed, MapPin, Navigation } from 'lucide-react';
 import { useMemo } from 'react';
 import { Button } from '../common/Button';
+import { LocationPermissionPrompt, isLocationPermissionDenied } from './LocationPermissionPrompt';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { useLocationName } from '../../hooks/useLocationName';
 import {
@@ -39,15 +40,13 @@ export const ProfileLocationPanel = ({
     locationValue,
     hasCoordinates(savedCoordinates) ? savedLocationName || 'Live location captured' : ''
   );
-  const locationPermissionDenied =
-    geolocation.permission === 'denied' ||
-    /permission denied/i.test(String(geolocation.error || ''));
+  const locationPermissionDenied = isLocationPermissionDenied(geolocation);
 
   const handleApplyLiveLocation = async () => {
     const coordinates = await geolocation.requestLocation({ force: true });
 
     if (!coordinates) {
-      return;
+      return null;
     }
 
     const resolvedLocationName = await fetchMapboxLocationName(coordinates);
@@ -59,6 +58,7 @@ export const ProfileLocationPanel = ({
       ),
       coordinates
     });
+    return coordinates;
   };
 
   return (
@@ -79,9 +79,12 @@ export const ProfileLocationPanel = ({
                   : geolocation.error || 'Save location once, then update it only when you move.'}
           </p>
           {locationPermissionDenied ? (
-            <p className="mt-1 break-words text-xs font-semibold text-rose-700">
-              Location permission denied. Open browser settings and allow location for this site.
-            </p>
+            <LocationPermissionPrompt
+              geolocation={geolocation}
+              onRequest={handleApplyLiveLocation}
+              className="mt-2"
+              compact
+            />
           ) : null}
         </div>
         <div className="grid w-full gap-2 sm:w-auto sm:grid-cols-2">

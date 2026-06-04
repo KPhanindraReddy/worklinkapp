@@ -80,15 +80,6 @@ const requestSharedLocation = ({ force = false } = {}) => {
     return Promise.resolve(null);
   }
 
-  if (sharedState.permission === 'denied') {
-    broadcast({
-      ...sharedState,
-      loading: false,
-      error: 'Location permission denied. Allow location access in browser settings.'
-    });
-    return Promise.resolve(null);
-  }
-
   if (requestPromise) {
     return requestPromise;
   }

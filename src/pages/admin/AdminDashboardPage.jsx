@@ -30,6 +30,7 @@ import {
   listSupportTickets,
   listAdminProfiles,
   updateAdminUserProfile,
+  updateSupportTicketStatus,
   updateUserAccountStatus,
   verifyLabourAccount
 } from '../../services/adminService';
@@ -256,6 +257,25 @@ const AdminDashboardPage = () => {
     }
   };
 
+  const handleTicketStatus = async (ticketId, status) => {
+    try {
+      await updateSupportTicketStatus(ticketId, status);
+      setTickets((prev) =>
+        prev.map((ticket) =>
+          ticket.id === ticketId
+            ? {
+                ...ticket,
+                status
+              }
+            : ticket
+        )
+      );
+      toast.success(`Ticket marked ${status}.`);
+    } catch (error) {
+      toast.error(getFirebaseErrorMessage(error));
+    }
+  };
+
   const filteredLabours = useMemo(() => {
     const query = filters.labour.trim().toLowerCase();
 
@@ -461,12 +481,13 @@ const AdminDashboardPage = () => {
                     <Th>Subject</Th>
                     <Th>Description</Th>
                     <Th>Date</Th>
+                    <Th>Actions</Th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {ticketsLoading ? (
                     <tr>
-                      <Td colSpan={6}><Skeleton className="h-8 w-full" /></Td>
+                      <Td colSpan={7}><Skeleton className="h-8 w-full" /></Td>
                     </tr>
                   ) : tickets.length ? (
                     tickets.map((ticket) => (
@@ -486,11 +507,21 @@ const AdminDashboardPage = () => {
                         <Td className="min-w-44 font-semibold text-slate-950">{ticket.subject}</Td>
                         <Td className="min-w-64 max-w-md break-words">{ticket.description}</Td>
                         <Td className="whitespace-nowrap">{ticket.createdAt ? fromNow(ticket.createdAt) : 'New'}</Td>
+                        <Td>
+                          <div className="flex min-w-36 flex-wrap gap-2">
+                            <Button size="sm" variant="outline" onClick={() => handleTicketStatus(ticket.id, 'open')}>
+                              Open
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handleTicketStatus(ticket.id, 'solved')}>
+                              Solved
+                            </Button>
+                          </div>
+                        </Td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <Td colSpan={6} className="text-slate-500">No support tickets yet.</Td>
+                      <Td colSpan={7} className="text-slate-500">No support tickets yet.</Td>
                     </tr>
                   )}
                 </tbody>
