@@ -1,16 +1,13 @@
-import { BellRing, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { BellRing } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import toast from 'react-hot-toast';
 import { Badge } from '../../components/common/Badge';
-import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { EmptyState } from '../../components/common/EmptyState';
 import { PageSEO } from '../../components/common/PageSEO';
 import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
 import {
-  deleteNotification,
   markAllNotificationsRead,
   markNotificationRead,
   subscribeNotifications
@@ -32,9 +29,6 @@ const getNotificationTarget = (notification) => {
 const NotificationsPage = () => {
   const { currentUser } = useAuth();
   const [notifications, setNotifications] = useState([]);
-  const [deletingId, setDeletingId] = useState('');
-  const [swipedNotificationId, setSwipedNotificationId] = useState('');
-  const swipeRef = useRef({ id: '', startX: 0, deleting: false });
   const unreadCount = useMemo(
     () => notifications.filter((notification) => !notification.read).length,
     [notifications]
@@ -52,66 +46,6 @@ const NotificationsPage = () => {
     markAllNotificationsRead(notifications).catch(() => {});
     return undefined;
   }, [notifications]);
-
-  const handleDeleteNotification = async (notificationId) => {
-    const removedNotification = notifications.find((notification) => notification.id === notificationId);
-
-    if (!removedNotification || deletingId === notificationId) {
-      return;
-    }
-
-    setDeletingId(notificationId);
-    setSwipedNotificationId('');
-    setNotifications((currentNotifications) =>
-      currentNotifications.filter((notification) => notification.id !== notificationId)
-    );
-
-    try {
-      await deleteNotification(notificationId);
-      toast.success('Notification deleted.');
-    } catch {
-      setNotifications((currentNotifications) =>
-        currentNotifications.some((notification) => notification.id === notificationId)
-          ? currentNotifications
-          : [removedNotification, ...currentNotifications]
-      );
-      toast.error('Could not delete notification.');
-    } finally {
-      setDeletingId('');
-      swipeRef.current = { id: '', startX: 0, deleting: false };
-    }
-  };
-
-  const handleSwipeStart = (notificationId, event) => {
-    swipeRef.current = {
-      id: notificationId,
-      startX: event.clientX,
-      deleting: false
-    };
-  };
-
-  const handleSwipeMove = (notificationId, event) => {
-    const swipe = swipeRef.current;
-
-    if (swipe.id !== notificationId || swipe.deleting || deletingId === notificationId) {
-      return;
-    }
-
-    const distance = swipe.startX - event.clientX;
-
-    if (distance > 38) {
-      setSwipedNotificationId(notificationId);
-    }
-
-    if (distance > 132) {
-      swipeRef.current = { ...swipe, deleting: true };
-      handleDeleteNotification(notificationId);
-    }
-  };
-
-  const handleSwipeEnd = () => {
-    swipeRef.current = { id: '', startX: 0, deleting: false };
-  };
 
   return (
     <AppShell>
@@ -143,43 +77,21 @@ const NotificationsPage = () => {
               {notifications.map((notification) => {
                 const target = getNotificationTarget(notification);
                 const ContentWrapper = target ? Link : 'button';
-                const isSwiped = swipedNotificationId === notification.id;
 
                 return (
                 <div
                   key={notification.id}
                   className="relative overflow-hidden rounded-2xl"
-                  style={{ touchAction: 'pan-y' }}
-                  onPointerDown={(event) => handleSwipeStart(notification.id, event)}
-                  onPointerMove={(event) => handleSwipeMove(notification.id, event)}
-                  onPointerUp={handleSwipeEnd}
-                  onPointerCancel={handleSwipeEnd}
                 >
-                  <button
-                    type="button"
-                    className="absolute inset-y-0 right-0 grid w-20 place-items-center bg-rose-600 text-white"
-                    onClick={() => handleDeleteNotification(notification.id)}
-                    aria-label="Delete notification"
-                  >
-                    <Trash2 size={18} />
-                  </button>
                   <Card
-                    className={`relative rounded-2xl px-3 py-2 transition hover:border-brand-200 hover:bg-brand-50/40 ${
-                      isSwiped ? '-translate-x-20' : 'translate-x-0'
-                    }`}
+                    className="relative rounded-2xl px-3 py-2 transition hover:border-brand-200 hover:bg-brand-50/40"
                   >
                     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
                       <ContentWrapper
                         to={target || undefined}
                         type={target ? undefined : 'button'}
                         className="min-w-0 text-left"
-                        onClick={(event) => {
-                          if (isSwiped) {
-                            event.preventDefault();
-                            setSwipedNotificationId('');
-                            return;
-                          }
-
+                        onClick={() => {
                           markNotificationRead(notification.id);
                         }}
                       >
@@ -198,11 +110,6 @@ const NotificationsPage = () => {
                         <Badge tone={notification.read ? 'slate' : 'blue'} className="px-2 py-1 text-[10px]">
                           {notification.read ? 'Read' : 'New'}
                         </Badge>
-                        {isSwiped ? (
-                          <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-rose-600">
-                            Delete
-                          </span>
-                        ) : null}
                       </div>
                     </div>
                   </Card>

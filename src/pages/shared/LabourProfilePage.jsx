@@ -262,6 +262,35 @@ const LabourProfilePage = () => {
                 <p>Education: {labour.education || 'Not added'}</p>
               </div>
             </Card>
+
+            <Card>
+              <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Client reviews</h2>
+              <div className="mt-4 space-y-3">
+                {profileReviews.length ? (
+                  profileReviews.slice(0, 6).map((review) => (
+                    <div key={review.id || review.bookingId} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="font-semibold text-slate-950 dark:text-white">{review.clientName || 'Client'}</p>
+                        <span className="inline-flex items-center gap-1 text-sm font-bold text-amber-500">
+                          <Star size={15} fill="currentColor" />
+                          {Number(review.rating || 0).toFixed(0)}/5
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-300">
+                        {review.serviceType || labour.category || 'Service'}
+                      </p>
+                      {review.comment ? (
+                        <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{review.comment}</p>
+                      ) : null}
+                    </div>
+                  ))
+                ) : (
+                  <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-400 dark:border-slate-800 dark:bg-slate-900">
+                    Reviews from completed services will appear here.
+                  </p>
+                )}
+              </div>
+            </Card>
           </div>
         </div>
       </section>

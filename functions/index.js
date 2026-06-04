@@ -281,6 +281,31 @@ const syncLabourCompletedJobs = async (uid) => {
   };
 };
 
+const syncLabourReviewStats = async (labourId) => {
+  if (!labourId) {
+    return;
+  }
+
+  const reviewsSnapshot = await db.collection('reviews').where('labourId', '==', labourId).get();
+  const reviews = reviewsSnapshot.docs
+    .map((reviewDoc) => Number(reviewDoc.data()?.rating || 0))
+    .filter((rating) => Number.isFinite(rating) && rating >= 1 && rating <= 5);
+  const reviewsCount = reviews.length;
+  const rating = reviewsCount
+    ? Number((reviews.reduce((sum, value) => sum + value, 0) / reviewsCount).toFixed(2))
+    : 0;
+  const updates = {
+    rating,
+    reviewsCount,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+  };
+
+  await Promise.all([
+    db.collection('labours').doc(labourId).set(updates, { merge: true }),
+    db.collection('users').doc(labourId).set(updates, { merge: true })
+  ]);
+};
+
 const getWhatsAppFailureFields = (prefix, result) => {
   const error = result?.payload?.error || {};
 
@@ -352,6 +377,25 @@ exports.sendBookingRequestWhatsApp = onDocumentCreated(
     }
 
     await sendNewBookingMessage(event.params.bookingId, booking);
+  }
+);
+
+exports.syncLabourReviewStatsOnReviewCreate = onDocumentCreated(
+  {
+    ...eventFunctionOptions,
+    document: 'reviews/{reviewId}'
+  },
+  async (event) => {
+    const review = event.data?.data();
+
+    if (!review?.labourId) {
+      logger.warn('Review stats sync skipped: missing labourId.', {
+        reviewId: event.params.reviewId
+      });
+      return;
+    }
+
+    await syncLabourReviewStats(review.labourId);
   }
 );
 
