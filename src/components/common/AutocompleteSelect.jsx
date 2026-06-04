@@ -39,6 +39,7 @@ export const AutocompleteSelect = ({
   const selectedLabel = value
     ? (options.find(opt => getOptionValue(opt) === value)?.label ?? value)
     : '';
+  const shouldShowOptions = isOpen && (!selectedLabel || search);
 
   const handleSelect = (option) => {
     const val = getOptionValue(option);
@@ -49,7 +50,7 @@ export const AutocompleteSelect = ({
 
   const handleKeyDown = (e) => {
     if (!isOpen) {
-      if (e.key === 'ArrowDown' || e.key === ' ') {
+      if ((e.key === 'ArrowDown' || e.key === ' ') && !selectedLabel) {
         e.preventDefault();
         setIsOpen(true);
       }
@@ -128,7 +129,7 @@ export const AutocompleteSelect = ({
             value={search || selectedLabel}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            onFocus={() => !disabled && setIsOpen(true)}
+            onFocus={() => !disabled && !selectedLabel && setIsOpen(true)}
             placeholder={placeholder}
             disabled={disabled}
             className="min-h-6 min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 sm:text-[13px]"
@@ -148,7 +149,7 @@ export const AutocompleteSelect = ({
           <ChevronDown size={16} className="flex-none text-slate-400" />
         </div>
 
-        {isOpen && displayOptions.length > 0 && !disabled && (
+        {shouldShowOptions && displayOptions.length > 0 && !disabled && (
           <div className="absolute top-full z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
             {displayOptions.map((option, index) => {
               const optLabel = getOptionLabel(option);
@@ -186,7 +187,7 @@ export const AutocompleteSelect = ({
           </div>
         )}
 
-        {isOpen && displayOptions.length === 0 && search && !disabled && (
+        {shouldShowOptions && displayOptions.length === 0 && search && !disabled && (
           <div className="absolute top-full z-10 mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-center text-sm text-slate-500 shadow-lg">
             No matches for "{search}"
           </div>
