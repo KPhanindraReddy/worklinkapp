@@ -7,6 +7,7 @@
 @layer base {
   :root {
     color-scheme: light;
+    --app-visual-height: 100svh;
     --bg: 246 248 251;
     --surface: 255 255 255;
     --surface-soft: 248 250 252;
@@ -26,14 +27,14 @@
   body {
     @apply bg-[rgb(var(--bg))] text-[rgb(var(--text))] font-body antialiased;
     width: 100%;
-    min-height: 100vh;
+    min-height: 100svh;
     overflow-x: clip;
     overscroll-behavior-y: none;
   }
 
   #root {
     width: 100%;
-    min-height: 100vh;
+    min-height: 100svh;
     overflow-x: clip;
   }
 
@@ -142,17 +143,25 @@
     @apply py-6 md:py-8;
   }
 
+  .app-root {
+    min-height: 100svh;
+  }
+
   .text-gradient {
     @apply bg-gradient-to-r from-brand-700 via-brand-500 to-sky-400 bg-clip-text text-transparent;
   }
 
   .app-shell-content {
-    min-height: 100dvh;
-    padding-bottom: calc(6.75rem + env(safe-area-inset-bottom));
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  }
+
+  .app-shell-content--dock {
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
   }
 
   @media (min-width: 1024px) {
-    .app-shell-content {
+    .app-shell-content,
+    .app-shell-content--dock {
       padding-bottom: 0;
     }
   }
@@ -166,6 +175,34 @@
   }
 
   @media (max-width: 639px) {
+    html,
+    body,
+    #root {
+      height: var(--app-visual-height);
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .app-root {
+      display: flex;
+      height: var(--app-visual-height);
+      min-height: 0;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .app-shell-content {
+      min-height: 0;
+      flex: 1;
+      overflow-y: auto;
+      overscroll-behavior-y: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .app-shell-content--dock {
+      padding-bottom: calc(5.75rem + env(safe-area-inset-bottom));
+    }
+
     .surface-card {
       border-radius: 1.15rem;
       border-color: rgb(226 232 240);
@@ -183,7 +220,7 @@
     }
 
     main {
-      min-height: calc(100dvh - 4rem);
+      min-height: 0;
     }
   }
 

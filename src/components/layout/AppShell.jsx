@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import clsx from 'clsx';
 import { Footer } from './Footer';
 import { BottomDockNav } from './BottomDockNav';
@@ -37,6 +37,28 @@ const AppLiveLocationSync = () => {
   return <LiveLocationSync currentUser={currentUser} userProfile={userProfile} />;
 };
 
+const useVisualViewportHeight = () => {
+  useEffect(() => {
+    const updateViewportHeight = () => {
+      const height = window.visualViewport?.height || window.innerHeight;
+      document.documentElement.style.setProperty('--app-visual-height', `${height}px`);
+    };
+
+    updateViewportHeight();
+    window.visualViewport?.addEventListener('resize', updateViewportHeight);
+    window.visualViewport?.addEventListener('scroll', updateViewportHeight);
+    window.addEventListener('resize', updateViewportHeight);
+    window.addEventListener('orientationchange', updateViewportHeight);
+
+    return () => {
+      window.visualViewport?.removeEventListener('resize', updateViewportHeight);
+      window.visualViewport?.removeEventListener('scroll', updateViewportHeight);
+      window.removeEventListener('resize', updateViewportHeight);
+      window.removeEventListener('orientationchange', updateViewportHeight);
+    };
+  }, []);
+};
+
 export const AppShell = ({
   children,
   contentClassName,
@@ -45,14 +67,15 @@ export const AppShell = ({
   hideNavbar = false
 }) => {
   const { currentUser } = useAuth();
+  useVisualViewportHeight();
 
   return (
-    <div className="min-h-screen">
+    <div className="app-root">
       {hideNavbar ? null : <Navbar />}
       <NotificationToaster currentUser={currentUser} />
       <AppLiveLocationSync />
       <LazyRequestRoutingController />
-      <div className={clsx(!hideBottomDock && 'app-shell-content', contentClassName)}>
+      <div className={clsx('app-shell-content', !hideBottomDock && 'app-shell-content--dock', contentClassName)}>
         <main>{children}</main>
         {hideFooter ? null : <Footer />}
       </div>
