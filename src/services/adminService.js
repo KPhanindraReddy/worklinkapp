@@ -67,7 +67,9 @@ export const getAdminOverview = async () => {
       categories: fallbackCategories,
       pendingLabours: [],
       customServices: [],
-      demandByLocation: []
+      demandByLocation: [],
+      demandByService: [],
+      recentActivity: []
     };
   }
 
@@ -91,6 +93,21 @@ export const getAdminOverview = async () => {
     orderBy('createdAt', 'desc'),
     limit(1000)
   );
+  const recentBookingsQuery = query(
+    collection(db, 'bookings'),
+    orderBy('createdAt', 'desc'),
+    limit(30)
+  );
+  const recentUsersQuery = query(
+    collection(db, 'users'),
+    orderBy('createdAt', 'desc'),
+    limit(30)
+  );
+  const recentTicketsQuery = query(
+    collection(db, 'supportTickets'),
+    orderBy('createdAt', 'desc'),
+    limit(20)
+  );
   const serviceCountQueries = workCategories.map((category) =>
     getCountFromServer(query(collection(db, 'labours'), where('category', '==', category))).catch(() => null)
   );
@@ -104,6 +121,9 @@ export const getAdminOverview = async () => {
     paidBookingsSnapshot,
     demandSnapshot,
     interactionsSnapshot,
+    recentBookingsSnapshot,
+    recentUsersSnapshot,
+    recentTicketsSnapshot,
     serviceCountSnapshots
   ] = await Promise.all([
     getCountFromServer(collection(db, 'users')),
@@ -115,6 +135,9 @@ export const getAdminOverview = async () => {
     getDocs(paidBookingsQuery),
     getDocs(demandQuery).catch(() => ({ docs: [] })),
     getDocs(interactionsQuery).catch(() => ({ docs: [] })),
+    getDocs(recentBookingsQuery).catch(() => ({ docs: [] })),
+    getDocs(recentUsersQuery).catch(() => ({ docs: [] })),
+    getDocs(recentTicketsQuery).catch(() => ({ docs: [] })),
     Promise.all(serviceCountQueries)
   ]);
 
@@ -123,9 +146,9 @@ export const getAdminOverview = async () => {
     (sum, item) => sum + Number(item.data().amount || 0),
     0
   );
+  const demandItems = demandSnapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
   const demandByLocation = Array.from(
-    demandSnapshot.docs
-      .map((item) => ({ id: item.id, ...item.data() }))
+    demandItems
       .reduce((map, item) => {
         const location = String(item.location || 'Unknown requested address').trim();
         const key = location.toLowerCase();
@@ -151,6 +174,34 @@ export const getAdminOverview = async () => {
     }))
     .sort((a, b) => b.requestCount - a.requestCount)
     .slice(0, 8);
+  const demandByService = Array.from(
+    demandItems
+      .reduce((map, item) => {
+        const serviceType = String(item.serviceType || 'Any service').trim();
+        const key = serviceType.toLowerCase();
+        const current = map.get(key) || {
+          id: key,
+          serviceType,
+          requestCount: 0,
+          locations: new Set(),
+          latestRequest: item.createdAt
+        };
+
+        current.requestCount += 1;
+        current.locations.add(String(item.location || 'Unknown address').trim());
+        current.latestRequest =
+          toMillis(item.createdAt) > toMillis(current.latestRequest) ? item.createdAt : current.latestRequest;
+        map.set(key, current);
+        return map;
+      }, new Map())
+      .values()
+  )
+    .map((item) => ({
+      ...item,
+      locations: Array.from(item.locations).slice(0, 4)
+    }))
+    .sort((a, b) => b.requestCount - a.requestCount || a.serviceType.localeCompare(b.serviceType))
+    .slice(0, 10);
   const serviceInteractions = interactionsSnapshot.docs
     .map((item) => item.data())
     .reduce((map, item) => {
@@ -171,6 +222,42 @@ export const getAdminOverview = async () => {
       return map;
     }, new Map());
   const customServices = await listPendingCustomServiceRequests().catch(() => []);
+  const recentActivity = [
+    ...recentUsersSnapshot.docs.map((item) => {
+      const data = item.data();
+      return {
+        id: `user-${item.id}`,
+        type: 'New signup',
+        title: data.fullName || data.email || 'User',
+        detail: data.role || 'account',
+        createdAt: data.createdAt || data.updatedAt || null
+      };
+    }),
+    ...recentBookingsSnapshot.docs.map((item) => {
+      const data = item.data();
+      const isCompleted = data.status === 'completed' || data.paymentStatus === 'paid';
+      return {
+        id: `booking-${item.id}`,
+        type: isCompleted ? 'Completed service' : 'New booking',
+        title: data.serviceType || 'Service booking',
+        detail: [data.clientName, data.labourName].filter(Boolean).join(' to ') || data.status || 'booking',
+        createdAt: (isCompleted ? data.completedAt || data.updatedAt : data.createdAt) || null
+      };
+    }),
+    ...recentTicketsSnapshot.docs.map((item) => {
+      const data = item.data();
+      return {
+        id: `ticket-${item.id}`,
+        type: 'Support ticket',
+        title: data.subject || data.ticketNumber || 'Support request',
+        detail: data.fullName || data.role || 'user',
+        createdAt: data.createdAt || null
+      };
+    })
+  ]
+    .filter((item) => item.createdAt)
+    .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt))
+    .slice(0, 12);
 
   return {
     analytics: {
@@ -198,7 +285,9 @@ export const getAdminOverview = async () => {
       ),
     pendingLabours,
     customServices,
-    demandByLocation
+    demandByLocation,
+    demandByService,
+    recentActivity
   };
 };
 

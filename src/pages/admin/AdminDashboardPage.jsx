@@ -71,13 +71,66 @@ const RowActionMenu = ({ children }) => (
   </details>
 );
 
+const toTime = (value) => {
+  if (!value) {
+    return 0;
+  }
+
+  if (typeof value?.toMillis === 'function') {
+    return value.toMillis();
+  }
+
+  if (typeof value?.toDate === 'function') {
+    return value.toDate().getTime();
+  }
+
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const getLabourQualityFlags = (labour) => {
+  const flags = [];
+  const hasLocation = Boolean(
+    labour.currentLocation ||
+      labour.location ||
+      labour.workLocation ||
+      labour.coordinates ||
+      labour.locationCoordinates
+  );
+  const hasPhoto = Boolean(labour.profilePhoto || labour.profilePhotoUrl || labour.photoURL);
+  const hasBasicProfile = Boolean(labour.fullName && labour.phoneNumber && labour.category && hasLocation);
+  const lastProfileTouch = toTime(labour.availabilityUpdatedAt || labour.updatedAt || labour.createdAt);
+  const offlineTooLong =
+    labour.availability === 'Offline' && (!lastProfileTouch || Date.now() - lastProfileTouch > 24 * 60 * 60 * 1000);
+
+  if (!hasBasicProfile) {
+    flags.push({ label: 'Incomplete profile', tone: 'amber' });
+  }
+
+  if (!hasPhoto) {
+    flags.push({ label: 'No photo', tone: 'slate' });
+  }
+
+  if (!hasLocation) {
+    flags.push({ label: 'No location', tone: 'rose' });
+  }
+
+  if (offlineTooLong) {
+    flags.push({ label: 'Offline long', tone: 'amber' });
+  }
+
+  return flags;
+};
+
 const AdminDashboardPage = () => {
   const [overview, setOverview] = useState({
     analytics: {},
     categories: [],
     pendingLabours: [],
     customServices: [],
-    demandByLocation: []
+    demandByLocation: [],
+    demandByService: [],
+    recentActivity: []
   });
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [diagnostics, setDiagnostics] = useState({
@@ -218,6 +271,23 @@ const AdminDashboardPage = () => {
       ['Paid earnings', formatCurrency(overview.analytics.paidEarnings ?? 0)]
     ],
     [overview.analytics]
+  );
+  const topSearchedServices = useMemo(
+    () =>
+      [...(overview.categories || [])]
+        .map((category) => ({
+          ...category,
+          totalInterest: (category.clickCount || 0) + (category.searchCount || 0)
+        }))
+        .filter((category) => category.totalInterest > 0)
+        .sort(
+          (a, b) =>
+            b.totalInterest - a.totalInterest ||
+            (b.searchCount || 0) - (a.searchCount || 0) ||
+            a.name.localeCompare(b.name)
+        )
+        .slice(0, 5),
+    [overview.categories]
   );
 
   const handleVerify = async (labourId) => {
@@ -479,6 +549,47 @@ const AdminDashboardPage = () => {
             <Card>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
+                  <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Recent activity</h2>
+                  <p className="mt-1 text-sm text-slate-500">Latest signup, booking, completed service, and support movement.</p>
+                </div>
+                <Badge tone="blue">{overview.recentActivity?.length || 0} updates</Badge>
+              </div>
+              <TableShell>
+                <thead className="bg-slate-50">
+                  <tr>
+                    <Th>Type</Th>
+                    <Th>Details</Th>
+                    <Th>When</Th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {overviewLoading ? (
+                    <tr>
+                      <Td colSpan={3}><Skeleton className="h-8 w-full" /></Td>
+                    </tr>
+                  ) : overview.recentActivity?.length ? (
+                    overview.recentActivity.map((item) => (
+                      <tr key={item.id}>
+                        <Td><Badge tone={item.type === 'Support ticket' ? 'amber' : 'slate'}>{item.type}</Badge></Td>
+                        <Td>
+                          <p className="font-semibold text-slate-950">{item.title}</p>
+                          <p className="text-xs text-slate-500">{item.detail}</p>
+                        </Td>
+                        <Td className="whitespace-nowrap">{fromNow(item.createdAt)}</Td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <Td colSpan={3} className="text-slate-500">No recent activity yet.</Td>
+                    </tr>
+                  )}
+                </tbody>
+              </TableShell>
+            </Card>
+
+            <Card>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
                   <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Support tickets</h2>
                   <p className="mt-1 text-sm text-slate-500">Tickets raised from client and labour profiles.</p>
                 </div>
@@ -580,6 +691,48 @@ const AdminDashboardPage = () => {
                     </p>
                   )}
                 </div>
+              </Card>
+
+              <Card>
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Top searched services</h2>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                      Quick top 5 from client clicks and search interest.
+                    </p>
+                  </div>
+                  <Badge tone="blue">Top 5</Badge>
+                </div>
+                <TableShell>
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <Th>Service</Th>
+                      <Th>Clicks</Th>
+                      <Th>Searches</Th>
+                      <Th>Total</Th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {overviewLoading ? (
+                      <tr>
+                        <Td colSpan={4}><Skeleton className="h-8 w-full" /></Td>
+                      </tr>
+                    ) : topSearchedServices.length ? (
+                      topSearchedServices.map((category) => (
+                        <tr key={category.id}>
+                          <Td className="font-semibold text-slate-950">{category.name}</Td>
+                          <Td>{category.clickCount || 0}</Td>
+                          <Td>{category.searchCount || 0}</Td>
+                          <Td className="font-bold text-slate-950">{category.totalInterest}</Td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <Td colSpan={4} className="text-slate-500">No service searches recorded yet.</Td>
+                      </tr>
+                    )}
+                  </tbody>
+                </TableShell>
               </Card>
 
               <Card>
@@ -801,6 +954,48 @@ const AdminDashboardPage = () => {
             <Card>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
+                  <h2 className="text-xl font-semibold text-slate-950 dark:text-white">No-labour demand by service</h2>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    Services clients searched when no available labour was found.
+                  </p>
+                </div>
+                <Badge tone="amber">{overview.demandByService?.length || 0} services</Badge>
+              </div>
+              <div className="mt-5">
+                <TableShell>
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <Th>Service</Th>
+                      <Th>Requests</Th>
+                      <Th>Locations</Th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {overviewLoading ? (
+                      <tr>
+                        <Td colSpan={3}><Skeleton className="h-8 w-full" /></Td>
+                      </tr>
+                    ) : overview.demandByService?.length ? (
+                      overview.demandByService.map((item) => (
+                        <tr key={item.id}>
+                          <Td className="font-semibold text-slate-950">{item.serviceType}</Td>
+                          <Td><Badge tone="amber">{item.requestCount} requests</Badge></Td>
+                          <Td className="min-w-64">{item.locations?.join(', ') || 'Unknown address'}</Td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <Td colSpan={3} className="text-slate-500">No unavailable-service demand recorded yet.</Td>
+                      </tr>
+                    )}
+                  </tbody>
+                </TableShell>
+              </div>
+            </Card>
+
+            <Card>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
                   <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Requested addresses</h2>
                   <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                     Locations where clients searched but no labour was available.
@@ -878,11 +1073,15 @@ const AdminDashboardPage = () => {
                           <Th>Contact</Th>
                           <Th>Location</Th>
                           <Th>Status</Th>
+                          <Th>Quality</Th>
                           <Th>Actions</Th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {filteredLabours.map((labour) => (
+                        {filteredLabours.map((labour) => {
+                          const qualityFlags = getLabourQualityFlags(labour);
+
+                          return (
                           <tr key={labour.id}>
                             <Td>
                               <div className="flex items-center gap-2">
@@ -910,6 +1109,17 @@ const AdminDashboardPage = () => {
                               </Badge>
                             </Td>
                             <Td>
+                              <div className="flex min-w-36 flex-wrap gap-1.5">
+                                {qualityFlags.length ? (
+                                  qualityFlags.map((flag) => (
+                                    <Badge key={flag.label} tone={flag.tone}>{flag.label}</Badge>
+                                  ))
+                                ) : (
+                                  <Badge tone="emerald">OK</Badge>
+                                )}
+                              </div>
+                            </Td>
+                            <Td>
                               <RowActionMenu>
                                 {!labour.verified ? (
                                   <Button size="sm" className="w-full justify-start" onClick={() => handleVerify(labour.id)}>
@@ -933,7 +1143,8 @@ const AdminDashboardPage = () => {
                               </RowActionMenu>
                             </Td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </TableShell>
                   ) : (
