@@ -20,7 +20,7 @@ export const ProtectedRoute = ({ children, allowedRoles = [], allowIncompletePro
     const roleLoginPath =
       allowedRoles.length === 1 && ['client', 'labour'].includes(allowedRoles[0])
         ? `/auth?role=${allowedRoles[0]}&mode=login`
-        : '/auth';
+        : '/auth?role=client&mode=login';
 
     return <Navigate to={roleLoginPath} replace state={{ from: location }} />;
   }

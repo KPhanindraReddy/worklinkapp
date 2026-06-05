@@ -19,6 +19,14 @@ const runAuthAction = async (actionName, ...args) => {
   return service[actionName](...args);
 };
 
+const runLogoutAction = async (...args) => {
+  try {
+    await runAuthAction('logoutUser', ...args);
+  } catch (error) {
+    console.warn('Slivz logout skipped:', error?.code ?? error?.message ?? error);
+  }
+};
+
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
@@ -166,7 +174,7 @@ export const AuthProvider = ({ children }) => {
         await refreshProfile();
         return profile;
       },
-      logout: (...args) => runAuthAction('logoutUser', ...args),
+      logout: (...args) => runLogoutAction(...args),
       refreshProfile
     }),
     [currentUser, userProfile, loading, refreshProfile]

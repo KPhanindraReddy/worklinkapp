@@ -178,9 +178,9 @@ export const Navbar = () => {
     .charAt(0)
     .toUpperCase() || 'P';
   const handleLogout = async () => {
-    await logout();
     setIsOpen(false);
-    navigate('/auth', { replace: true });
+    navigate('/auth?role=client&mode=login', { replace: true });
+    await logout();
   };
   const handleDashboard = () => {
     if (userProfile?.role === 'labour') {

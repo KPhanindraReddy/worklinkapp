@@ -632,7 +632,7 @@ const AuthPage = () => {
                     className={clsx(
                       'inline-flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-sm font-bold transition',
                       role === item.value
-                        ? 'bg-white text-slate-950 shadow-sm'
+                        ? 'bg-slate-950 text-white shadow-sm'
                         : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                     )}
                     onClick={() => switchAccount(item.value, mode)}

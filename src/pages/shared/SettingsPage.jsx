@@ -291,8 +291,8 @@ const SettingsPage = () => {
   };
 
   const handleLogout = async () => {
+    navigate('/auth?role=client&mode=login', { replace: true });
     await logout();
-    navigate('/auth', { replace: true });
   };
 
   const loadUserTickets = async () => {

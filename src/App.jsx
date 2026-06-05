@@ -88,6 +88,7 @@ const App = () => (
         }
       />
       <Route path="/about" element={<AboutContactPage />} />
+      <Route path="/about-contact" element={<AboutContactPage />} />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route
