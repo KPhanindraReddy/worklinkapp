@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import toast from 'react-hot-toast';
 import { subscribeNotifications } from '../../services/notificationService';
 
 export const NotificationToaster = ({ currentUser }) => {
@@ -23,13 +22,6 @@ export const NotificationToaster = ({ currentUser }) => {
           initializedRef.current = true;
           return;
         }
-
-        items
-          .filter((item) => !seenIdsRef.current.has(item.id) && !item.read)
-          .slice(0, 3)
-          .forEach((item) => {
-            toast(item.body || item.title || 'New Slivz update');
-          });
 
         seenIdsRef.current = nextIds;
       },

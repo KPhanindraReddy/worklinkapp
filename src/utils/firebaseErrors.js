@@ -9,17 +9,17 @@ const errorCodeMap = {
   'auth/account-exists-with-different-credential':
     'This email already belongs to another sign-in method. Use that method first, then connect Google later.',
   'auth/credential-already-in-use':
-    'This phone number is already linked to another login account. Delete that duplicate phone-only account in Firebase Auth, then link it here.',
+    'This phone number is already linked to another login account. Contact support if you need help moving it.',
   'auth/provider-already-linked':
     'This phone number is already linked to your account.',
   'auth/operation-not-allowed':
-    'This login method is not enabled in Firebase Authentication yet.',
+    'This login method is not enabled on the backend yet.',
   'auth/operation-not-supported-in-this-environment':
     'This browser blocked the popup flow. Slivz will switch to a redirect-based login instead.',
   'auth/too-many-requests': 'Too many attempts were detected. Please wait and try again.',
   'auth/quota-exceeded': 'SMS quota was exceeded. Please wait and try again later.',
   'auth/unauthorized-domain':
-    'This domain is not approved in Firebase Authentication. Add it to the authorized domains list and try again.',
+    'This domain is not approved for login yet. Contact support if this continues.',
   'auth/invalid-verification-code': 'The OTP code is invalid. Please check and retry.',
   'auth/missing-verification-code': 'Enter the OTP code before verifying.',
   'auth/code-expired': 'This OTP has expired. Send a new OTP and try again.',
@@ -30,13 +30,21 @@ const errorCodeMap = {
   'auth/invalid-app-credential': 'The phone verification session expired. Refresh the page and send OTP again.',
   'auth/requires-recent-login': 'For security, sign out and sign in again with email, then link the phone.',
   internal:
-    'Phone profile login failed on the server. Deploy the latest function, then check Firebase Functions logs if it continues.',
+    'Phone profile login failed on the backend. Please try again later.',
   unauthenticated: 'Please sign in again before continuing.',
   'failed-precondition':
-    'Firestore needs the latest rules or indexes. Deploy Firebase rules and indexes, then try again.',
+    'The database needs the latest rules or indexes. Please try again later.',
   'permission-denied':
-    'Firestore permissions are blocking this action. Deploy the Slivz Firestore rules or switch the database to test mode while setting up.'
+    'Database permissions are blocking this action. Please try again later.'
 };
+
+const makeProductionSafeMessage = (message) =>
+  String(message || '')
+    .replace(/Firebase Authentication/gi, 'login backend')
+    .replace(/Firebase Storage/gi, 'storage backend')
+    .replace(/Firebase Functions/gi, 'backend functions')
+    .replace(/Firebase/gi, 'backend')
+    .replace(/Firestore/gi, 'database');
 
 export const getFirebaseErrorMessage = (error) => {
   const rawMessage = String(error?.message || '');
@@ -45,5 +53,6 @@ export const getFirebaseErrorMessage = (error) => {
     return 'Some booking details were missing. Choose a service and available labour, then try again.';
   }
 
-  return errorCodeMap[error?.code] ?? rawMessage ?? 'Something went wrong. Please try again.';
+  const message = errorCodeMap[error?.code] ?? rawMessage ?? 'Something went wrong. Please try again.';
+  return makeProductionSafeMessage(message);
 };

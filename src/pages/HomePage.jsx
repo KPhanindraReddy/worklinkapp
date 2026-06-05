@@ -15,7 +15,7 @@ import { heroStats } from '../data/mockData';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { resolvePostAuthPath } from '../utils/authFlow';
 
-const statLabels = ['Workers', '24/7 Services', 'Response'];
+const statLabels = ['Workers', 'Service', 'Response'];
 
 const quickPaths = [
   {

@@ -376,7 +376,7 @@ const SettingsPage = () => {
                   value={profilePhotoUrl}
                   fullName={formValues.fullName || userProfile?.fullName || currentUser?.displayName || 'Profile'}
                   avatarClassName="h-16 w-16 sm:h-20 sm:w-20"
-                  disabled={!isEditingPersonal || savingProfile}
+                  disabled={savingProfile}
                   onChange={(url) => updateFormValue('profilePhotoUrl', url)}
                   onError={(error) => toast.error(getFirebaseErrorMessage(error))}
                 />
