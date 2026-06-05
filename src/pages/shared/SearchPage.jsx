@@ -17,6 +17,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { useLocationName } from '../../hooks/useLocationName';
 import { searchLabours } from '../../services/labourService';
+import { recordServiceInteraction } from '../../services/serviceInteractionService';
 import { resolvePostAuthPath } from '../../utils/authFlow';
 import { DEFAULT_LABOUR_RADIUS_KM, labourRadiusOptions, workCategories } from '../../utils/constants';
 import { getLocationLabel, normalizeCoordinates } from '../../utils/location';
@@ -160,6 +161,11 @@ const SearchPage = () => {
   const handleServiceChange = (event) => {
     const service = event.target.value;
     setFilters({ category: service, query: service });
+    recordServiceInteraction({
+      serviceType: service,
+      type: 'search',
+      source: 'search_page'
+    });
   };
 
   if (shouldRedirectRole) {

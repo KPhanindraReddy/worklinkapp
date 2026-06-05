@@ -60,11 +60,23 @@ const Td = ({ children, className = '', ...props }) => (
   </td>
 );
 
+const RowActionMenu = ({ children }) => (
+  <details className="relative">
+    <summary className="grid h-9 w-9 cursor-pointer list-none place-items-center rounded-xl border border-slate-200 bg-white text-lg font-bold text-slate-700 shadow-sm transition hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 [&::-webkit-details-marker]:hidden">
+      ...
+    </summary>
+    <div className="absolute right-0 z-20 mt-2 grid min-w-36 gap-1 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
+      {children}
+    </div>
+  </details>
+);
+
 const AdminDashboardPage = () => {
   const [overview, setOverview] = useState({
     analytics: {},
     categories: [],
     pendingLabours: [],
+    customServices: [],
     demandByLocation: []
   });
   const [overviewLoading, setOverviewLoading] = useState(true);
@@ -571,33 +583,91 @@ const AdminDashboardPage = () => {
               </Card>
 
               <Card>
-                <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Category management</h2>
-                <div className="mt-5 space-y-3">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Service people count</h2>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                      See how many labour people are registered for each service.
+                    </p>
+                  </div>
+                  <Badge tone="blue">{overview.categories.length} services</Badge>
+                </div>
+                <TableShell>
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <Th>Service</Th>
+                      <Th>People</Th>
+                      <Th>Clicks</Th>
+                      <Th>Searches</Th>
+                      <Th>Total interest</Th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
                   {overviewLoading ? (
-                    <>
-                      <Skeleton className="h-16 w-full" />
-                      <Skeleton className="h-16 w-full" />
-                      <Skeleton className="h-16 w-full" />
-                    </>
+                    <tr>
+                      <Td colSpan={5}><Skeleton className="h-8 w-full" /></Td>
+                    </tr>
                   ) : (
                     overview.categories.map((category) => (
-                      <div
-                        key={category.id}
-                        className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-800/50"
-                      >
-                        <div className="min-w-0">
-                          <p className="font-medium text-slate-950 dark:text-white">{category.name}</p>
-                          <p className="text-sm text-slate-500 dark:text-slate-400">
-                            {category.openRequests} open requests
-                          </p>
-                        </div>
-                        <Badge tone={category.trending ? 'blue' : 'slate'}>
-                          {category.trending ? 'Trending' : 'Stable'}
-                        </Badge>
-                      </div>
+                      <tr key={category.id}>
+                        <Td className="font-semibold text-slate-950">{category.name}</Td>
+                        <Td>
+                          <Badge tone={category.peopleCount ? 'blue' : 'slate'}>
+                            {category.peopleCount} people
+                          </Badge>
+                        </Td>
+                        <Td>{category.clickCount || 0}</Td>
+                        <Td>{category.searchCount || 0}</Td>
+                        <Td className="font-bold text-slate-950">
+                          {(category.clickCount || 0) + (category.searchCount || 0)}
+                        </Td>
+                      </tr>
                     ))
                   )}
+                  </tbody>
+                </TableShell>
+              </Card>
+
+              <Card>
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-semibold text-slate-950 dark:text-white">New service names</h2>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                      Services typed by labour that are not in the default list.
+                    </p>
+                  </div>
+                  <Badge tone="amber">{overview.customServices.length} new</Badge>
                 </div>
+                <TableShell>
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <Th>Service</Th>
+                      <Th>Labour</Th>
+                      <Th>Source</Th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {overviewLoading ? (
+                      <tr>
+                        <Td colSpan={3}><Skeleton className="h-8 w-full" /></Td>
+                      </tr>
+                    ) : overview.customServices.length ? (
+                      overview.customServices.map((service) => (
+                        <tr key={service.id}>
+                          <Td className="font-semibold text-slate-950">{service.name}</Td>
+                          <Td>{service.labourName || 'Labour'}</Td>
+                          <Td>
+                            <Badge tone="slate">{service.source || 'profile'}</Badge>
+                          </Td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <Td colSpan={3} className="text-slate-500">No new custom services yet.</Td>
+                      </tr>
+                    )}
+                  </tbody>
+                </TableShell>
               </Card>
             </div>
 
@@ -840,27 +910,27 @@ const AdminDashboardPage = () => {
                               </Badge>
                             </Td>
                             <Td>
-                              <div className="flex min-w-52 flex-wrap gap-2">
+                              <RowActionMenu>
                                 {!labour.verified ? (
-                                  <Button size="sm" onClick={() => handleVerify(labour.id)}>
+                                  <Button size="sm" className="w-full justify-start" onClick={() => handleVerify(labour.id)}>
                                     <ShieldCheck size={15} />
                                     Approve
                                   </Button>
                                 ) : null}
-                                <Button type="button" size="sm" variant="outline" onClick={() => openProfileEditor(labour, 'labour')}>
+                                <Button type="button" size="sm" variant="outline" className="w-full justify-start" onClick={() => openProfileEditor(labour, 'labour')}>
                                   <Pencil size={15} />
                                   Edit
                                 </Button>
-                                <Button as={Link} to={`/labour/${labour.id}`} size="sm" variant="outline">
+                                <Button as={Link} to={`/labour/${labour.id}`} size="sm" variant="outline" className="w-full justify-start">
                                   Open
                                 </Button>
-                                <Button size="sm" variant="outline" onClick={() => handleAccountStatus(labour.id, 'labour', 'active')}>
+                                <Button size="sm" variant="outline" className="w-full justify-start" onClick={() => handleAccountStatus(labour.id, 'labour', 'active')}>
                                   Active
                                 </Button>
-                                <Button size="sm" variant="outline" onClick={() => handleBan(labour.id, 'labour')}>
+                                <Button size="sm" variant="outline" className="w-full justify-start" onClick={() => handleBan(labour.id, 'labour')}>
                                   Ban
                                 </Button>
-                              </div>
+                              </RowActionMenu>
                             </Td>
                           </tr>
                         ))}
@@ -958,18 +1028,18 @@ const AdminDashboardPage = () => {
                               </Badge>
                             </Td>
                             <Td>
-                              <div className="flex min-w-48 flex-wrap gap-2">
-                                <Button type="button" size="sm" variant="outline" onClick={() => openProfileEditor(client, 'client')}>
+                              <RowActionMenu>
+                                <Button type="button" size="sm" variant="outline" className="w-full justify-start" onClick={() => openProfileEditor(client, 'client')}>
                                   <Pencil size={15} />
                                   Edit
                                 </Button>
-                                <Button size="sm" variant="outline" onClick={() => handleAccountStatus(client.id, 'client', 'active')}>
+                                <Button size="sm" variant="outline" className="w-full justify-start" onClick={() => handleAccountStatus(client.id, 'client', 'active')}>
                                   Active
                                 </Button>
-                                <Button size="sm" variant="outline" onClick={() => handleBan(client.id, 'client')}>
+                                <Button size="sm" variant="outline" className="w-full justify-start" onClick={() => handleBan(client.id, 'client')}>
                                   Ban
                                 </Button>
-                              </div>
+                              </RowActionMenu>
                             </Td>
                           </tr>
                         ))}

@@ -27,6 +27,7 @@ import { ProfileLocationPanel } from '../../components/location/ProfileLocationP
 import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
 import { subscribeBookingsForUser } from '../../services/bookingService';
+import { submitCustomServiceRequest } from '../../services/customServiceService';
 import { updateAvailability } from '../../services/labourService';
 import { subscribeReviewsForLabour } from '../../services/reviewService';
 import { createSupportTicket, listUserSupportTickets } from '../../services/supportTicketService';
@@ -249,6 +250,14 @@ const SettingsPage = () => {
         about: isLabour ? formValues.about : '',
         previousWorkHistory: isLabour ? formValues.previousWorkHistory : ''
       });
+      if (isLabour) {
+        await submitCustomServiceRequest({
+          name: formValues.category,
+          labourId: currentUser.uid,
+          labourName: formValues.fullName,
+          source: 'settings'
+        });
+      }
       toast.success('Profile updated successfully.');
       setEditingSection('');
     } catch (error) {

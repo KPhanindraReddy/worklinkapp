@@ -15,12 +15,9 @@ import { TextAreaField } from '../../components/common/TextAreaField';
 import { ProfileLocationPanel } from '../../components/location/ProfileLocationPanel';
 import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
+import { submitCustomServiceRequest } from '../../services/customServiceService';
 import { routeByRole, isProfileComplete } from '../../utils/authFlow';
-import {
-  availabilityOptions,
-  languageOptions,
-  workCategories
-} from '../../utils/constants';
+import { availabilityOptions, languageOptions, workCategories } from '../../utils/constants';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { getDisplayLocationText } from '../../utils/location';
 import { buildProfileAvatarDataUrl } from '../../utils/profileAvatar';
@@ -194,6 +191,15 @@ const CompleteProfilePage = () => {
         currentLocation: role === 'labour' ? formValues.currentLocation : '',
         coordinates: formValues.coordinates
       });
+
+      if (role === 'labour') {
+        await submitCustomServiceRequest({
+          name: formValues.category,
+          labourId: currentUser.uid,
+          labourName: formValues.fullName,
+          source: 'complete_profile'
+        });
+      }
 
       toast.success('Profile completed successfully.');
       navigate(routeByRole(role), { replace: true });

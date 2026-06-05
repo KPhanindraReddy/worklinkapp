@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
+import { recordServiceInteraction } from '../../services/serviceInteractionService';
 
 const SKIN = '#FBBF24';
 const SKIN2 = '#F59E0B';
@@ -867,6 +868,13 @@ export const ServiceAnimations = () => {
               to={`/auth?role=client&mode=signup&service=${encodeURIComponent(query)}`}
               className="grid h-7 w-7 flex-none place-items-center rounded-lg border border-brand-200 bg-brand-50 text-brand-700 transition hover:bg-brand-100"
               aria-label={`Register for ${label}`}
+              onClick={() =>
+                recordServiceInteraction({
+                  serviceType: query,
+                  type: 'click',
+                  source: 'landing_service_animation'
+                })
+              }
             >
               <ArrowRight size={13} />
             </Link>

@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { isFirebaseConfigured } from '../firebase/env';
 import { db } from '../firebase/firestore';
+import { listPendingCustomServiceRequests } from './customServiceService';
 import { workCategories } from '../utils/constants';
 
 const DIRECTORY_PAGE_SIZE = 18;
@@ -21,8 +22,9 @@ const DIAGNOSTICS_LIMIT = 300;
 const fallbackCategories = workCategories.map((category, index) => ({
   id: `category-${index + 1}`,
   name: category,
-  openRequests: 0,
-  trending: false
+  peopleCount: 0,
+  clickCount: 0,
+  searchCount: 0
 }));
 
 const toMillis = (value) => {
@@ -64,6 +66,7 @@ export const getAdminOverview = async () => {
       },
       categories: fallbackCategories,
       pendingLabours: [],
+      customServices: [],
       demandByLocation: []
     };
   }
@@ -83,6 +86,14 @@ export const getAdminOverview = async () => {
     orderBy('createdAt', 'desc'),
     limit(500)
   );
+  const interactionsQuery = query(
+    collection(db, 'serviceInteractions'),
+    orderBy('createdAt', 'desc'),
+    limit(1000)
+  );
+  const serviceCountQueries = workCategories.map((category) =>
+    getCountFromServer(query(collection(db, 'labours'), where('category', '==', category))).catch(() => null)
+  );
   const [
     usersCountSnapshot,
     laboursCountSnapshot,
@@ -91,7 +102,9 @@ export const getAdminOverview = async () => {
     pendingCountSnapshot,
     pendingLaboursSnapshot,
     paidBookingsSnapshot,
-    demandSnapshot
+    demandSnapshot,
+    interactionsSnapshot,
+    serviceCountSnapshots
   ] = await Promise.all([
     getCountFromServer(collection(db, 'users')),
     getCountFromServer(collection(db, 'labours')),
@@ -100,7 +113,9 @@ export const getAdminOverview = async () => {
     getCountFromServer(query(collection(db, 'labours'), where('verified', '==', false))),
     getDocs(pendingLaboursQuery),
     getDocs(paidBookingsQuery),
-    getDocs(demandQuery).catch(() => ({ docs: [] }))
+    getDocs(demandQuery).catch(() => ({ docs: [] })),
+    getDocs(interactionsQuery).catch(() => ({ docs: [] })),
+    Promise.all(serviceCountQueries)
   ]);
 
   const pendingLabours = pendingLaboursSnapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
@@ -136,6 +151,26 @@ export const getAdminOverview = async () => {
     }))
     .sort((a, b) => b.requestCount - a.requestCount)
     .slice(0, 8);
+  const serviceInteractions = interactionsSnapshot.docs
+    .map((item) => item.data())
+    .reduce((map, item) => {
+      const serviceType = String(item.serviceType || 'Any service').trim();
+      const key = serviceType.toLowerCase();
+      const current = map.get(key) || {
+        clicks: 0,
+        searches: 0
+      };
+
+      if (item.type === 'click') {
+        current.clicks += 1;
+      } else {
+        current.searches += 1;
+      }
+
+      map.set(key, current);
+      return map;
+    }, new Map());
+  const customServices = await listPendingCustomServiceRequests().catch(() => []);
 
   return {
     analytics: {
@@ -147,8 +182,22 @@ export const getAdminOverview = async () => {
       paidEarnings,
       paidBookingCount: paidBookingsSnapshot.size
     },
-    categories: fallbackCategories,
+    categories: workCategories
+      .map((category, index) => ({
+        id: `category-${index + 1}`,
+        name: category,
+        peopleCount: serviceCountSnapshots[index]?.data().count ?? 0,
+        clickCount: serviceInteractions.get(category.toLowerCase())?.clicks ?? 0,
+        searchCount: serviceInteractions.get(category.toLowerCase())?.searches ?? 0
+      }))
+      .sort(
+        (a, b) =>
+          b.peopleCount - a.peopleCount ||
+          b.clickCount + b.searchCount - (a.clickCount + a.searchCount) ||
+          a.name.localeCompare(b.name)
+      ),
     pendingLabours,
+    customServices,
     demandByLocation
   };
 };

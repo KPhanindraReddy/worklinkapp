@@ -36,6 +36,7 @@ import {
 import { searchLabours } from '../../services/labourService';
 import { createNotification } from '../../services/notificationService';
 import { createServiceDemandRequest } from '../../services/serviceDemandService';
+import { recordServiceInteraction } from '../../services/serviceInteractionService';
 import {
   buildAppointmentDateTime,
   formatCurrency,
@@ -475,6 +476,11 @@ const ClientDashboardPage = () => {
     setSelectedService(service);
     setRequestMode('instant');
     setCoverageMessage('');
+    recordServiceInteraction({
+      serviceType: service,
+      type: 'search',
+      source: 'client_dashboard'
+    });
   };
 
   const notifyLabour = async ({ bookingId, labour, requestMode: mode }) => {

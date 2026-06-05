@@ -356,6 +356,47 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    match /serviceInteractions/{interactionId} {
+      allow read: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly([
+        'serviceType',
+        'type',
+        'source',
+        'createdAt'
+      ]) &&
+        request.resource.data.serviceType is string &&
+        request.resource.data.type in ['click', 'search'] &&
+        request.resource.data.source is string &&
+        request.resource.data.createdAt == request.time;
+      allow update, delete: if isAdmin();
+    }
+
+    match /customServiceRequests/{requestId} {
+      allow read: if isAdmin();
+      allow create, update: if signedIn() &&
+        request.resource.data.keys().hasOnly([
+          'name',
+          'normalizedName',
+          'labourId',
+          'labourName',
+          'source',
+          'status',
+          'requestCount',
+          'updatedAt',
+          'createdAt'
+        ]) &&
+        request.resource.data.name is string &&
+        request.resource.data.normalizedName is string &&
+        request.resource.data.labourId == request.auth.uid &&
+        request.resource.data.labourName is string &&
+        request.resource.data.source is string &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.requestCount is int &&
+        request.resource.data.updatedAt == request.time &&
+        request.resource.data.createdAt == request.time;
+      allow delete: if isAdmin();
+    }
+
     match /notifications/{notificationId} {
       allow read: if signedIn() && request.auth.uid == resource.data.userId;
       allow update: if signedIn() &&
