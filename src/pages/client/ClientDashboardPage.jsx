@@ -886,7 +886,7 @@ const ClientDashboardPage = () => {
                   compact
                 />
                 <div className="grid grid-cols-2 gap-2">
-                  <Button type="button" size="sm" className="h-10 w-full bg-slate-950 hover:bg-slate-800" onClick={handleInstantRequest} disabled={submittingInstant || bookingsLoading}>
+                  <Button type="button" size="sm" className="h-10 w-full border border-brand-200 bg-brand-50 text-brand-800 shadow-none hover:border-brand-300 hover:bg-brand-100" onClick={handleInstantRequest} disabled={submittingInstant || bookingsLoading}>
                     {submittingInstant ? <LoaderCircle size={16} className="animate-spin" /> : <Send size={16} />}
                     Instant
                   </Button>
@@ -950,7 +950,7 @@ const ClientDashboardPage = () => {
                 compact
               />
               <div className="grid grid-cols-2 gap-2">
-                <Button type="button" size="sm" className="h-10 w-full bg-slate-950 hover:bg-slate-800" onClick={handleInstantRequest} disabled={submittingInstant || bookingsLoading}>
+                <Button type="button" size="sm" className="h-10 w-full border border-brand-200 bg-brand-50 text-brand-800 shadow-none hover:border-brand-300 hover:bg-brand-100" onClick={handleInstantRequest} disabled={submittingInstant || bookingsLoading}>
                   {submittingInstant ? <LoaderCircle size={16} className="animate-spin" /> : <Send size={16} />}
                   Instant
                 </Button>

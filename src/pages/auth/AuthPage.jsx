@@ -555,6 +555,11 @@ const AuthPage = () => {
 
   const localPhoneNumber = getIndianLocalPhoneNumber(formValues.phoneNumber);
   const isOtpStep = Boolean(confirmationResult);
+  const authModeTitle = mode === 'signup' ? 'Register' : 'Login';
+  const authModeDescription =
+    mode === 'signup'
+      ? 'Create your Slivz account with your mobile number'
+      : 'Login to Slivz with your mobile number';
   const handleLocalPhoneChange = (event) => {
     handleChange('phoneNumber', normalizeIndianPhoneNumber(event.target.value));
   };
@@ -650,10 +655,10 @@ const AuthPage = () => {
                 <>
                   <div className="mt-7">
                     <h2 className="text-[30px] font-black leading-[1.08] tracking-normal text-slate-950 sm:text-[34px]">
-                      What&apos;s your number?
+                      {authModeTitle}
                     </h2>
                     <p className="mt-2 text-lg font-medium leading-tight text-slate-700">
-                      Enter your phone number to proceed
+                      {authModeDescription}
                     </p>
                   </div>
 
@@ -681,11 +686,11 @@ const AuthPage = () => {
                   <div className="mt-auto space-y-4 pt-8">
                     <p className="px-2 text-center text-sm font-medium leading-6 text-slate-500">
                       By continuing, you confirm that you are 18 years of age and agree to the{' '}
-                      <Link to="/about-contact" className="font-semibold text-brand-700 underline underline-offset-2">
+                      <Link to="/terms" className="font-semibold text-brand-700 underline underline-offset-2">
                         Terms & Conditions
                       </Link>{' '}
                       and{' '}
-                      <Link to="/about-contact" className="font-semibold text-brand-700 underline underline-offset-2">
+                      <Link to="/privacy" className="font-semibold text-brand-700 underline underline-offset-2">
                         Privacy Policy
                       </Link>
                       .

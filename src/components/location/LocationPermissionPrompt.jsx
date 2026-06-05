@@ -41,12 +41,12 @@ export const LocationPermissionPrompt = ({
         </Button>
       </div>
       <div className="mt-3 rounded-xl border border-amber-200 bg-white/80 p-3 text-xs font-semibold leading-5 text-amber-950">
-        <p>Browser has blocked the popup. Allow location in browser settings, then tap Try again.</p>
-        <ul className="mt-2 list-disc space-y-1 pl-4">
-          <li>iPhone Safari: open iPhone Settings, Privacy & Security, Location Services, Safari Websites, then choose While Using.</li>
-          <li>Chrome or Edge: tap the lock or site icon near the address bar, open Site settings, set Location to Allow.</li>
-          <li>Firefox: tap the lock icon, remove the blocked location permission, then try again.</li>
-          <li>Android phone: open browser settings, Site settings, Location, then allow slivz.com.</li>
+        <p>Allow location, then tap Try again.</p>
+        <ul className="mt-2 space-y-1">
+          <li>Android Chrome - lock icon - Site settings - Location - Allow</li>
+          <li>iPhone Safari - Settings - Privacy & Security - Location Services - Safari Websites - While Using</li>
+          <li>Edge/Chrome desktop - lock icon - Site settings - Location - Allow</li>
+          <li>Firefox - lock icon - Permissions - Location - Allow</li>
         </ul>
       </div>
     </div>

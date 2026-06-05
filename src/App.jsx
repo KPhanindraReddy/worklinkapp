@@ -19,6 +19,8 @@ const NotificationsPage = lazy(() => import('./pages/shared/NotificationsPage'))
 const RecentServicesPage = lazy(() => import('./pages/shared/RecentServicesPage'));
 const SettingsPage = lazy(() => import('./pages/shared/SettingsPage'));
 const AboutContactPage = lazy(() => import('./pages/shared/AboutContactPage'));
+const TermsPage = lazy(() => import('./pages/shared/TermsPage'));
+const PrivacyPage = lazy(() => import('./pages/shared/PrivacyPage'));
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
@@ -86,6 +88,8 @@ const App = () => (
         }
       />
       <Route path="/about" element={<AboutContactPage />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
       <Route
         path="/labour/dashboard"
         element={

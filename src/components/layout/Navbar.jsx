@@ -378,7 +378,7 @@ export const Navbar = () => {
         </div>
 
         <nav className="hidden items-center gap-1 lg:flex">
-          {baseLinks.map((link) => {
+          {baseLinks.filter((link) => link.label !== 'About').map((link) => {
             const Icon = link.icon;
 
             return (
