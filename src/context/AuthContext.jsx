@@ -153,6 +153,8 @@ export const AuthProvider = ({ children }) => {
       sendPasswordReset: (...args) => runAuthAction('sendPasswordReset', ...args),
       sendPhoneOtp: (...args) => runAuthAction('sendPhoneOtp', ...args),
       verifyPhoneOtp: (...args) => runAuthAction('verifyPhoneOtp', ...args),
+      sendPhoneLinkOtp: (...args) => runAuthAction('sendPhoneLinkOtp', ...args),
+      verifyPhoneLinkOtp: (...args) => runAuthAction('verifyPhoneLinkOtp', ...args),
       consumeRedirectAuthResult: (...args) => runAuthAction('consumeRedirectAuthResult', ...args),
       createBaseUserProfile: async (...args) => {
         const profile = await runAuthAction('createBaseUserProfile', ...args);

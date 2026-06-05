@@ -112,7 +112,13 @@ const availabilityStyles = {
 
 const SettingsPage = () => {
   const navigate = useNavigate();
-  const { currentUser, userProfile, createOrUpdateUserProfile, logout } = useAuth();
+  const {
+    currentUser,
+    userProfile,
+    createOrUpdateUserProfile,
+    logout,
+    refreshProfile
+  } = useAuth();
   const [formValues, setFormValues] = useState(() => buildProfileForm(userProfile, currentUser));
   const [savingProfile, setSavingProfile] = useState(false);
   const [editingSection, setEditingSection] = useState('');
@@ -288,6 +294,7 @@ const SettingsPage = () => {
     await logout();
     navigate('/auth', { replace: true });
   };
+
   const loadUserTickets = async () => {
     if (!currentUser?.uid) {
       setUserTickets([]);
@@ -474,14 +481,14 @@ const SettingsPage = () => {
               />
               <PhoneInputField
                 label="Phone number"
-                disabled={personalFieldsDisabled}
+                disabled={personalFieldsDisabled || Boolean(userProfile?.phoneNumber || currentUser?.phoneNumber)}
                 value={formValues.phoneNumber}
                 onChange={(event) => updateFormValue('phoneNumber', event.target.value)}
               />
               <InputField
                 label="Email"
                 type="email"
-                disabled={personalFieldsDisabled}
+                disabled={personalFieldsDisabled || Boolean(userProfile?.email || currentUser?.email)}
                 value={formValues.email}
                 onChange={(event) => updateFormValue('email', event.target.value)}
                 placeholder="name@example.com"

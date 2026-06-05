@@ -1,9 +1,9 @@
 import {
   Apple,
+  ArrowLeft,
   BriefcaseBusiness,
-  ChevronDown,
-  ChevronUp,
-  House,
+  CheckCircle2,
+  CircleHelp,
   UserRound
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -14,7 +14,6 @@ import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
-import { PhoneInputField } from '../../components/common/PhoneInputField';
 import { AppShell } from '../../components/layout/AppShell';
 import { useAuth } from '../../context/AuthContext';
 import { isHiddenAdminAccount } from '../../utils/adminAccount';
@@ -22,6 +21,7 @@ import { isProfileComplete, resolvePostAuthPath } from '../../utils/authFlow';
 import { roles } from '../../utils/constants';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { readRedirectContext } from '../../utils/oauthRedirectContext';
+import { getIndianLocalPhoneNumber, normalizeIndianPhoneNumber } from '../../utils/phone';
 
 const initialFormState = {
   fullName: '',
@@ -34,21 +34,6 @@ const initialFormState = {
 const providerNames = {
   'google.com': 'Google',
   'apple.com': 'Apple'
-};
-
-const roleCopy = {
-  client: {
-    icon: UserRound,
-    label: 'Client',
-    otherLabel: 'Labour worker',
-    otherRole: 'labour'
-  },
-  labour: {
-    icon: BriefcaseBusiness,
-    label: 'Labour worker',
-    otherLabel: 'Client',
-    otherRole: 'client'
-  }
 };
 
 const publicRoleOptions = [
@@ -90,6 +75,7 @@ const resolveInitialRole = (queryRole) =>
   roles.some((item) => item.value === queryRole) ? queryRole : 'client';
 
 const resolveInitialMode = (queryMode) => (queryMode === 'signup' ? 'signup' : 'login');
+const showVerifiedTickBriefly = () => new Promise((resolve) => setTimeout(resolve, 650));
 
 const AuthPage = () => {
   const location = useLocation();
@@ -106,7 +92,9 @@ const AuthPage = () => {
     loginWithEmail,
     loginWithGoogle,
     sendPasswordReset,
+    sendPhoneLinkOtp,
     sendPhoneOtp,
+    verifyPhoneLinkOtp,
     verifyPhoneOtp,
     consumeRedirectAuthResult,
     createBaseUserProfile
@@ -120,26 +108,31 @@ const AuthPage = () => {
   }));
   const [otp, setOtp] = useState('');
   const [confirmationResult, setConfirmationResult] = useState(null);
+  const [phoneOtpPurpose, setPhoneOtpPurpose] = useState('phoneAuth');
+  const [pendingEmailSignupUser, setPendingEmailSignupUser] = useState(null);
+  const [phoneVerified, setPhoneVerified] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [showOtpOptions, setShowOtpOptions] = useState(false);
+  const [showEmailPasswordLogin, setShowEmailPasswordLogin] = useState(false);
   const [processingRedirectAuth, setProcessingRedirectAuth] = useState(() =>
     Boolean(readRedirectContext())
   );
 
-  const activeRole = roleCopy[role] ?? roleCopy.client;
-  const actionLabel = mode === 'signup' ? 'Register' : 'Login';
   const canSubmitEmail =
     mode === 'signup'
-      ? Boolean(formValues.fullName.trim() && formValues.email.trim() && formValues.password.trim())
+      ? Boolean(
+          formValues.phoneNumber.trim() &&
+            (!formValues.email.trim() || formValues.password.trim())
+        )
       : Boolean(formValues.email.trim() && formValues.password.trim());
+  const isEmailSignupPhoneLink = phoneOtpPurpose === 'emailSignupLink';
 
   useEffect(() => {
-    if (!processingRedirectAuth && currentUser && !submitting) {
+    if (!processingRedirectAuth && currentUser && !submitting && !pendingEmailSignupUser) {
       navigate(resolvePostAuthPath({ profile: userProfile, fallbackRole: role }), {
         replace: true
       });
     }
-  }, [currentUser, navigate, processingRedirectAuth, role, submitting, userProfile]);
+  }, [currentUser, navigate, pendingEmailSignupUser, processingRedirectAuth, role, submitting, userProfile]);
 
   useEffect(() => {
     const nextMode = resolveInitialMode(queryMode);
@@ -272,12 +265,20 @@ const AuthPage = () => {
     };
   }, []);
 
-  const handleChange = (key, value) =>
+  const handleChange = (key, value) => {
+    if (key === 'phoneNumber') {
+      setConfirmationResult(null);
+      setOtp('');
+      setPhoneOtpPurpose('phoneAuth');
+      setPhoneVerified(false);
+    }
+
     setFormValues((prev) => ({
       ...prev,
       [key]: value,
       ...(key === 'role' ? { role: value } : {})
     }));
+  };
 
   const updateAuthUrl = (nextRole = role, nextMode = mode) => {
     const nextParams = new URLSearchParams(searchParams);
@@ -289,39 +290,81 @@ const AuthPage = () => {
   const switchAccount = (nextRole, nextMode = mode) => {
     setRole(nextRole);
     setMode(nextMode);
+    setShowEmailPasswordLogin(false);
     setFormValues((prev) => ({ ...prev, role: nextRole }));
     updateAuthUrl(nextRole, nextMode);
   };
 
   const handleModeSelect = (nextMode) => {
     setMode(nextMode);
+    setShowEmailPasswordLogin(false);
+    setConfirmationResult(null);
+    setOtp('');
+    setPendingEmailSignupUser(null);
+    setPhoneVerified(false);
+    setPhoneOtpPurpose('phoneAuth');
     updateAuthUrl(role, nextMode);
   };
 
-  const handleEmailAuth = async (event) => {
-    event.preventDefault();
+  const startSignupOtp = async () => {
+    if (pendingEmailSignupUser) {
+      toast.error('Verify the phone OTP to finish this signup.');
+      return;
+    }
+
+    if (!formValues.phoneNumber.trim()) {
+      toast.error('Enter your phone number before sending OTP.');
+      return;
+    }
+
+    if (formValues.email.trim() && !formValues.password.trim()) {
+      toast.error('Enter a password to enable email login, or clear the email field.');
+      return;
+    }
+
     setSubmitting(true);
 
     try {
-      if (mode === 'signup') {
+      if (formValues.email.trim()) {
         const user = await registerWithEmail({
           email: formValues.email,
           password: formValues.password,
           fullName: formValues.fullName
         });
 
-        const profile = await ensureProfileRecord(user, {
-          forceBaseWrite: true,
-          fallbackRole: role
-        });
-
-        toast.success(
-          profile?.role === 'admin'
-            ? 'Admin account created. Opening the admin page.'
-            : 'Account created. Complete your profile on the next screen.'
-        );
-        await redirectAfterAuth(profile, role);
+        setPendingEmailSignupUser(user);
+        setPhoneOtpPurpose('emailSignupLink');
+        const phoneLinkResult = await sendPhoneLinkOtp(formValues.phoneNumber);
+        setConfirmationResult(phoneLinkResult);
+        toast.success('Email verification link sent. Enter the phone OTP to finish signup.');
       } else {
+        setPendingEmailSignupUser(null);
+        setPhoneOtpPurpose('phoneAuth');
+        const phoneResult = await sendPhoneOtp(formValues.phoneNumber);
+        setConfirmationResult(phoneResult);
+        toast.success('OTP sent to your phone number.');
+      }
+
+      setPhoneVerified(false);
+      setOtp('');
+    } catch (error) {
+      toast.error(getFirebaseErrorMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEmailAuth = async (event) => {
+    event.preventDefault();
+
+    if (mode === 'signup') {
+      await startSignupOtp();
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
         const user = await loginWithEmail({
           email: formValues.email,
           password: formValues.password
@@ -334,7 +377,6 @@ const AuthPage = () => {
             : 'Login successful. Complete your profile to continue.'
         );
         await redirectAfterAuth(profile, role);
-      }
     } catch (error) {
       toast.error(getFirebaseErrorMessage(error));
     } finally {
@@ -437,9 +479,15 @@ const AuthPage = () => {
 
     setSubmitting(true);
     try {
-      setShowOtpOptions(true);
-      const result = await sendPhoneOtp(formValues.phoneNumber);
+      setConfirmationResult(null);
+      setOtp('');
+      setPhoneVerified(false);
+      const result =
+        pendingEmailSignupUser && mode === 'signup'
+          ? await sendPhoneLinkOtp(formValues.phoneNumber)
+          : await sendPhoneOtp(formValues.phoneNumber);
       setConfirmationResult(result);
+      setPhoneOtpPurpose(pendingEmailSignupUser && mode === 'signup' ? 'emailSignupLink' : 'phoneAuth');
       toast.success('OTP sent to your phone number.');
     } catch (error) {
       toast.error(getFirebaseErrorMessage(error));
@@ -455,19 +503,37 @@ const AuthPage = () => {
 
     setSubmitting(true);
     try {
-      const user = await verifyPhoneOtp(confirmationResult, otp);
+      const isEmailSignupLink = phoneOtpPurpose === 'emailSignupLink';
+      const user = isEmailSignupLink
+        ? await verifyPhoneLinkOtp(confirmationResult, otp)
+        : await verifyPhoneOtp(confirmationResult, otp, {
+            requireExistingProfile: mode === 'login'
+          });
       const profile = await ensureProfileRecord(user, {
         forceBaseWrite: mode === 'signup',
-        fallbackRole: role
+        fallbackRole: mode === 'signup' ? role : ''
       });
 
+      if (mode === 'login' && !profile) {
+        const { logoutUser } = await import('../../services/authService');
+        await logoutUser();
+        throw new Error('No existing Slivz profile was found for this phone number.');
+      }
+
+      setPendingEmailSignupUser(null);
+      setPhoneOtpPurpose('phoneAuth');
+      setOtp('');
+      setPhoneVerified(true);
       toast.success(
-        mode === 'signup'
-          ? 'Phone verification complete. Finish your profile on the next screen.'
+        isEmailSignupLink
+          ? 'Phone linked to your email account. Finish your profile on the next screen.'
+          : mode === 'signup'
+            ? 'Phone verification complete. Finish your profile on the next screen.'
           : isProfileComplete(profile)
-            ? 'Phone verification complete.'
+            ? 'Phone verified. Logged in to your existing profile.'
             : 'Phone verification complete. Finish your profile to continue.'
       );
+      await showVerifiedTickBriefly();
       await redirectAfterAuth(profile, role);
     } catch (error) {
       toast.error(getFirebaseErrorMessage(error));
@@ -487,55 +553,90 @@ const AuthPage = () => {
     );
   }
 
+  const localPhoneNumber = getIndianLocalPhoneNumber(formValues.phoneNumber);
+  const isOtpStep = Boolean(confirmationResult);
+  const handleLocalPhoneChange = (event) => {
+    handleChange('phoneNumber', normalizeIndianPhoneNumber(event.target.value));
+  };
+  const handlePrimaryOtpSend = () => {
+    if (mode === 'signup' && !confirmationResult && !pendingEmailSignupUser) {
+      return startSignupOtp();
+    }
+
+    return handleSendOtp();
+  };
+
   return (
     <AppShell hideBottomDock hideFooter hideNavbar>
       <PageSEO
         title="Login / Signup"
         description="Join Slivz as labour or client using phone OTP, Google login, Apple login, or email and password."
       />
+      <style>{`
+        .grecaptcha-badge {
+          visibility: hidden !important;
+        }
+      `}</style>
 
-      <section className="min-h-[100dvh] bg-slate-100 px-2 py-2 sm:px-4 sm:py-5">
-        <div className="mx-auto flex min-h-[calc(100dvh-1rem)] w-full max-w-[440px] flex-col sm:min-h-0">
-          <Card className="mobile-safe-bottom flex min-h-[calc(100dvh-1rem)] flex-col rounded-[28px] border-slate-200 bg-white p-3 shadow-[0_16px_40px_rgba(15,23,42,0.1)] sm:min-h-0 sm:p-5">
-            <div className="sticky top-0 z-10 -mx-3 -mt-3 rounded-t-[28px] border-b border-slate-100 bg-white/95 px-3 py-3 backdrop-blur sm:static sm:m-0 sm:border-b-0 sm:bg-transparent sm:p-0">
-              <div className="flex items-center justify-between gap-3">
-                <Button as={Link} to="/" type="button" variant="ghost" size="sm" className="h-10 w-10 p-0" aria-label="Home">
-                  <House size={17} />
-                </Button>
-                <div className="min-w-0 text-center">
-                  <p className="truncate text-xs font-semibold uppercase tracking-[0.14em] text-brand-600">
-                    {activeRole.label}
-                  </p>
-                  <h1 className="truncate text-xl font-bold text-slate-950">
-                    {mode === 'signup' ? 'Register' : 'Login'}
-                  </h1>
-                </div>
-                <span className="h-10 w-10" aria-hidden="true" />
-              </div>
+      <section className="min-h-[100dvh] bg-white px-4 py-4 sm:bg-slate-100 sm:px-4 sm:py-5">
+        <div className="mx-auto flex min-h-[calc(100dvh-2rem)] w-full max-w-[430px] flex-col sm:min-h-0">
+          <Card className="mobile-safe-bottom flex min-h-[calc(100dvh-2rem)] flex-col border-0 bg-white p-0 shadow-none sm:min-h-[620px] sm:rounded-[24px] sm:border sm:border-slate-200 sm:p-5 sm:shadow-[0_14px_36px_rgba(15,23,42,0.08)]">
+            <div className="flex items-center justify-between gap-4">
+              {isOtpStep ? (
+                <button
+                  type="button"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-950 transition hover:bg-slate-100"
+                  onClick={() => {
+                    setConfirmationResult(null);
+                    setOtp('');
+                    setPhoneVerified(false);
+                  }}
+                  aria-label="Back"
+                >
+                  <ArrowLeft size={30} strokeWidth={2.5} />
+                </button>
+              ) : (
+                <Link to="/" className="text-3xl font-black leading-none tracking-tight text-slate-950">
+                  Slivz
+                </Link>
+              )}
 
-              <div className="mt-3 grid grid-cols-2 rounded-2xl border border-slate-200 bg-slate-100 p-1">
-                {publicRoleOptions
-                  .map((item) => {
-                    const RoleIcon = item.value === 'client' ? UserRound : BriefcaseBusiness;
+              {isOtpStep ? (
+                <h1 className="min-w-0 flex-1 truncate text-3xl font-black leading-none tracking-tight text-slate-950">
+                  Verify OTP
+                </h1>
+              ) : null}
 
-                    return (
-                      <button
-                        key={item.value}
-                        type="button"
-                        className={clsx(
-                          'inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-bold transition sm:px-3 sm:text-sm',
-                          role === item.value
-                            ? 'bg-white text-slate-950 shadow-sm'
-                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
-                        )}
-                        onClick={() => switchAccount(item.value, mode)}
-                      >
-                        <RoleIcon size={15} />
-                        {item.label}
-                      </button>
-                    );
-                  })}
-              </div>
+              <Link
+                to="/about-contact"
+                className="inline-flex items-center gap-1.5 rounded-full text-base font-bold text-slate-950 transition hover:text-brand-700"
+              >
+                <CircleHelp size={21} className="text-brand-800" />
+                Help
+              </Link>
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 rounded-2xl border border-slate-200 bg-slate-100 p-1">
+              {publicRoleOptions.map((item) => {
+                const RoleIcon = item.value === 'client' ? UserRound : BriefcaseBusiness;
+
+                return (
+                  <button
+                    key={item.value}
+                    type="button"
+                    className={clsx(
+                      'inline-flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-sm font-bold transition',
+                      role === item.value
+                        ? 'bg-white text-slate-950 shadow-sm'
+                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                    )}
+                    onClick={() => switchAccount(item.value, mode)}
+                  >
+                    <RoleIcon size={16} />
+                    {item.label}
+                  </button>
+                );
+              })}
             </div>
 
             {!isFirebaseConfigured ? (
@@ -544,161 +645,226 @@ const AuthPage = () => {
               </div>
             ) : null}
 
-            <form className="mt-4 space-y-3" onSubmit={handleEmailAuth}>
-              {mode === 'signup' ? (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <InputField
-                    label="Full name"
-                    value={formValues.fullName}
-                    onChange={(event) => handleChange('fullName', event.target.value)}
-                    placeholder="Your full name"
-                  />
-                  <PhoneInputField
-                    label="Phone number"
-                    value={formValues.phoneNumber}
-                    onChange={(event) => handleChange('phoneNumber', event.target.value)}
-                  />
-                </div>
-              ) : null}
+            <form className="flex flex-1 flex-col" onSubmit={handleEmailAuth}>
+              {!isOtpStep ? (
+                <>
+                  <div className="mt-7">
+                    <h2 className="text-[30px] font-black leading-[1.08] tracking-normal text-slate-950 sm:text-[34px]">
+                      What&apos;s your number?
+                    </h2>
+                    <p className="mt-2 text-lg font-medium leading-tight text-slate-700">
+                      Enter your phone number to proceed
+                    </p>
+                  </div>
 
-              <div className="grid gap-3">
-                <InputField
-                  label="Email"
-                  type="email"
-                  value={formValues.email}
-                  onChange={(event) => handleChange('email', event.target.value)}
-                  placeholder="name@example.com"
-                />
-                <InputField
-                  label="Password"
-                  type="password"
-                  value={formValues.password}
-                  onChange={(event) => handleChange('password', event.target.value)}
-                  placeholder="Minimum 6 characters"
-                />
-              </div>
-
-              {mode === 'login' ? (
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    className="text-sm font-semibold text-brand-700 hover:text-brand-800"
-                    onClick={handleForgotPassword}
-                    disabled={submitting}
-                  >
-                    Forgot password?
-                  </button>
-                </div>
-              ) : null}
-
-              <Button type="submit" size="lg" className="h-12 w-full rounded-2xl" disabled={submitting || !canSubmitEmail}>
-                {submitting ? 'Please wait...' : `${actionLabel} as ${activeRole.label}`}
-              </Button>
-            </form>
-
-            <p className="mt-4 text-center text-sm font-medium text-slate-600">
-              {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
-              <button
-                type="button"
-                className="font-bold text-brand-700 hover:text-brand-800"
-                onClick={() => handleModeSelect(mode === 'login' ? 'signup' : 'login')}
-              >
-                {mode === 'login' ? 'Register' : 'Login'}
-              </button>
-            </p>
-
-            <div className="my-4 flex items-center gap-3">
-              <div className="h-px flex-1 bg-slate-200" />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                or
-              </span>
-              <div className="h-px flex-1 bg-slate-200" />
-            </div>
-
-            <div className="grid gap-3">
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="min-h-12 rounded-2xl px-2"
-                  onClick={handleGoogleAuth}
-                  disabled={submitting}
-                >
-                  <GoogleIcon />
-                  Google
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="min-h-12 rounded-2xl px-2"
-                  onClick={handleAppleAuth}
-                  disabled={submitting}
-                >
-                  <Apple size={16} />
-                  Apple
-                </Button>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="min-h-11 w-full justify-between rounded-xl"
-                  onClick={() => setShowOtpOptions((prev) => !prev)}
-                >
-                  <span>Sign in with phone</span>
-                  {showOtpOptions ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                </Button>
-
-                {showOtpOptions || confirmationResult ? (
-                  <div className="mt-3 grid gap-3 px-1 pb-1">
-                    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-                      <PhoneInputField
-                        label="Phone number"
-                        value={formValues.phoneNumber}
-                        onChange={(event) => handleChange('phoneNumber', event.target.value)}
+                  <label className="mt-7 block">
+                    <span className="sr-only">Phone number</span>
+                    <span className="flex min-h-[58px] items-center overflow-hidden rounded-xl border-2 border-slate-950 bg-white transition focus-within:border-brand-600 focus-within:ring-4 focus-within:ring-brand-100">
+                      <span className="inline-flex flex-none items-center gap-2 px-3 text-[22px] font-black text-slate-950">
+                        <span className="text-2xl" aria-hidden="true">
+                          🇮🇳
+                        </span>
+                        +91
+                      </span>
+                      <input
+                        className="min-w-0 flex-1 border-0 bg-transparent px-1 py-3 text-xl font-black text-slate-950 outline-none placeholder:text-slate-300 sm:text-[22px]"
+                        value={localPhoneNumber}
+                        onChange={handleLocalPhoneChange}
+                        inputMode="numeric"
+                        autoComplete="tel-national"
+                        maxLength={10}
+                        placeholder="Enter Mobile Number"
                       />
-                      <div className="self-end">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="w-full sm:w-auto"
-                          onClick={handleSendOtp}
-                          disabled={submitting || !formValues.phoneNumber.trim()}
-                        >
-                          Send OTP
-                        </Button>
-                      </div>
+                    </span>
+                  </label>
+
+                  <div className="mt-auto space-y-4 pt-8">
+                    <p className="px-2 text-center text-sm font-medium leading-6 text-slate-500">
+                      By continuing, you confirm that you are 18 years of age and agree to the{' '}
+                      <Link to="/about-contact" className="font-semibold text-brand-700 underline underline-offset-2">
+                        Terms & Conditions
+                      </Link>{' '}
+                      and{' '}
+                      <Link to="/about-contact" className="font-semibold text-brand-700 underline underline-offset-2">
+                        Privacy Policy
+                      </Link>
+                      .
+                    </p>
+
+                    <Button
+                      type="button"
+                      size="lg"
+                      className="h-12 w-full rounded-2xl text-base font-black"
+                      onClick={handlePrimaryOtpSend}
+                      disabled={submitting || !formValues.phoneNumber.trim()}
+                    >
+                      {submitting ? 'Please wait...' : 'Next'}
+                    </Button>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="min-h-12 rounded-2xl px-2"
+                        onClick={handleGoogleAuth}
+                        disabled={submitting}
+                      >
+                        <GoogleIcon />
+                        Google
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="min-h-12 rounded-2xl px-2"
+                        onClick={handleAppleAuth}
+                        disabled={submitting}
+                      >
+                        <Apple size={16} />
+                        Apple
+                      </Button>
                     </div>
 
-                    {confirmationResult ? (
-                      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                    <button
+                      type="button"
+                      className="mx-auto block text-sm font-bold text-brand-700 hover:text-brand-800"
+                      onClick={() => setShowEmailPasswordLogin((prev) => !prev)}
+                      disabled={submitting}
+                    >
+                      {showEmailPasswordLogin
+                        ? mode === 'signup'
+                          ? 'Hide email password'
+                          : 'Hide email login'
+                        : mode === 'signup'
+                          ? 'Add email password'
+                          : 'Use email password'}
+                    </button>
+
+                    {showEmailPasswordLogin ? (
+                      <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
                         <InputField
-                          label="Enter OTP"
-                          value={otp}
-                          onChange={(event) => setOtp(event.target.value)}
-                          placeholder="6 digit code"
+                          label={mode === 'signup' ? 'Email (optional)' : 'Email'}
+                          type="email"
+                          autoComplete="email"
+                          value={formValues.email}
+                          onChange={(event) => handleChange('email', event.target.value)}
+                          placeholder="name@example.com"
                         />
-                        <div className="self-end">
+                        <InputField
+                          label={mode === 'signup' ? 'Password (for email login)' : 'Password'}
+                          type="password"
+                          autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                          value={formValues.password}
+                          onChange={(event) => handleChange('password', event.target.value)}
+                          placeholder={mode === 'signup' ? 'Needed only if email is entered' : 'Minimum 6 characters'}
+                        />
+                        <div className="flex items-center justify-between gap-3">
+                          {mode === 'login' ? (
+                            <button
+                              type="button"
+                              className="text-sm font-semibold text-brand-700 hover:text-brand-800"
+                              onClick={handleForgotPassword}
+                              disabled={submitting}
+                            >
+                              Forgot password?
+                            </button>
+                          ) : (
+                            <span />
+                          )}
                           <Button
-                            type="button"
-                            className="w-full sm:w-auto"
-                            onClick={handleVerifyOtp}
-                            disabled={submitting || !otp.trim()}
+                            type="submit"
+                            size="sm"
+                            className="rounded-xl"
+                            disabled={submitting || !canSubmitEmail}
                           >
-                            Verify OTP
+                            {submitting ? 'Please wait...' : mode === 'signup' ? 'Use email' : 'Login'}
                           </Button>
                         </div>
                       </div>
                     ) : null}
+
+                    <p className="text-center text-sm font-medium text-slate-600">
+                      {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
+                      <button
+                        type="button"
+                        className="font-bold text-brand-700 hover:text-brand-800"
+                        onClick={() => handleModeSelect(mode === 'login' ? 'signup' : 'login')}
+                      >
+                        {mode === 'login' ? 'Register' : 'Login'}
+                      </button>
+                    </p>
                   </div>
-                ) : null}
-                <div id="recaptcha-container" />
-              </div>
-            </div>
+                </>
+              ) : (
+                <>
+                  <div className="mt-10">
+                    <h2 className="text-[28px] font-black leading-tight tracking-normal text-slate-950 sm:text-[32px]">
+                      Enter verification code
+                    </h2>
+                    <p className="mt-2 text-lg font-medium text-slate-500">
+                      Sent to {localPhoneNumber || 'your phone'}
+                    </p>
+                  </div>
+
+                  <label className="mt-10 block">
+                    <span className="sr-only">Enter OTP</span>
+                    <input
+                      className="w-full border-0 border-b-2 border-slate-300 bg-transparent px-2 pb-3 text-center text-[30px] font-black tracking-[0.4em] text-slate-950 outline-none transition placeholder:tracking-normal placeholder:text-slate-300 focus:border-brand-600 sm:text-[34px]"
+                      autoComplete="one-time-code"
+                      inputMode="numeric"
+                      value={otp}
+                      onChange={(event) => setOtp(event.target.value)}
+                      maxLength={6}
+                      placeholder="------"
+                    />
+                  </label>
+
+                  <div className="mt-7 flex flex-wrap gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-full px-5"
+                      onClick={handleSendOtp}
+                      disabled={submitting}
+                    >
+                      Resend OTP
+                    </Button>
+                    {phoneVerified ? (
+                      <span className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-5 py-3 text-sm font-bold text-emerald-700">
+                        <CheckCircle2 size={17} />
+                        Mobile verified
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {pendingEmailSignupUser ? (
+                    <div className="mt-5 rounded-2xl border border-brand-100 bg-brand-50 px-3 py-2 text-xs font-semibold leading-5 text-brand-800">
+                      Email account created and verification link sent. Enter the phone OTP to connect this phone to the same login.
+                    </div>
+                  ) : null}
+
+                  <div className="mt-auto pt-7">
+                    <Button
+                      type="button"
+                      size="lg"
+                      className="h-12 w-full rounded-2xl text-base font-black"
+                      onClick={handleVerifyOtp}
+                      disabled={submitting || !otp.trim()}
+                    >
+                      {submitting ? 'Please wait...' : 'Verify OTP'}
+                    </Button>
+                  </div>
+                </>
+              )}
+
+              <div
+                id="recaptcha-container"
+                className="pointer-events-none fixed bottom-0 right-0 h-0 w-0 overflow-hidden opacity-0"
+                aria-hidden="true"
+              />
+            </form>
           </Card>
         </div>
       </section>

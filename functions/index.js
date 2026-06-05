@@ -49,6 +49,10 @@ const scheduledFunctionOptions = {
   maxInstances: 1
 };
 
+const phoneProfileFunctionOptions = {
+  region: 'asia-south1'
+};
+
 const toText = (value, fallback = '') => {
   const text = String(value ?? '').trim();
   return text || fallback;
@@ -66,6 +70,26 @@ const normalizePhoneNumber = (value) => {
   }
 
   return digits;
+};
+
+const normalizeFirebasePhoneNumber = (value) => {
+  const phoneNumber = normalizePhoneNumber(value);
+  return phoneNumber ? `+${phoneNumber}` : '';
+};
+
+const getPhoneLookupValues = (value) => {
+  const phoneNumber = normalizePhoneNumber(value);
+  const values = [phoneNumber];
+
+  if (phoneNumber) {
+    values.push(`+${phoneNumber}`);
+  }
+
+  if (phoneNumber.startsWith('91') && phoneNumber.length === 12) {
+    values.push(phoneNumber.slice(2));
+  }
+
+  return [...new Set(values.filter(Boolean))];
 };
 
 const parseDate = (value) => {
@@ -418,6 +442,84 @@ exports.syncLabourProfileCompletedJobs = onCall(
     }
 
     return syncLabourCompletedJobs(requestedUid);
+  }
+);
+
+exports.resolvePhoneProfileLogin = onCall(
+  {
+    ...phoneProfileFunctionOptions
+  },
+  async (request) => {
+    try {
+      const authUid = request.auth?.uid;
+      const verifiedAuthPhone = normalizeFirebasePhoneNumber(request.auth?.token?.phone_number);
+      const requestedPhone = normalizeFirebasePhoneNumber(request.data?.phoneNumber);
+
+      if (!authUid) {
+        throw new HttpsError('unauthenticated', 'You must verify your phone before logging in.');
+      }
+
+      if (!verifiedAuthPhone || !requestedPhone || verifiedAuthPhone !== requestedPhone) {
+        throw new HttpsError('permission-denied', 'The verified phone number does not match this request.');
+      }
+
+      const phoneLookupValues = getPhoneLookupValues(verifiedAuthPhone);
+      const profileSnapshot = await db
+        .collection('users')
+        .where('phoneNumber', 'in', phoneLookupValues)
+        .limit(5)
+        .get();
+
+      if (profileSnapshot.empty) {
+        return { matched: false };
+      }
+
+      const matchingProfile =
+        profileSnapshot.docs.find((profileDoc) => profileDoc.id !== authUid) ||
+        profileSnapshot.docs.find((profileDoc) => profileDoc.id === authUid);
+
+      if (!matchingProfile || matchingProfile.id === authUid) {
+        return { matched: true, uid: authUid };
+      }
+
+      try {
+        await admin.auth().getUser(matchingProfile.id);
+      } catch (error) {
+        logger.error('Phone profile match has no Firebase Auth user.', {
+          authUid,
+          matchedUid: matchingProfile.id,
+          phoneLookupValues,
+          error: error?.message
+        });
+        throw new HttpsError(
+          'failed-precondition',
+          'This phone matches a Slivz profile, but its Firebase Auth account was not found.'
+        );
+      }
+
+      const customToken = await admin.auth().createCustomToken(matchingProfile.id);
+
+      return {
+        customToken,
+        matched: true,
+        uid: matchingProfile.id
+      };
+    } catch (error) {
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+
+      logger.error('Phone profile login resolver failed.', {
+        authUid: request.auth?.uid,
+        phoneNumber: request.auth?.token?.phone_number,
+        errorCode: error?.code,
+        errorMessage: error?.message
+      });
+      throw new HttpsError(
+        'internal',
+        'Phone profile login failed on the server. Check Firebase Functions logs.'
+      );
+    }
   }
 );
 

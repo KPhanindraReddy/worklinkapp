@@ -1,4 +1,4 @@
-import { UserRound } from 'lucide-react';
+import { AlertCircle, UserRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -19,7 +19,6 @@ import { routeByRole, isProfileComplete } from '../../utils/authFlow';
 import {
   availabilityOptions,
   languageOptions,
-  roles,
   workCategories
 } from '../../utils/constants';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
@@ -27,6 +26,17 @@ import { getDisplayLocationText } from '../../utils/location';
 import { buildProfileAvatarDataUrl } from '../../utils/profileAvatar';
 
 const toCommaText = (value) => (Array.isArray(value) ? value.join(', ') : value || '');
+const placeholderNames = new Set(['slivz user', 'slivzuser', 'profile']);
+const cleanProfileName = (value) => {
+  const name = String(value || '').trim();
+
+  return placeholderNames.has(name.toLowerCase()) ? '' : name;
+};
+
+const requiredInputClass =
+  'border-red-300 bg-red-50/80 focus:border-red-500 focus:ring-red-100';
+const requiredBoxClass =
+  'rounded-2xl border border-red-200 bg-red-50/70 p-2 [&>label>div>div]:border-red-300 [&>label>div>div]:bg-red-50/80 [&>label>div>div]:focus-within:border-red-500 [&>label>div>div]:focus-within:ring-red-100';
 
 const initialFormState = {
   fullName: '',
@@ -56,8 +66,7 @@ const CompleteProfilePage = () => {
   const {
     currentUser,
     userProfile,
-    createOrUpdateUserProfile,
-    logout
+    createOrUpdateUserProfile
   } = useAuth();
 
   const queryRole = searchParams.get('role');
@@ -67,7 +76,6 @@ const CompleteProfilePage = () => {
     role: queryRole || userProfile?.role || 'labour'
   });
   const [submitting, setSubmitting] = useState(false);
-  const isRoleLocked = Boolean(userProfile?.role && userProfile.role !== 'admin');
 
   useEffect(() => {
     if (isProfileComplete(userProfile)) {
@@ -82,7 +90,9 @@ const CompleteProfilePage = () => {
     setFormValues((prev) => ({
       ...prev,
       role: resolvedRole,
-      fullName: prev.fullName || userProfile?.fullName || currentUser?.displayName || '',
+      fullName: cleanProfileName(
+        prev.fullName || userProfile?.fullName || currentUser?.displayName || ''
+      ),
       phoneNumber: prev.phoneNumber || userProfile?.phoneNumber || currentUser?.phoneNumber || '',
       email: prev.email || userProfile?.email || currentUser?.email || '',
       currentLocation:
@@ -145,16 +155,27 @@ const CompleteProfilePage = () => {
     role === 'labour'
       ? Boolean(
           formValues.fullName.trim() &&
-            (formValues.phoneNumber.trim() || formValues.email.trim()) &&
+            formValues.phoneNumber.trim() &&
             formValues.category &&
             formValues.skills.trim() &&
             (formValues.currentLocation.trim() || formValues.coordinates)
         )
       : Boolean(
           formValues.fullName.trim() &&
-            (formValues.phoneNumber.trim() || formValues.email.trim()) &&
+          formValues.phoneNumber.trim() &&
             (formValues.location.trim() || formValues.coordinates)
         );
+  const missingRequiredFields = [
+    !formValues.fullName.trim() ? 'Full name' : '',
+    !formValues.phoneNumber.trim() ? 'Phone number' : '',
+    role === 'labour' && !formValues.category ? 'Work category' : '',
+    role === 'labour' && !formValues.skills.trim() ? 'Skills' : '',
+    role === 'labour' && !(formValues.currentLocation.trim() || formValues.coordinates)
+      ? 'Current location'
+      : '',
+    role === 'client' && !(formValues.location.trim() || formValues.coordinates) ? 'Location' : ''
+  ].filter(Boolean);
+  const isMissing = (field) => missingRequiredFields.includes(field);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -204,41 +225,12 @@ const CompleteProfilePage = () => {
                   Enter your details in order, then save to open your dashboard.
                 </p>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full sm:w-auto"
-                onClick={async () => {
-                  await logout();
-                  navigate('/auth', { replace: true });
-                }}
-              >
-                Use another account
-              </Button>
             </div>
 
             <div className="mt-6">
               <p className="text-sm font-semibold text-slate-900">Profile type</p>
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                {roles.map((item) => (
-                  <Button
-                    key={item.value}
-                    type="button"
-                    variant={role === item.value ? 'primary' : 'outline'}
-                    className="w-full sm:w-auto"
-                    disabled={isRoleLocked && role !== item.value}
-                    onClick={() => {
-                      if (isRoleLocked) {
-                        return;
-                      }
-
-                      setRole(item.value);
-                      handleChange('role', item.value);
-                    }}
-                  >
-                    {item.label}
-                  </Button>
-                ))}
+              <div className="mt-3 inline-flex rounded-2xl border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-bold capitalize text-brand-800">
+                {role === 'labour' ? 'Labour' : 'Client'}
               </div>
             </div>
 
@@ -249,11 +241,14 @@ const CompleteProfilePage = () => {
                   value={formValues.fullName}
                   onChange={(event) => handleChange('fullName', event.target.value)}
                   placeholder="Your full name"
+                  inputClassName={isMissing('Full name') ? requiredInputClass : ''}
                 />
                 <PhoneInputField
                   label="Phone number"
+                  disabled={Boolean(userProfile?.phoneNumber || currentUser?.phoneNumber)}
                   value={formValues.phoneNumber}
                   onChange={(event) => handleChange('phoneNumber', event.target.value)}
+                  className={isMissing('Phone number') ? 'rounded-2xl border border-red-200 bg-red-50/70 p-2' : ''}
                 />
                 <ProfilePhotoUploader
                   uid={currentUser?.uid}
@@ -265,8 +260,9 @@ const CompleteProfilePage = () => {
                   onError={(error) => toast.error(getFirebaseErrorMessage(error))}
                 />
                 <InputField
-                  label="Email"
+                  label="Email (optional)"
                   type="email"
+                  disabled={Boolean(userProfile?.email || currentUser?.email)}
                   value={formValues.email}
                   onChange={(event) => handleChange('email', event.target.value)}
                   placeholder="name@example.com"
@@ -277,6 +273,7 @@ const CompleteProfilePage = () => {
                       label="Location"
                       value={formValues.location}
                       placeholder="Gachibowli, Hyderabad"
+                      className={isMissing('Location') ? requiredBoxClass : ''}
                       onSelect={(suggestion) => {
                         if (suggestion) {
                           setFormValues((prev) => ({
@@ -291,6 +288,7 @@ const CompleteProfilePage = () => {
                       roleLabel="client"
                       locationValue={formValues.location}
                       savedCoordinates={formValues.coordinates}
+                      autoRequest
                       onApplyLocation={({ label, coordinates }) =>
                         setFormValues((prev) => ({
                           ...prev,
@@ -306,6 +304,7 @@ const CompleteProfilePage = () => {
                       label="Current location"
                       value={formValues.currentLocation}
                       placeholder="Madhapur, Hyderabad"
+                      className={isMissing('Current location') ? requiredBoxClass : ''}
                       onSelect={(suggestion) => {
                         if (suggestion) {
                           setFormValues((prev) => ({
@@ -320,6 +319,7 @@ const CompleteProfilePage = () => {
                       roleLabel="labour"
                       locationValue={formValues.currentLocation}
                       savedCoordinates={formValues.coordinates}
+                      autoRequest
                       onApplyLocation={({ label, coordinates }) =>
                         setFormValues((prev) => ({
                           ...prev,
@@ -342,6 +342,7 @@ const CompleteProfilePage = () => {
                     onChange={(event) => handleChange('category', event.target.value)}
                     allowCustom
                     customOptionLabel="Add service"
+                    className={isMissing('Work category') ? requiredBoxClass : ''}
                   />
                   <SelectField
                     label="Availability"
@@ -356,6 +357,7 @@ const CompleteProfilePage = () => {
                     placeholder="Electrician, CCTV installation, Internet/WiFi setup"
                     hint="Use commas to separate multiple skills."
                     className="md:col-span-2"
+                    inputClassName={isMissing('Skills') ? requiredInputClass : ''}
                   />
                   <InputField
                     label="Languages known"
@@ -406,6 +408,18 @@ const CompleteProfilePage = () => {
                     placeholder="Apartment rewiring, RO repair, CCTV setup..."
                     className="md:col-span-2"
                   />
+                </div>
+              ) : null}
+
+              {missingRequiredFields.length ? (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-800">
+                  <div className="flex items-start gap-2 font-bold">
+                    <AlertCircle size={17} className="mt-0.5 flex-none" />
+                    <span>Pending details</span>
+                  </div>
+                  <p className="mt-1 pl-7 text-xs font-semibold leading-5">
+                    Add {missingRequiredFields.join(', ')} to save your profile.
+                  </p>
                 </div>
               ) : null}
 

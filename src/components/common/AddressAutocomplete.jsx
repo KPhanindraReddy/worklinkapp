@@ -116,6 +116,10 @@ export const AddressAutocomplete = ({
   };
 
   useEffect(() => {
+    setSearch(value || '');
+  }, [value]);
+
+  useEffect(() => {
     const handleClickOutside = (e) => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
         setIsOpen(false);

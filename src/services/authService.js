@@ -2,6 +2,8 @@ import {
   RecaptchaVerifier,
   createUserWithEmailAndPassword,
   getRedirectResult,
+  linkWithPhoneNumber,
+  sendEmailVerification,
   sendPasswordResetEmail,
   signInWithRedirect,
   signInWithEmailAndPassword,
@@ -75,7 +77,7 @@ const buildBaseProfile = (user, formValues = {}, existingProfile = null) => {
   const isHiddenAdmin = isHiddenAdminAccount(user, formValues, existingProfile);
   const fullName = isHiddenAdmin
     ? 'admin'
-    : formValues.fullName || existingProfile?.fullName || user.displayName || 'Slivz User';
+    : formValues.fullName || existingProfile?.fullName || user.displayName || '';
   const profilePhotoUrl =
     formValues.profilePhotoUrl ||
     formValues.profilePhoto ||
@@ -85,8 +87,10 @@ const buildBaseProfile = (user, formValues = {}, existingProfile = null) => {
   return {
     uid: user.uid,
     fullName,
-    phoneNumber: normalizeWhatsAppPhoneNumber(formValues.phoneNumber || user.phoneNumber),
-    email: isHiddenAdmin ? 'admin@gmail.com' : formValues.email || user.email || '',
+    phoneNumber: normalizeWhatsAppPhoneNumber(
+      existingProfile?.phoneNumber || user.phoneNumber || formValues.phoneNumber
+    ),
+    email: isHiddenAdmin ? 'admin@gmail.com' : existingProfile?.email || user.email || formValues.email || '',
     profilePhoto: profilePhotoUrl,
     role: resolvedRole,
     location: formValues.currentLocation || formValues.location || existingProfile?.location || '',
@@ -114,6 +118,16 @@ export const getOrCreateRecaptchaVerifier = (containerId = 'recaptcha-container'
   return recaptchaVerifier;
 };
 
+const clearRecaptchaVerifier = () => {
+  try {
+    recaptchaVerifier?.clear();
+  } catch (error) {
+    // Firebase may already have torn down the verifier after a failed attempt.
+  }
+
+  recaptchaVerifier = null;
+};
+
 export const registerWithEmail = async ({ email, password, fullName }) => {
   if (!isFirebaseConfigured || !auth) {
     throw new Error('Add Firebase keys in .env before using email signup.');
@@ -123,6 +137,11 @@ export const registerWithEmail = async ({ email, password, fullName }) => {
   if (fullName) {
     await updateProfile(credentials.user, { displayName: fullName });
   }
+
+  if (!credentials.user.emailVerified) {
+    await sendEmailVerification(credentials.user);
+  }
+
   return credentials.user;
 };
 
@@ -217,7 +236,26 @@ export const sendPhoneOtp = async (phoneNumber) => {
   }
 
   const verifier = getOrCreateRecaptchaVerifier();
-  return signInWithPhoneNumber(auth, normalizeFirebaseAuthPhoneNumber(phoneNumber), verifier);
+  try {
+    return await signInWithPhoneNumber(auth, normalizeFirebaseAuthPhoneNumber(phoneNumber), verifier);
+  } catch (error) {
+    clearRecaptchaVerifier();
+    throw error;
+  }
+};
+
+export const sendPhoneLinkOtp = async (phoneNumber) => {
+  if (!isFirebaseConfigured || !auth?.currentUser) {
+    throw new Error('Create or sign in to your email account before linking phone OTP.');
+  }
+
+  const verifier = getOrCreateRecaptchaVerifier();
+  try {
+    return await linkWithPhoneNumber(auth.currentUser, normalizeFirebaseAuthPhoneNumber(phoneNumber), verifier);
+  } catch (error) {
+    clearRecaptchaVerifier();
+    throw error;
+  }
 };
 
 export const sendPasswordReset = async (email) => {
@@ -228,7 +266,18 @@ export const sendPasswordReset = async (email) => {
   await sendPasswordResetEmail(auth, email);
 };
 
-export const verifyPhoneOtp = async (confirmationResult, code) => {
+export const verifyPhoneOtp = async (confirmationResult, code, { requireExistingProfile = false } = {}) => {
+  const credential = await confirmationResult.confirm(code);
+
+  if (requireExistingProfile && !credential.user?.phoneNumber) {
+    await signOut(auth);
+    throw new Error('Phone login did not return a verified phone number.');
+  }
+
+  return credential.user;
+};
+
+export const verifyPhoneLinkOtp = async (confirmationResult, code) => {
   const credential = await confirmationResult.confirm(code);
   return credential.user;
 };

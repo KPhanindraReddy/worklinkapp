@@ -1,5 +1,5 @@
 import { LoaderCircle, LocateFixed, MapPin, Navigation } from 'lucide-react';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Button } from '../common/Button';
 import { LocationPermissionPrompt, isLocationPermissionDenied } from './LocationPermissionPrompt';
 import { useGeolocation } from '../../hooks/useGeolocation';
@@ -17,9 +17,11 @@ export const ProfileLocationPanel = ({
   locationValue = '',
   savedCoordinates = null,
   disabled = false,
+  autoRequest = false,
   onApplyLocation
 }) => {
-  const geolocation = useGeolocation();
+  const geolocation = useGeolocation(autoRequest);
+  const autoAppliedRef = useRef(false);
   const liveCoordinates = useMemo(
     () =>
       hasCoordinates({
@@ -60,6 +62,33 @@ export const ProfileLocationPanel = ({
     });
     return coordinates;
   };
+
+  useEffect(() => {
+    if (
+      !autoRequest ||
+      autoAppliedRef.current ||
+      disabled ||
+      locationValue ||
+      savedCoordinates ||
+      !liveCoordinates
+    ) {
+      return;
+    }
+
+    autoAppliedRef.current = true;
+    onApplyLocation?.({
+      label: liveLocationName || 'Live location captured',
+      coordinates: liveCoordinates
+    });
+  }, [
+    autoRequest,
+    disabled,
+    liveCoordinates,
+    liveLocationName,
+    locationValue,
+    onApplyLocation,
+    savedCoordinates
+  ]);
 
   return (
     <div className="rounded-[14px] border border-emerald-200 bg-emerald-50/70 px-3 py-3 sm:px-4">
