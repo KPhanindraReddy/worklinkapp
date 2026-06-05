@@ -1,9 +1,22 @@
-const CACHE_VERSION = 'Slivz-v2';
+const CACHE_VERSION = 'Slivz-v4';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const IMAGE_CACHE = `${CACHE_VERSION}-images`;
 
-const SHELL_ASSETS = ['/', '/index.html', '/offline.html', '/favicon.svg'];
+const SHELL_ASSETS = [
+  '/',
+  '/index.html',
+  '/offline.html',
+  '/favicon-16x16.png',
+  '/favicon-32x32.png',
+  '/favicon-48x48.png',
+  '/favicon-64x64.png',
+  '/apple-touch-icon.png',
+  '/pwa-192x192.png',
+  '/pwa-512x512.png',
+  '/slivz-logo-512.png',
+  '/manifest.webmanifest'
+];
 
 const isNavigationRequest = (request) => request.mode === 'navigate';
 const isImageRequest = (request) => request.destination === 'image';
