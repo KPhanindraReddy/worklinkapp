@@ -15,6 +15,7 @@ import { Card } from '../../components/common/Card';
 import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
 import { AppShell } from '../../components/layout/AppShell';
+import { BrandLogo } from '../../components/layout/BrandLogo';
 import { useAuth } from '../../context/AuthContext';
 import { isHiddenAdminAccount } from '../../utils/adminAccount';
 import { isProfileComplete, resolvePostAuthPath } from '../../utils/authFlow';
@@ -601,9 +602,16 @@ const AuthPage = () => {
                   <ArrowLeft size={30} strokeWidth={2.5} />
                 </button>
               ) : (
-                <Link to="/" className="text-3xl font-black leading-none tracking-tight text-slate-950">
-                  Slivz
-                </Link>
+                <div className="flex min-w-0 items-center gap-2">
+                  <Link
+                    to="/"
+                    className="inline-flex h-10 w-10 flex-none items-center justify-center rounded-full text-slate-950 transition hover:bg-slate-100"
+                    aria-label="Back to home"
+                  >
+                    <ArrowLeft size={25} strokeWidth={2.5} />
+                  </Link>
+                  <BrandLogo to="/" className="max-w-[150px]" />
+                </div>
               )}
 
               {isOtpStep ? (

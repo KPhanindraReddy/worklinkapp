@@ -2,7 +2,7 @@ import { workCategories } from '../utils/constants';
 
 export const heroStats = [
   { label: 'Verified labour profiles', value: '5,200+' },
-  { label: 'Bookings completed', value: '18,400+' },
+  { label: '24/7 services', value: '24/7' },
   { label: 'Average response time', value: '< 15 min' }
 ];
 

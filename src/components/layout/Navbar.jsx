@@ -295,17 +295,6 @@ export const Navbar = () => {
       ]
     : [
         { to: '/', label: 'Home', icon: LayoutDashboard, matchers: ['/'] },
-        {
-          to: '/search',
-          label: 'Search Service',
-          icon: Search,
-          matchers: [
-            '/search',
-            '/booking*',
-            (nextPathname) =>
-              nextPathname.startsWith('/labour/') && nextPathname !== '/labour/dashboard'
-          ]
-        },
         { to: '/about', label: 'About', icon: CircleHelp, matchers: ['/about'] }
       ];
 
@@ -368,10 +357,10 @@ export const Navbar = () => {
                 as={Link}
                 to="/auth?role=client&mode=login"
                 size="sm"
-                className="hidden px-2.5 sm:inline-flex"
+                className="px-2.5"
                 onClick={() => setIsOpen(false)}
               >
-                Login
+                Join / Login
               </Button>
             )}
           </div>
@@ -431,7 +420,7 @@ export const Navbar = () => {
             </>
           ) : (
             <Button as={Link} to="/auth?role=client&mode=login" variant="primary">
-              Sign in
+              Join / Login
             </Button>
           )}
         </div>
@@ -485,7 +474,7 @@ export const Navbar = () => {
               className="w-full"
               onClick={() => setIsOpen(false)}
             >
-              Sign in
+              Join / Login
             </Button>
           )}
         </div>

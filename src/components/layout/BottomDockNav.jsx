@@ -69,16 +69,20 @@ export const buildBottomDockItems = ({ currentUser, userProfile }) => {
       icon: House,
       matchers: currentUser ? [homeTarget] : ['/']
     },
-    {
-      label: 'Search',
-      to: '/search',
-      icon: Search,
-      matchers: [
-        '/search',
-        '/booking*',
-        (pathname) => pathname.startsWith('/labour/') && pathname !== '/labour/dashboard'
-      ]
-    },
+    ...(currentUser
+      ? [
+          {
+            label: 'Search',
+            to: '/search',
+            icon: Search,
+            matchers: [
+              '/search',
+              '/booking*',
+              (pathname) => pathname.startsWith('/labour/') && pathname !== '/labour/dashboard'
+            ]
+          }
+        ]
+      : []),
     {
       label: currentUser ? 'Services' : 'Client',
       to: currentUser ? '/recent-services' : '/auth?role=client&mode=login',

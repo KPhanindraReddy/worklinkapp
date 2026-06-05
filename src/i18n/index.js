@@ -23,7 +23,7 @@ const resources = {
           'Slivz connects clients with skilled labour professionals through instant search, booking, real-time chat, and verified work history.',
         primaryCta: 'Join as Labour',
         secondaryCta: 'Join as Client',
-        searchPlaceholder: 'Search service or worker',
+        searchPlaceholder: 'Service name',
         sectionTitle: 'Find the right worker without the chaos',
         howTitle: 'How Slivz works'
       },
