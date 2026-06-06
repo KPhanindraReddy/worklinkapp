@@ -77,6 +77,10 @@ const cacheSearchResults = (cacheKey, payload) => {
   }
 };
 
+export const clearLabourSearchCache = () => {
+  labourSearchCache.clear();
+};
+
 const fetchLabourCandidates = async (filters, resolvedCategory) => {
   const shouldUseCategoryConstraint = Boolean(resolvedCategory && !filters.skill);
   const availability = normalizeAvailabilityValue(filters.availability);

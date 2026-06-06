@@ -9,6 +9,7 @@ import {
 } from 'firebase/firestore';
 import { isFirebaseConfigured } from '../firebase/env';
 import { db } from '../firebase/firestore';
+import { clearLabourSearchCache } from './labourService';
 import { parseDateValue } from '../utils/formatters';
 
 const sortReviewsByCreatedAtDesc = (items) =>
@@ -105,4 +106,6 @@ export const submitServiceReview = async ({ bookingId, clientId, clientName, rat
       updatedAt: serverTimestamp()
     });
   });
+
+  clearLabourSearchCache();
 };
