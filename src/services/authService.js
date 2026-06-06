@@ -423,6 +423,10 @@ export const createOrUpdateUserProfile = async (user, formValues) => {
         : (existingLabour?.previousWorkHistory ?? [])
     };
 
+    if (!labourProfileFields.currentLocation.trim()) {
+      throw new Error('Current location is required for labour profiles.');
+    }
+
     await setDoc(
       labourRef,
       {

@@ -40,6 +40,7 @@ const LabourProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const [reviewsLoaded, setReviewsLoaded] = useState(false);
   const [selectedQuickBookLabour, setSelectedQuickBookLabour] = useState(null);
   const resolvedLabourLocationName = useLocationName(labour?.coordinates);
 
@@ -60,7 +61,19 @@ const LabourProfilePage = () => {
   }, [labourId]);
 
   useEffect(() => {
-    return subscribeReviewsForLabour(labourId, setReviews, () => setReviews([]));
+    setReviewsLoaded(false);
+
+    return subscribeReviewsForLabour(
+      labourId,
+      (nextReviews) => {
+        setReviews(nextReviews);
+        setReviewsLoaded(true);
+      },
+      () => {
+        setReviews([]);
+        setReviewsLoaded(true);
+      }
+    );
   }, [labourId]);
 
   useEffect(() => {
@@ -78,14 +91,14 @@ const LabourProfilePage = () => {
 
   const isClient = userProfile?.role === 'client';
   const callButtonLabel = isClient ? 'Call after accept' : 'Client account required';
-  const profileReviews = reviews.length ? reviews : labour?.reviews ?? [];
+  const profileReviews = reviewsLoaded ? reviews : reviews.length ? reviews : labour?.reviews ?? [];
   const completedJobs = Number(labour?.completedJobs || 0);
   const canEditPhoto = Boolean(currentUser?.uid && labour?.id && currentUser.uid === labour.id);
   const ratingSummary = useMemo(() => {
     if (!profileReviews.length) {
       return {
-        rating: Number(labour?.rating || 0).toFixed(1).replace('.0', ''),
-        count: labour?.reviewsCount ?? 0
+        rating: reviewsLoaded ? '0' : Number(labour?.rating || 0).toFixed(1).replace('.0', ''),
+        count: reviewsLoaded ? 0 : labour?.reviewsCount ?? 0
       };
     }
 
@@ -97,7 +110,7 @@ const LabourProfilePage = () => {
       rating: average.toFixed(1).replace('.0', ''),
       count: profileReviews.length
     };
-  }, [labour?.rating, labour?.reviewsCount, profileReviews]);
+  }, [labour?.rating, labour?.reviewsCount, profileReviews, reviewsLoaded]);
 
   if (loading) {
     return (

@@ -42,6 +42,42 @@ const getBookingRowTone = (status) => {
   return 'border-slate-200 bg-white';
 };
 
+const StarRatingPicker = ({ value, onChange, disabled = false }) => {
+  const selectedRating = Number(value || 0);
+
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label="Service rating">
+      {Array.from({ length: 5 }).map((_, index) => {
+        const rating = index + 1;
+        const isSelected = rating <= selectedRating;
+
+        return (
+          <button
+            key={rating}
+            type="button"
+            role="radio"
+            aria-checked={selectedRating === rating}
+            aria-label={`${rating} star${rating === 1 ? '' : 's'}`}
+            disabled={disabled}
+            onClick={() => onChange(String(rating))}
+            className={clsx(
+              'grid h-11 w-11 touch-manipulation place-items-center rounded-xl border text-amber-500 transition focus:outline-none focus:ring-2 focus:ring-amber-100 disabled:cursor-not-allowed disabled:opacity-60',
+              isSelected
+                ? 'border-amber-300 bg-amber-50 shadow-sm'
+                : 'border-slate-200 bg-white hover:border-amber-200 hover:bg-amber-50/60'
+            )}
+          >
+            <Star size={22} fill={isSelected ? 'currentColor' : 'none'} />
+          </button>
+        );
+      })}
+      {selectedRating ? (
+        <span className="ml-1 text-sm font-bold text-amber-700">{selectedRating}/5</span>
+      ) : null}
+    </div>
+  );
+};
+
 const RecentServicesPage = () => {
   const { currentUser, userProfile } = useAuth();
   const [bookings, setBookings] = useState([]);
@@ -358,18 +394,11 @@ const RecentServicesPage = () => {
                     ) : (
                       <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
                         <p className="text-sm font-semibold text-slate-950">Rate this service</p>
-                        <select
+                        <StarRatingPicker
                           value={reviewDrafts[booking.id]?.rating ?? ''}
-                          onChange={(event) => updateReviewDraft(booking.id, 'rating', event.target.value)}
-                          className="mt-2 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none focus:border-amber-300 focus:ring-2 focus:ring-amber-100 max-sm:text-base sm:max-w-xs"
-                        >
-                          <option value="">Choose rating</option>
-                          <option value="5">5 - Excellent</option>
-                          <option value="4">4 - Good</option>
-                          <option value="3">3 - Okay</option>
-                          <option value="2">2 - Poor</option>
-                          <option value="1">1 - Bad</option>
-                        </select>
+                          onChange={(rating) => updateReviewDraft(booking.id, 'rating', rating)}
+                          disabled={submittingReviewId === booking.id}
+                        />
                         <Button
                           type="button"
                           size="sm"

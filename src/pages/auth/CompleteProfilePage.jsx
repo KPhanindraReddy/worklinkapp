@@ -155,7 +155,7 @@ const CompleteProfilePage = () => {
             formValues.phoneNumber.trim() &&
             formValues.category &&
             formValues.skills.trim() &&
-            (formValues.currentLocation.trim() || formValues.coordinates)
+            formValues.currentLocation.trim()
         )
       : Boolean(
           formValues.fullName.trim() &&
@@ -167,7 +167,7 @@ const CompleteProfilePage = () => {
     !formValues.phoneNumber.trim() ? 'Phone number' : '',
     role === 'labour' && !formValues.category ? 'Work category' : '',
     role === 'labour' && !formValues.skills.trim() ? 'Skills' : '',
-    role === 'labour' && !(formValues.currentLocation.trim() || formValues.coordinates)
+    role === 'labour' && !formValues.currentLocation.trim()
       ? 'Current location'
       : '',
     role === 'client' && !(formValues.location.trim() || formValues.coordinates) ? 'Location' : ''

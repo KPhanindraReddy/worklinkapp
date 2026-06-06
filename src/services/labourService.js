@@ -23,6 +23,7 @@ import { buildLocationCacheKey, normalizeCoordinates } from '../utils/location';
 
 const SEARCH_RESULT_LIMIT = 80;
 const SEARCH_CACHE_TTL_MS = 30000;
+const REVIEW_SUMMARY_BATCH_SIZE = 10;
 const labourSearchCache = new Map();
 
 const normalizeAvailabilityValue = (value) => {
@@ -144,6 +145,78 @@ const fetchLabourCandidates = async (filters, resolvedCategory) => {
 };
 
 const normalizeSearchValue = (value) => String(value ?? '').trim().toLowerCase();
+
+const buildReviewSummaries = (reviews = []) =>
+  reviews.reduce((summaries, review) => {
+    const labourId = review.labourId;
+    const rating = Number(review.rating || 0);
+
+    if (!labourId || !Number.isFinite(rating) || rating <= 0) {
+      return summaries;
+    }
+
+    const current = summaries.get(labourId) || { total: 0, count: 0 };
+    summaries.set(labourId, {
+      total: current.total + rating,
+      count: current.count + 1
+    });
+
+    return summaries;
+  }, new Map());
+
+const fetchReviewSummariesForLabours = async (labourIds = []) => {
+  const uniqueIds = [...new Set(labourIds.filter(Boolean))];
+
+  if (!uniqueIds.length || !isFirebaseConfigured || !db) {
+    return new Map();
+  }
+
+  const reviews = [];
+
+  for (let index = 0; index < uniqueIds.length; index += REVIEW_SUMMARY_BATCH_SIZE) {
+    const batchIds = uniqueIds.slice(index, index + REVIEW_SUMMARY_BATCH_SIZE);
+    const snapshot = await getDocs(
+      query(collection(db, 'reviews'), where('labourId', 'in', batchIds))
+    );
+
+    snapshot.docs.forEach((item) => reviews.push(item.data()));
+  }
+
+  return buildReviewSummaries(reviews);
+};
+
+const applyReviewSummaries = (labours = [], summaries = new Map()) =>
+  labours.map((labour) => {
+    const summary = summaries.get(labour.id);
+
+    if (!summary?.count) {
+      return labour;
+    }
+
+    return {
+      ...labour,
+      rating: summary.total / summary.count,
+      reviewsCount: summary.count
+    };
+  });
+
+const withRealReviewSummaries = async (labours = []) => {
+  if (!labours.length) {
+    return labours;
+  }
+
+  try {
+    const summaries = await fetchReviewSummariesForLabours(labours.map((labour) => labour.id));
+    return applyReviewSummaries(labours, summaries);
+  } catch (error) {
+    console.warn('[Slivz labour ratings] review summary query failed', {
+      code: error?.code,
+      message: error?.message
+    });
+    return labours;
+  }
+};
+
 const normalizeLabourProfile = (labour = {}) => {
   const reviews = Array.isArray(labour.reviews) ? labour.reviews : [];
   const reviewsCount =
@@ -199,8 +272,12 @@ export const fetchFeaturedLabours = async (count = 6) => {
     limit(count)
   );
   const snapshot = await getDocs(labourQuery);
+  const labours = snapshot.docs.map((item) => normalizeLabourProfile({ ...item.data(), id: item.id }));
+  const enrichedLabours = await withRealReviewSummaries(labours);
 
-  return snapshot.docs.map((item) => normalizeLabourProfile({ ...item.data(), id: item.id }));
+  return enrichedLabours
+    .sort((a, b) => b.rating - a.rating)
+    .slice(0, count);
 };
 
 export const searchLabours = async (filters = {}, origin) => {
@@ -229,7 +306,9 @@ export const searchLabours = async (filters = {}, origin) => {
       return [];
     }
 
-    const items = await fetchLabourCandidates(filters, resolvedCategory);
+    const items = await withRealReviewSummaries(
+      await fetchLabourCandidates(filters, resolvedCategory)
+    );
     return recommendLabours(items, filters, normalizedOrigin)
       .filter((labour) => {
         const matchesKeywords = keywordQuery
@@ -283,7 +362,14 @@ export const getLabourById = async (labourId) => {
   }
 
   const snapshot = await getDoc(doc(db, 'labours', labourId));
-  return snapshot.exists() ? normalizeLabourProfile({ ...snapshot.data(), id: snapshot.id }) : null;
+  if (!snapshot.exists()) {
+    return null;
+  }
+
+  const [labour] = await withRealReviewSummaries([
+    normalizeLabourProfile({ ...snapshot.data(), id: snapshot.id })
+  ]);
+  return labour;
 };
 
 export const subscribeLabourById = (labourId, onNext, onError) => {

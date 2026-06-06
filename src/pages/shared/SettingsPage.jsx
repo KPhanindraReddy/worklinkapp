@@ -198,9 +198,9 @@ const SettingsPage = () => {
     buildProfileAvatarDataUrl(formValues.fullName || userProfile?.fullName || currentUser?.displayName || 'Profile');
   const canSaveProfile = isLabour
     ? Boolean(
-        formValues.fullName.trim() &&
+          formValues.fullName.trim() &&
           (formValues.phoneNumber.trim() || formValues.email.trim()) &&
-          (formValues.currentLocation.trim() || formValues.coordinates) &&
+          formValues.currentLocation.trim() &&
           formValues.category &&
           formValues.skills.trim()
       )
@@ -229,7 +229,7 @@ const SettingsPage = () => {
 
     if (!canSaveProfile) {
       if (isLabour) {
-        toast.error('Enter name, phone or email, service, skills, and location before saving.');
+        toast.error('Enter name, phone or email, service, skills, and current location before saving.');
       } else if (isClient) {
         toast.error('Enter name, phone or email, and location before saving.');
       } else {
