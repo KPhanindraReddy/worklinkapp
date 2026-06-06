@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import toast from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
 import { ChatWindow } from '../../components/chat/ChatWindow';
 import { ConversationList } from '../../components/chat/ConversationList';
@@ -46,12 +45,11 @@ const ChatPage = () => {
   const [activeConversation, setActiveConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [activeBooking, setActiveBooking] = useState(null);
-  const [accessError, setAccessError] = useState('');
+  const [, setAccessError] = useState('');
 
   const handleChatError = (error) => {
     const message = getFirebaseErrorMessage(error);
     setAccessError(message);
-    toast.error(message);
   };
 
   useEffect(() => {
@@ -173,7 +171,7 @@ const ChatPage = () => {
     return undefined;
   }, [bookingId, conversations, targetConversationId, targetUserId]);
 
-  const contactUnlocked = ['accepted', 'in_progress', 'awaiting_payment'].includes(activeBooking?.status);
+  const contactUnlocked = ['pending', 'accepted', 'in_progress', 'awaiting_payment'].includes(activeBooking?.status);
   const chatLocked =
     activeBooking?.status === 'completed' ||
     (activeConversation?.bookingId && (!activeBooking || !contactUnlocked));
@@ -189,8 +187,8 @@ const ChatPage = () => {
           ...activeConversation,
           phoneNumber: contactUnlocked && activeBooking
             ? userProfile?.role === 'labour'
-              ? activeBooking.clientPhoneNumber || ''
-              : activeBooking.labourPhoneNumber || ''
+              ? activeBooking.clientPhoneNumber || activeBooking.privateClientPhoneNumber || ''
+              : activeBooking.labourPhoneNumber || activeBooking.privateLabourPhoneNumber || ''
             : ''
         }
       : activeConversation;
@@ -269,7 +267,7 @@ const ChatPage = () => {
       const nextMessages = await getMessages(activeConversation.id);
       setMessages(nextMessages);
     } catch (error) {
-      toast.error(getFirebaseErrorMessage(error));
+      handleChatError(error);
     }
   };
 
@@ -285,15 +283,6 @@ const ChatPage = () => {
             onSelect={setActiveConversation}
           />
           <div className="space-y-4">
-            {accessError ? (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
-                <p className="font-semibold">Chat is blocked by Realtime Database rules right now.</p>
-                <p className="mt-2">
-                  Deploy the Slivz Realtime Database rules, then refresh the page. Chat will work once RTDB
-                  allows the required reads and writes.
-                </p>
-              </div>
-            ) : null}
             <ChatWindow
               conversation={activeConversationForWindow}
               messages={messages}

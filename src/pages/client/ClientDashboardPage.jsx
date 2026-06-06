@@ -3,6 +3,8 @@ import {
   Clock3,
   LocateFixed,
   LoaderCircle,
+  MessageCircle,
+  Phone,
   Search,
   Send,
   UserCheck,
@@ -1012,9 +1014,30 @@ const ClientDashboardPage = () => {
                     {pendingBookings[0].labourName} received your {pendingBookings[0].serviceType} request.
                   </p>
                 </div>
-                <Button type="button" size="sm" variant="outline" className="w-full sm:w-auto" disabled={cancellingBookingId === pendingBookings[0].id} onClick={() => handleCancelBooking(pendingBookings[0])}>
-                  {cancellingBookingId === pendingBookings[0].id ? 'Cancelling...' : 'Cancel request'}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    as="a"
+                    href={(pendingBookings[0].labourPhoneNumber || pendingBookings[0].privateLabourPhoneNumber) ? `tel:${pendingBookings[0].labourPhoneNumber || pendingBookings[0].privateLabourPhoneNumber}` : undefined}
+                    size="sm"
+                    className={`w-full sm:w-auto ${!(pendingBookings[0].labourPhoneNumber || pendingBookings[0].privateLabourPhoneNumber) ? 'pointer-events-none opacity-60' : ''}`}
+                  >
+                    <Phone size={15} />
+                    Call
+                  </Button>
+                  <Button
+                    as={Link}
+                    to={`/chat?target=${encodeURIComponent(pendingBookings[0].labourId)}&booking=${encodeURIComponent(pendingBookings[0].id)}`}
+                    size="sm"
+                    variant="outline"
+                    className="w-full sm:w-auto"
+                  >
+                    <MessageCircle size={15} />
+                    Chat
+                  </Button>
+                <Button type="button" size="sm" variant="danger" className="w-full sm:w-auto" disabled={cancellingBookingId === pendingBookings[0].id} onClick={() => handleCancelBooking(pendingBookings[0])}>
+                    {cancellingBookingId === pendingBookings[0].id ? 'Cancelling...' : 'Cancel request'}
+                  </Button>
+                </div>
               </div>
             </LightPanel>
           ) : null}
@@ -1037,11 +1060,32 @@ const ClientDashboardPage = () => {
                   <p className="mt-2 font-display text-2xl font-bold tracking-[0.2em] text-slate-950 sm:text-[1.65rem] sm:tracking-[0.22em]">{activeBookings[0].startOtp}</p>
                 </div>
               ) : null}
-              {activeBookings[0].status === 'accepted' ? (
-                <Button type="button" size="sm" variant="outline" className="mt-4 w-full sm:w-auto" disabled={cancellingBookingId === activeBookings[0].id} onClick={() => handleCancelBooking(activeBookings[0])}>
-                  {cancellingBookingId === activeBookings[0].id ? 'Cancelling...' : 'Cancel request'}
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button
+                  as="a"
+                  href={(activeBookings[0].labourPhoneNumber || activeBookings[0].privateLabourPhoneNumber) ? `tel:${activeBookings[0].labourPhoneNumber || activeBookings[0].privateLabourPhoneNumber}` : undefined}
+                  size="sm"
+                  className={`w-full sm:w-auto ${!(activeBookings[0].labourPhoneNumber || activeBookings[0].privateLabourPhoneNumber) ? 'pointer-events-none opacity-60' : ''}`}
+                >
+                  <Phone size={15} />
+                  Call
                 </Button>
-              ) : null}
+                <Button
+                  as={Link}
+                  to={`/chat?target=${encodeURIComponent(activeBookings[0].labourId)}&booking=${encodeURIComponent(activeBookings[0].id)}`}
+                  size="sm"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                >
+                  <MessageCircle size={15} />
+                  Chat
+                </Button>
+                {activeBookings[0].status === 'accepted' ? (
+                  <Button type="button" size="sm" variant="danger" className="w-full sm:w-auto" disabled={cancellingBookingId === activeBookings[0].id} onClick={() => handleCancelBooking(activeBookings[0])}>
+                    {cancellingBookingId === activeBookings[0].id ? 'Cancelling...' : 'Cancel request'}
+                  </Button>
+                ) : null}
+              </div>
             </LightPanel>
           ) : null}
 

@@ -4,7 +4,7 @@
     ".write": false,
     "conversations": {
       "$conversationId": {
-        ".read": "auth != null && data.child('participantIds/' + auth.uid).val() === true",
+        ".read": "auth != null && (!data.exists() || data.child('participantIds/' + auth.uid).val() === true)",
         ".write": "auth != null && newData.child('participantIds/' + auth.uid).val() === true"
       }
     },
@@ -19,7 +19,9 @@
     "userConversations": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid"
+        "$conversationId": {
+          ".write": "auth != null && (auth.uid === $uid || (root.child('conversations/' + $conversationId + '/participantIds/' + auth.uid).val() === true && root.child('conversations/' + $conversationId + '/participantIds/' + $uid).val() === true))"
+        }
       }
     }
   }

@@ -616,16 +616,37 @@ const BookingPage = () => {
                       <LoaderCircle size={30} className="animate-spin" />
                     </div>
                   </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="mt-4 w-full sm:w-auto"
-                    disabled={cancellingBookingId === pendingBookings[0].id}
-                    onClick={() => handleCancelBooking(pendingBookings[0])}
-                  >
-                    {cancellingBookingId === pendingBookings[0].id ? 'Cancelling...' : 'Cancel request'}
-                  </Button>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button
+                      as="a"
+                      href={(pendingBookings[0].labourPhoneNumber || pendingBookings[0].privateLabourPhoneNumber) ? `tel:${pendingBookings[0].labourPhoneNumber || pendingBookings[0].privateLabourPhoneNumber}` : undefined}
+                      size="sm"
+                      className={`w-full sm:w-auto ${!(pendingBookings[0].labourPhoneNumber || pendingBookings[0].privateLabourPhoneNumber) ? 'pointer-events-none opacity-60' : ''}`}
+                    >
+                      <Phone size={15} />
+                      Call
+                    </Button>
+                    <Button
+                      as={Link}
+                      to={`/chat?target=${encodeURIComponent(pendingBookings[0].labourId)}&booking=${encodeURIComponent(pendingBookings[0].id)}`}
+                      size="sm"
+                      variant="outline"
+                      className="w-full sm:w-auto"
+                    >
+                      <MessageCircle size={15} />
+                      Chat
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="danger"
+                      className="w-full sm:w-auto"
+                      disabled={cancellingBookingId === pendingBookings[0].id}
+                      onClick={() => handleCancelBooking(pendingBookings[0])}
+                    >
+                      {cancellingBookingId === pendingBookings[0].id ? 'Cancelling...' : 'Cancel request'}
+                    </Button>
+                  </div>
                 </Card>
               ) : null}
 
@@ -966,9 +987,9 @@ const BookingPage = () => {
                           </Button>
                           <Button
                             as="a"
-                            href={booking.labourPhoneNumber ? `tel:${booking.labourPhoneNumber}` : undefined}
+                            href={(booking.labourPhoneNumber || booking.privateLabourPhoneNumber) ? `tel:${booking.labourPhoneNumber || booking.privateLabourPhoneNumber}` : undefined}
                             size="sm"
-                            className={`w-full sm:w-auto ${!booking.labourPhoneNumber ? 'pointer-events-none opacity-60' : ''}`}
+                            className={`w-full sm:w-auto ${!(booking.labourPhoneNumber || booking.privateLabourPhoneNumber) ? 'pointer-events-none opacity-60' : ''}`}
                           >
                             <Phone size={15} />
                             Call
@@ -994,7 +1015,7 @@ const BookingPage = () => {
                             <Button
                               type="button"
                               size="sm"
-                              variant="outline"
+                              variant="danger"
                               className="w-full sm:w-auto"
                               disabled={cancellingBookingId === booking.id}
                               onClick={() => handleCancelBooking(booking)}

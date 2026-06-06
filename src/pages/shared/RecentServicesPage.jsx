@@ -359,7 +359,7 @@ const RecentServicesPage = () => {
                     <Button
                       type="button"
                       size="sm"
-                      variant="outline"
+                      variant="danger"
                       className="mt-4 w-full sm:w-auto"
                       disabled={cancellingBookingId === booking.id}
                       onClick={() => handleCancelBooking(booking)}
