@@ -1,5 +1,5 @@
 import { CalendarClock, History, MapPin, Star, WalletCards } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
@@ -110,24 +110,6 @@ const RecentServicesPage = () => {
       }
     );
   }, [currentUser?.uid, role]);
-
-  const summaryItems = useMemo(
-    () => [
-      {
-        label: 'New services',
-        value: bookings.filter((item) => item.status === 'pending').length
-      },
-      {
-        label: 'Active',
-        value: bookings.filter((item) => ['accepted', 'in_progress'].includes(item.status)).length
-      },
-      {
-        label: 'Completed',
-        value: bookings.filter((item) => item.status === 'completed').length
-      }
-    ],
-    [bookings]
-  );
 
   const updateReviewDraft = (bookingId, key, value) =>
     setReviewDrafts((prev) => ({
@@ -241,27 +223,6 @@ const RecentServicesPage = () => {
               {bookingsLoading ? <Skeleton className="h-7 w-20" /> : <Badge tone="slate">{bookings.length} total</Badge>}
             </div>
           </Card>
-
-          <div className="grid grid-cols-3 gap-2">
-            {summaryItems.map((item, index) => {
-              const toneClass = [
-                'border-amber-300 bg-amber-50 text-amber-800',
-                'border-sky-300 bg-sky-50 text-sky-800',
-                'border-emerald-300 bg-emerald-50 text-emerald-800'
-              ][index];
-
-              return (
-              <div key={item.label} className={`rounded-xl border-2 p-2.5 text-center shadow-sm sm:p-3 ${toneClass}`}>
-                <p className="truncate text-[11px] font-extrabold uppercase tracking-[0.08em]">{item.label}</p>
-                {bookingsLoading ? (
-                  <Skeleton className="mx-auto mt-2 h-7 w-12" />
-                ) : (
-                  <p className="mt-1 font-display text-2xl font-black leading-none sm:text-3xl">{item.value}</p>
-                )}
-              </div>
-              );
-            })}
-          </div>
 
           {bookingsLoading ? (
             <div className="space-y-3">

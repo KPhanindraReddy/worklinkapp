@@ -1,14 +1,12 @@
 import {
   CalendarClock,
-  Clock3,
   LocateFixed,
   LoaderCircle,
   MessageCircle,
   Phone,
   Search,
   Send,
-  UserCheck,
-  WalletCards
+  UserCheck
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -56,38 +54,11 @@ import {
 } from '../../utils/location';
 import { buildProfileAvatarDataUrl } from '../../utils/profileAvatar';
 import { labourMatchesCategory } from '../../utils/recommendations';
-import { createRouteGroupId } from '../../utils/requestRouting';
+import { createRouteGroupId, getRouteGroupBookings } from '../../utils/requestRouting';
 
 const openRequestStatuses = ['pending', 'accepted', 'in_progress', 'awaiting_payment'];
+const ROUTE_WORKER_LIMIT = 10;
 const generateStartOtp = () => String(Math.floor(100000 + Math.random() * 900000));
-
-const getBookingTone = (status) => {
-  if (status === 'accepted') {
-    return 'emerald';
-  }
-
-  if (status === 'rejected') {
-    return 'rose';
-  }
-
-  if (status === 'timed_out') {
-    return 'slate';
-  }
-
-  if (status === 'completed') {
-    return 'blue';
-  }
-
-  if (status === 'awaiting_payment') {
-    return 'amber';
-  }
-
-  if (status === 'in_progress') {
-    return 'blue';
-  }
-
-  return 'amber';
-};
 
 const getDateKey = (value) => {
   const date = parseDateValue(value);
@@ -163,6 +134,58 @@ const EmptyDashed = ({ children }) => (
     {children}
   </div>
 );
+
+const getRouteProgress = (bookings, booking) => {
+  const groupBookings = getRouteGroupBookings(bookings, booking);
+  const failedLabourIds = new Set();
+
+  groupBookings.forEach((item) => {
+    if (['rejected', 'timed_out'].includes(item.status) && item.labourId) {
+      failedLabourIds.add(item.labourId);
+    }
+  });
+
+  const failedCount = Math.min(failedLabourIds.size, ROUTE_WORKER_LIMIT);
+  const isMatched = ['accepted', 'in_progress', 'awaiting_payment', 'completed'].includes(booking?.status);
+  const filledCount = isMatched ? Math.min(failedCount + 1, ROUTE_WORKER_LIMIT) : failedCount;
+
+  return {
+    failedCount,
+    filledCount,
+    isMatched,
+    total: ROUTE_WORKER_LIMIT
+  };
+};
+
+const RequestFlowBar = ({ booking, progress }) => {
+  if (!booking || !progress || progress.failedCount < 1 || progress.isMatched) {
+    return null;
+  }
+
+  const detail = `${progress.failedCount} worker${progress.failedCount === 1 ? '' : 's'} skipped. Waiting for worker.`;
+
+  return (
+    <div className="mt-4 rounded-[16px] border border-white/70 bg-white/70 p-3 shadow-[0_8px_20px_rgba(15,23,42,0.05)]">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Finding worker</p>
+          <p className="mt-1 truncate text-sm font-semibold text-slate-800">{detail}</p>
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-10 gap-1">
+        {Array.from({ length: progress.total }).map((_, index) => {
+          const isFilled = index < progress.filledCount;
+          return (
+            <span
+              key={index}
+              className={`h-2 rounded-full ${isFilled ? 'bg-brand-500' : 'bg-slate-200'}`}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 
 const ClientDashboardPage = () => {
   const { currentUser, userProfile } = useAuth();
@@ -400,7 +423,6 @@ const ClientDashboardPage = () => {
     () => labourRadiusOptions.map((km) => ({ label: `${km} km`, value: String(km) })),
     []
   );
-  const trackedBookings = useMemo(() => bookings.slice(0, 3), [bookings]);
   const mapTitle = selectedService ? `${selectedService} within ${radiusKm} km` : 'Service location';
   const mapSubtitle = clientOrigin
     ? `Live location: ${clientLocationLabel}`
@@ -460,18 +482,6 @@ const ClientDashboardPage = () => {
     setLiveCoordinates(coordinates);
     toast.success('Live location updated.');
     return coordinates;
-  };
-
-  const handleUseLiveServiceLocation = () => {
-    const coordinates = liveCoordinates || normalizeCoordinates(userProfile?.coordinates);
-
-    if (!coordinates) {
-      toast.error('Allow GPS first, then use live location.');
-      return;
-    }
-
-    setRequestCoordinates(coordinates);
-    toast.success('Service location set to live GPS.');
   };
 
   const handleServiceChange = (service) => {
@@ -793,9 +803,9 @@ const ClientDashboardPage = () => {
 
   const completedServices = bookings.filter((item) => item.status === 'completed').length;
   const scheduledVisits = bookings.filter((item) => item.requestMode === 'scheduled').length;
-  const paymentsDue = awaitingPaymentBookings.length;
   const clientName = userProfile?.fullName || currentUser?.displayName || 'Client';
   const clientAvatar = userProfile?.profilePhoto || buildProfileAvatarDataUrl(clientName || 'Client');
+  const pendingRouteProgress = pendingBookings.length ? getRouteProgress(bookings, pendingBookings[0]) : null;
 
   return (
     <AppShell hideFooter>
@@ -834,11 +844,10 @@ const ClientDashboardPage = () => {
             </div>
           </LightPanel>
 
-          <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
             <DashboardMetric label="Open requests" value={openBookings.length} tone="blue" />
             <DashboardMetric label="Scheduling visits" value={scheduledVisits} />
             <DashboardMetric label="Completed" value={completedServices} tone="emerald" />
-            <DashboardMetric label="Payments due" value={paymentsDue} tone="amber" />
           </div>
 
           <LightPanel className="overflow-hidden p-0">
@@ -908,21 +917,6 @@ const ClientDashboardPage = () => {
           </LightPanel>
 
           <LightPanel className="p-2.5 sm:p-3">
-            <div className="mb-3 rounded-[14px] border border-slate-200 bg-slate-50 p-2.5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Service location</p>
-                  <p className="mt-1 truncate text-sm font-semibold text-slate-800">{clientLocationLabel}</p>
-                </div>
-                <Badge tone="emerald">Live GPS</Badge>
-              </div>
-              <div className="mt-2">
-                <Button type="button" variant="outline" size="sm" className="h-10 w-full sm:w-auto" onClick={handleUseLiveServiceLocation}>
-                  <LocateFixed size={15} />
-                  Live GPS
-                </Button>
-              </div>
-            </div>
             {coverageMessage ? (
               <div className="mb-4 rounded-[16px] border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
                 {coverageMessage}
@@ -1009,10 +1003,11 @@ const ClientDashboardPage = () => {
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700">Requesting</p>
-                  <h2 className="mt-2 text-xl font-bold text-slate-950 sm:text-[1.35rem]">Waiting for labour response</h2>
+                  <h2 className="mt-2 text-xl font-bold text-slate-950 sm:text-[1.35rem]">Waiting for worker</h2>
                   <p className="mt-2 break-words text-sm font-medium leading-6 text-slate-700">
-                    {pendingBookings[0].labourName} received your {pendingBookings[0].serviceType} request.
+                    Your {pendingBookings[0].serviceType} request is waiting.
                   </p>
+                  <RequestFlowBar booking={pendingBookings[0]} progress={pendingRouteProgress} />
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button
@@ -1124,76 +1119,7 @@ const ClientDashboardPage = () => {
             </LightPanel>
           ) : null}
 
-          <div className="grid gap-3 xl:grid-cols-[1fr_0.9fr]">
-            <LightPanel className="p-3.5 sm:p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-lg font-bold text-slate-950 sm:text-xl">Request tracking</h2>
-              </div>
-              <div className="mt-3 space-y-2">
-                {bookingsLoading ? (
-                  <>
-                    <Skeleton className="h-16 w-full rounded-2xl" />
-                    <Skeleton className="h-16 w-full rounded-2xl" />
-                  </>
-                ) : trackedBookings.length ? (
-                  <>
-                    <div className="hidden rounded-[14px] border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500 md:grid md:grid-cols-[1.05fr_1fr_0.8fr_0.8fr_0.75fr] md:items-center md:gap-3">
-                      <span>Worker</span>
-                      <span>Service</span>
-                      <span>Time</span>
-                      <span>Money</span>
-                      <span>Status</span>
-                    </div>
-                    {trackedBookings.map((booking) => (
-                      <div key={booking.id} className="rounded-[14px] border border-slate-200 bg-slate-50 p-2.5 sm:p-3">
-                        <div className="grid gap-2 md:grid-cols-[1.05fr_1fr_0.8fr_0.8fr_0.75fr] md:items-center md:gap-3">
-                          <div className="min-w-0">
-                            <h3 className="truncate text-sm font-bold text-slate-950">{booking.labourName || 'Labour'}</h3>
-                            <p className="mt-0.5 text-xs font-medium text-slate-500">{booking.requestMode === 'scheduled' ? 'Scheduled' : 'Instant'}</p>
-                          </div>
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-slate-800">{booking.serviceType}</p>
-                            <p className="mt-1 flex min-w-0 items-center gap-1.5 text-xs font-medium text-slate-500">
-                              <span className="flex-none" aria-hidden="true">📍</span>
-                              <span className="truncate">
-                                <LocationText
-                                  location={booking.location}
-                                  coordinates={booking.coordinates}
-                                  fallback="Live location shared"
-                                />
-                              </span>
-                            </p>
-                          </div>
-                          <div className="text-xs md:text-sm">
-                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-                              <Clock3 size={13} />
-                              {formatDate(booking.appointmentAt)}
-                            </span>
-                          </div>
-                          <div className="text-xs md:text-sm">
-                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-700">
-                              <WalletCards size={13} />
-                              {booking.status === 'completed' && Number(booking.amount) > 0
-                                ? formatCurrency(booking.amount)
-                                : booking.status === 'awaiting_payment'
-                                  ? 'Payment due'
-                                  : 'Pending'}
-                            </span>
-                          </div>
-                          <div className="flex justify-start md:justify-end">
-                            <Badge tone={getBookingTone(booking.status)}>{booking.status}</Badge>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                ) : (
-                  <EmptyDashed>Your service requests will show here</EmptyDashed>
-                )}
-              </div>
-            </LightPanel>
-
-            <LightPanel>
+          <LightPanel>
               <div className="flex items-center gap-2">
                 <UserCheck size={20} className="text-emerald-600" />
                 <h2 className="text-xl font-bold text-slate-950 sm:text-[1.35rem]">Related labour</h2>
@@ -1225,8 +1151,7 @@ const ClientDashboardPage = () => {
                 <Search size={15} />
                 Full search
               </Button>
-            </LightPanel>
-          </div>
+          </LightPanel>
         </div>
       </section>
     </AppShell>
