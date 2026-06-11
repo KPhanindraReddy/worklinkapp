@@ -13,7 +13,7 @@ import {
   UserRound,
   X
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { Button } from '../common/Button';
 import { ProfileAvatar } from '../common/ProfileAvatar';
@@ -54,12 +54,41 @@ const ProfileMenu = ({
   role
 }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const menuRef = useRef(null);
   const avatarSrc = profilePhoto || buildProfileAvatarDataUrl(profileName || profileLabel || 'Profile');
   const dashboardLabel =
     role === 'client' ? 'Dashboard' : role === 'labour' ? 'Dashboard' : role === 'admin' ? 'Dashboard' : 'Dashboard';
 
+  useEffect(() => {
+    if (!isProfileOpen) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event) => {
+      if (menuRef.current?.contains(event.target)) {
+        return;
+      }
+
+      setIsProfileOpen(false);
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsProfileOpen(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isProfileOpen]);
+
   return (
-    <div className="relative">
+    <div ref={menuRef} className="relative">
       <button
         type="button"
         className={clsx(
