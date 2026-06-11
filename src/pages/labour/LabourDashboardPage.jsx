@@ -5,6 +5,7 @@ import {
   House,
   IndianRupee,
   CalendarClock,
+  MapPin,
   MessageCircle,
   Navigation,
   Phone,
@@ -24,6 +25,7 @@ import { Skeleton } from '../../components/common/Skeleton';
 import { AppShell } from '../../components/layout/AppShell';
 import { AvailabilityToggle } from '../../components/dashboard/AvailabilityToggle';
 import { ServiceRequestMap } from '../../components/map/ServiceRequestMap';
+import { LocationText } from '../../components/location/LocationText';
 import { useAuth } from '../../context/AuthContext';
 import { useLocationName } from '../../hooks/useLocationName';
 import {
@@ -692,7 +694,19 @@ const LabourDashboardPage = () => {
                         </div>
                         <Badge tone={booking.status === 'pending' ? 'amber' : 'emerald'}>{booking.status}</Badge>
                       </div>
-                      <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
+                      <div className="mt-4 rounded-2xl border border-slate-200 bg-white/80 p-3">
+                        <div className="flex min-w-0 items-start gap-2 text-sm font-semibold text-slate-700">
+                          <MapPin size={16} className="mt-0.5 flex-none text-brand-600" />
+                          <span className="min-w-0 break-words">
+                            <LocationText
+                              location={booking.location}
+                              coordinates={booking.coordinates}
+                              fallback="Client live location"
+                            />
+                          </span>
+                        </div>
+                      </div>
+                      <div className="mt-3 grid gap-2 sm:flex sm:flex-wrap">
                         {routeUnlocked ? (
                           <Button as="a" href={buildDirectionsUrl(booking)} target="_blank" rel="noreferrer" size="sm" className="w-full sm:w-auto">
                             <Navigation size={15} />

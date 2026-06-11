@@ -20,6 +20,7 @@ import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
 import { SelectField } from '../../components/common/SelectField';
 import { Skeleton } from '../../components/common/Skeleton';
+import { SlivzLoader } from '../../components/common/SlivzLoader';
 import { AppShell } from '../../components/layout/AppShell';
 import { LocationPermissionPrompt } from '../../components/location/LocationPermissionPrompt';
 import { LocationText } from '../../components/location/LocationText';
@@ -162,7 +163,7 @@ const RequestFlowBar = ({ booking, progress }) => {
     return null;
   }
 
-  const detail = `${progress.failedCount} worker${progress.failedCount === 1 ? '' : 's'} skipped. Waiting for worker.`;
+  const detail = `${progress.failedCount} worker${progress.failedCount === 1 ? '' : 's'} skipped. Finding another worker.`;
 
   return (
     <div className="mt-4 rounded-[16px] border border-white/70 bg-white/70 p-3 shadow-[0_8px_20px_rgba(15,23,42,0.05)]">
@@ -1000,39 +1001,24 @@ const ClientDashboardPage = () => {
 
           {pendingBookings.length ? (
             <LightPanel className="border-brand-200 bg-brand-50">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700">Requesting</p>
-                  <h2 className="mt-2 text-xl font-bold text-slate-950 sm:text-[1.35rem]">Waiting for worker</h2>
-                  <p className="mt-2 break-words text-sm font-medium leading-6 text-slate-700">
-                    Your {pendingBookings[0].serviceType} request is waiting.
-                  </p>
-                  <RequestFlowBar booking={pendingBookings[0]} progress={pendingRouteProgress} />
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    as="a"
-                    href={(pendingBookings[0].labourPhoneNumber || pendingBookings[0].privateLabourPhoneNumber) ? `tel:${pendingBookings[0].labourPhoneNumber || pendingBookings[0].privateLabourPhoneNumber}` : undefined}
-                    size="sm"
-                    className={`w-full sm:w-auto ${!(pendingBookings[0].labourPhoneNumber || pendingBookings[0].privateLabourPhoneNumber) ? 'pointer-events-none opacity-60' : ''}`}
-                  >
-                    <Phone size={15} />
-                    Call
-                  </Button>
-                  <Button
-                    as={Link}
-                    to={`/chat?target=${encodeURIComponent(pendingBookings[0].labourId)}&booking=${encodeURIComponent(pendingBookings[0].id)}`}
-                    size="sm"
-                    variant="outline"
-                    className="w-full sm:w-auto"
-                  >
-                    <MessageCircle size={15} />
-                    Chat
-                  </Button>
-                <Button type="button" size="sm" variant="danger" className="w-full sm:w-auto" disabled={cancellingBookingId === pendingBookings[0].id} onClick={() => handleCancelBooking(pendingBookings[0])}>
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700">Requesting</p>
+                    <p className="mt-2 break-words text-sm font-medium leading-6 text-slate-700">
+                      Your {pendingBookings[0].serviceType} request is waiting.
+                    </p>
+                  </div>
+                  <Button type="button" size="sm" variant="danger" className="w-full sm:w-auto" disabled={cancellingBookingId === pendingBookings[0].id} onClick={() => handleCancelBooking(pendingBookings[0])}>
                     {cancellingBookingId === pendingBookings[0].id ? 'Cancelling...' : 'Cancel request'}
                   </Button>
                 </div>
+                {pendingBookings[0].requestMode === 'instant' ? (
+                  <div className="w-full overflow-hidden rounded-[16px] border border-white/70 bg-white px-4 shadow-[0_8px_20px_rgba(15,23,42,0.05)] sm:px-6">
+                    <SlivzLoader />
+                  </div>
+                ) : null}
+                <RequestFlowBar booking={pendingBookings[0]} progress={pendingRouteProgress} />
               </div>
             </LightPanel>
           ) : null}
