@@ -1,5 +1,5 @@
 import { PushNotifications } from '@capacitor/push-notifications';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { arrayUnion, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../firebase/firestore';
 import { isFirebaseConfigured } from '../firebase/env';
 import { isCapacitorNative } from '../utils/capacitor';
@@ -28,6 +28,8 @@ const persistPushToken = async ({ uid, token }) => {
           updatedAt: serverTimestamp()
         }
       },
+      pushTokenList: arrayUnion(token),
+      lastPushToken: token,
       pushNotificationsEnabled: true,
       updatedAt: serverTimestamp()
     },
@@ -39,14 +41,6 @@ export const registerNativePushNotifications = async ({ uid } = {}) => {
   if (!uid || !isCapacitorNative()) {
     return null;
   }
-
-  const permissionStatus = await PushNotifications.requestPermissions();
-
-  if (permissionStatus.receive !== 'granted') {
-    return null;
-  }
-
-  await PushNotifications.register();
 
   const registrationHandle = await PushNotifications.addListener('registration', (token) => {
     persistPushToken({ uid, token: token.value }).catch((error) => {
@@ -69,6 +63,18 @@ export const registerNativePushNotifications = async ({ uid } = {}) => {
       window.location.assign(targetUrl);
     }
   });
+
+  const permissionStatus = await PushNotifications.requestPermissions();
+
+  if (permissionStatus.receive !== 'granted') {
+    registrationHandle.remove();
+    registrationErrorHandle.remove();
+    notificationHandle.remove();
+    actionHandle.remove();
+    return null;
+  }
+
+  await PushNotifications.register();
 
   return () => {
     registrationHandle.remove();

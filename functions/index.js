@@ -189,9 +189,11 @@ const getUserPushTokens = async (userId) => {
   }
 
   const userSnapshot = await db.collection('users').doc(userId).get();
-  const pushTokens = userSnapshot.data()?.pushTokens || {};
+  const user = userSnapshot.data() || {};
+  const pushTokens = user.pushTokens || {};
+  const pushTokenList = Array.isArray(user.pushTokenList) ? user.pushTokenList : [];
 
-  return Object.keys(pushTokens).filter(Boolean);
+  return [...new Set([...Object.keys(pushTokens), ...pushTokenList].filter(Boolean))];
 };
 
 const sendPushToUser = async ({ userId, title, body, data = {} }) => {
