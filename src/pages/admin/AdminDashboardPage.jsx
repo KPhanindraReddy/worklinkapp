@@ -270,6 +270,38 @@ const hasProfileLocation = (profile) =>
       profile.locationCoordinates
   );
 
+const firstFilled = (...values) =>
+  values.find((value) => String(value ?? '').trim()) ?? '';
+
+const getAdminProfileName = (profile, fallback) =>
+  firstFilled(profile.fullName, profile.displayName, profile.name, profile.clientName, profile.labourName, fallback);
+
+const getAdminProfilePhone = (profile) =>
+  firstFilled(profile.phoneNumber, profile.phone, profile.mobileNumber, profile.contactNumber, profile.clientPhoneNumber);
+
+const getAdminProfileEmail = (profile) =>
+  firstFilled(profile.email, profile.emailAddress, profile.clientEmail);
+
+const getAdminProfileLocation = (profile, options) =>
+  firstFilled(
+    getLocationLabel(profile, { ...options, fallback: '' }),
+    profile.location,
+    profile.currentLocation,
+    profile.address,
+    profile.currentAddress,
+    profile.requestedAddress
+  );
+
+const toCommaText = (value) => (Array.isArray(value) ? value.join(', ') : value || '');
+
+const getProfileDetailsText = (profile) =>
+  [
+    profile.gender ? `Gender: ${profile.gender}` : '',
+    profile.age ? `Age: ${profile.age}` : ''
+  ]
+    .filter(Boolean)
+    .join(' / ') || 'Details not added';
+
 const buildProfileRiskRows = (profiles, role) =>
   profiles.flatMap((profile) => {
     const rows = [];
@@ -670,19 +702,27 @@ const AdminDashboardPage = () => {
   )}/firestore/data/~2FwhatsappLogs`;
 
   const openProfileEditor = (item, role) => {
+    const fallbackName = role === 'client' ? 'Client' : 'Labour';
+
     setEditingProfile({
       userId: item.id,
       role,
-      fullName: item.fullName || '',
-      phoneNumber: item.phoneNumber || '',
-      email: item.email || '',
-      location: item.location || '',
-      currentLocation: item.currentLocation || '',
+      fullName: getAdminProfileName(item, fallbackName),
+      phoneNumber: getAdminProfilePhone(item),
+      email: getAdminProfileEmail(item),
+      location: getAdminProfileLocation(item, { fallback: '' }),
+      currentLocation: firstFilled(item.currentLocation, item.workLocation, item.location),
       accountStatus: item.accountStatus || 'active',
+      gender: item.gender || '',
+      age: item.age ?? '',
       category: item.category || '',
       availability: item.availability || 'Available',
       experienceYears: Number(item.experienceYears || 0),
       skills: Array.isArray(item.skills) ? item.skills.join(', ') : item.skills || '',
+      languages: toCommaText(item.languages),
+      education: item.education || '',
+      dailyWage: item.dailyWage ?? 0,
+      previousWorkHistory: toCommaText(item.previousWorkHistory),
       about: item.about || ''
     });
   };
@@ -725,7 +765,21 @@ const AdminDashboardPage = () => {
                         .split(',')
                         .map((value) => value.trim())
                         .filter(Boolean)
-                    : item.skills
+                    : item.skills,
+                languages:
+                  editingProfile.role === 'labour'
+                    ? String(editingProfile.languages || '')
+                        .split(',')
+                        .map((value) => value.trim())
+                        .filter(Boolean)
+                    : item.languages,
+                previousWorkHistory:
+                  editingProfile.role === 'labour'
+                    ? String(editingProfile.previousWorkHistory || '')
+                        .split(',')
+                        .map((value) => value.trim())
+                        .filter(Boolean)
+                    : item.previousWorkHistory
               }
             : item
         )
@@ -1401,6 +1455,7 @@ const AdminDashboardPage = () => {
                         <tr>
                           <Th>Name</Th>
                           <Th>Service</Th>
+                          <Th>Details</Th>
                           <Th>Contact</Th>
                           <Th>Location</Th>
                           <Th>Status</Th>
@@ -1429,6 +1484,7 @@ const AdminDashboardPage = () => {
                               <p className="font-semibold text-slate-950">{labour.category || 'No category'}</p>
                               <p className="text-xs text-slate-500">{labour.availability || 'Status not set'}</p>
                             </Td>
+                            <Td className="min-w-40">{getProfileDetailsText(labour)}</Td>
                             <Td>
                               <p className="break-all">{labour.phoneNumber || 'Phone not added'}</p>
                               <p className="break-all text-xs text-slate-500">{labour.email || 'Email not added'}</p>
@@ -1542,6 +1598,7 @@ const AdminDashboardPage = () => {
                       <thead className="bg-slate-50">
                         <tr>
                           <Th>Name</Th>
+                          <Th>Details</Th>
                           <Th>Contact</Th>
                           <Th>Location</Th>
                           <Th>Status</Th>
@@ -1554,16 +1611,17 @@ const AdminDashboardPage = () => {
                             <Td>
                               <div className="flex items-center gap-2">
                                 <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-slate-900 text-sm font-bold text-white">
-                                  {(client.fullName || 'C').charAt(0).toUpperCase()}
+                                  {getAdminProfileName(client, 'C').charAt(0).toUpperCase()}
                                 </span>
-                                <p className="font-semibold text-slate-950">{client.fullName || 'Client'}</p>
+                                <p className="font-semibold text-slate-950">{getAdminProfileName(client, 'Client')}</p>
                               </div>
                             </Td>
+                            <Td className="min-w-40">{getProfileDetailsText(client)}</Td>
                             <Td>
-                              <p className="break-all">{client.phoneNumber || 'Phone not added'}</p>
-                              <p className="break-all text-xs text-slate-500">{client.email || 'Email not added'}</p>
+                              <p className="break-all">{getAdminProfilePhone(client) || 'Phone not added'}</p>
+                              <p className="break-all text-xs text-slate-500">{getAdminProfileEmail(client) || 'Email not added'}</p>
                             </Td>
-                            <Td className="min-w-48">{getLocationLabel(client)}</Td>
+                            <Td className="min-w-48">{getAdminProfileLocation(client) || 'Location not set'}</Td>
                             <Td>
                               <Badge tone={client.accountStatus === 'banned' ? 'rose' : 'slate'}>
                                 {client.accountStatus || 'active'}
@@ -1649,6 +1707,19 @@ const AdminDashboardPage = () => {
                 value={editingProfile.accountStatus}
                 onChange={(event) => updateEditField('accountStatus', event.target.value)}
               />
+              <SelectField
+                label="Gender"
+                options={['', 'Male', 'Female', 'Other']}
+                value={editingProfile.gender}
+                onChange={(event) => updateEditField('gender', event.target.value)}
+              />
+              <InputField
+                label="Age"
+                type="number"
+                min="0"
+                value={editingProfile.age}
+                onChange={(event) => updateEditField('age', event.target.value)}
+              />
               <InputField
                 label="Location"
                 value={editingProfile.location}
@@ -1685,14 +1756,37 @@ const AdminDashboardPage = () => {
                   onChange={(event) => updateEditField('experienceYears', event.target.value)}
                 />
                 <InputField
+                  label="Daily wage"
+                  type="number"
+                  min="0"
+                  value={editingProfile.dailyWage}
+                  onChange={(event) => updateEditField('dailyWage', event.target.value)}
+                />
+                <InputField
+                  label="Education"
+                  value={editingProfile.education}
+                  onChange={(event) => updateEditField('education', event.target.value)}
+                />
+                <InputField
                   label="Skills (comma separated)"
                   value={editingProfile.skills}
                   onChange={(event) => updateEditField('skills', event.target.value)}
                 />
                 <InputField
+                  label="Languages (comma separated)"
+                  value={editingProfile.languages}
+                  onChange={(event) => updateEditField('languages', event.target.value)}
+                />
+                <InputField
                   label="About"
                   value={editingProfile.about}
                   onChange={(event) => updateEditField('about', event.target.value)}
+                  className="sm:col-span-2"
+                />
+                <InputField
+                  label="Previous work history"
+                  value={editingProfile.previousWorkHistory}
+                  onChange={(event) => updateEditField('previousWorkHistory', event.target.value)}
                   className="sm:col-span-2"
                 />
               </div>

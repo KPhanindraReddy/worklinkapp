@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   getCountFromServer,
+  getDoc,
   getDocs,
   limit,
   orderBy,
@@ -45,6 +46,18 @@ const toMillis = (value) => {
 
   const parsed = new Date(value).getTime();
   return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const mergeFilledProfileData = (base = {}, override = {}) => {
+  const merged = { ...base, ...override };
+
+  ['fullName', 'phoneNumber', 'email', 'location', 'currentLocation', 'accountStatus'].forEach((key) => {
+    if ((override[key] === undefined || override[key] === null || override[key] === '') && base[key]) {
+      merged[key] = base[key];
+    }
+  });
+
+  return merged;
 };
 
 const safeGetDocs = async (queryBuilder) => {
@@ -315,9 +328,19 @@ export const listAdminProfiles = async ({
     limit(pageSize)
   );
   const snapshot = await getDocs(directoryQuery);
+  const userProfiles = await Promise.all(
+    snapshot.docs.map((item) =>
+      getDoc(doc(db, 'users', item.id))
+        .then((userSnapshot) => (userSnapshot.exists() ? userSnapshot.data() : {}))
+        .catch(() => ({}))
+    )
+  );
 
   return {
-    items: snapshot.docs.map((item) => ({ id: item.id, ...item.data() })),
+    items: snapshot.docs.map((item, index) => ({
+      id: item.id,
+      ...mergeFilledProfileData(userProfiles[index], item.data())
+    })),
     cursor: snapshot.docs.at(-1) ?? null,
     hasMore: snapshot.docs.length === pageSize
   };
@@ -376,6 +399,11 @@ export const updateAdminUserProfile = async ({ userId, role = 'client', payload 
     email: String(payload.email ?? '').trim(),
     location: String(payload.location ?? '').trim(),
     currentLocation: String(payload.currentLocation ?? '').trim(),
+    gender: String(payload.gender ?? '').trim(),
+    age:
+      payload.age === '' || payload.age === null || payload.age === undefined
+        ? null
+        : Number(payload.age),
     accountStatus: String(payload.accountStatus ?? 'active').trim() || 'active',
     updatedAt: serverTimestamp()
   };
@@ -385,9 +413,23 @@ export const updateAdminUserProfile = async ({ userId, role = 'client', payload 
     normalizedPayload.availability = String(payload.availability ?? '').trim() || 'Available';
     normalizedPayload.about = String(payload.about ?? '').trim();
     normalizedPayload.experienceYears = Number(payload.experienceYears || 0);
+    normalizedPayload.education = String(payload.education ?? '').trim();
+    normalizedPayload.dailyWage = Number(payload.dailyWage || 0);
     normalizedPayload.skills = Array.isArray(payload.skills)
       ? payload.skills
       : String(payload.skills ?? '')
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean);
+    normalizedPayload.languages = Array.isArray(payload.languages)
+      ? payload.languages
+      : String(payload.languages ?? '')
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean);
+    normalizedPayload.previousWorkHistory = Array.isArray(payload.previousWorkHistory)
+      ? payload.previousWorkHistory
+      : String(payload.previousWorkHistory ?? '')
           .split(',')
           .map((item) => item.trim())
           .filter(Boolean);
