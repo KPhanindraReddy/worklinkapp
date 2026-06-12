@@ -6,6 +6,7 @@ import { Navbar } from './Navbar';
 import { useAuth } from '../../context/AuthContext';
 import { LiveLocationSync } from './LiveLocationSync';
 import { NotificationToaster } from './NotificationToaster';
+import { NativePushNotifications } from './NativePushNotifications';
 
 const RequestRoutingController = lazy(() =>
   import('../booking/RequestRoutingController').then((module) => ({
@@ -73,6 +74,7 @@ export const AppShell = ({
     <div className="app-root">
       {hideNavbar ? null : <Navbar />}
       <NotificationToaster currentUser={currentUser} />
+      <NativePushNotifications currentUser={currentUser} />
       <AppLiveLocationSync />
       <LazyRequestRoutingController />
       <div className={clsx('app-shell-content', !hideBottomDock && 'app-shell-content--dock', contentClassName)}>

@@ -53,6 +53,10 @@ const phoneProfileFunctionOptions = {
   region: 'asia-south1'
 };
 
+const pushFunctionOptions = {
+  region: 'asia-south1'
+};
+
 const toText = (value, fallback = '') => {
   const text = String(value ?? '').trim();
   return text || fallback;
@@ -163,6 +167,61 @@ const getBookingUrl = (booking, audience) => {
   }
 
   return `${baseUrl}/client`;
+};
+
+const getNotificationUrl = (notification) => {
+  const baseUrl = appUrl.value().replace(/\/$/, '');
+
+  if (notification.type === 'chat' && notification.conversationId) {
+    return `${baseUrl}/chat?conversation=${encodeURIComponent(notification.conversationId)}`;
+  }
+
+  if (notification.type === 'booking' && notification.bookingId) {
+    return `${baseUrl}/recent-services`;
+  }
+
+  return `${baseUrl}/notifications`;
+};
+
+const getUserPushTokens = async (userId) => {
+  if (!userId) {
+    return [];
+  }
+
+  const userSnapshot = await db.collection('users').doc(userId).get();
+  const pushTokens = userSnapshot.data()?.pushTokens || {};
+
+  return Object.keys(pushTokens).filter(Boolean);
+};
+
+const sendPushToUser = async ({ userId, title, body, data = {} }) => {
+  const tokens = await getUserPushTokens(userId);
+
+  if (!tokens.length) {
+    logger.info('Push notification skipped: no registered tokens.', { userId });
+    return;
+  }
+
+  const result = await admin.messaging().sendEachForMulticast({
+    tokens: tokens.slice(0, 500),
+    notification: {
+      title: toText(title, 'Slivz'),
+      body: toText(body, 'You have a new update.')
+    },
+    data: Object.entries(data).reduce((payload, [key, value]) => {
+      if (value !== undefined && value !== null) {
+        payload[key] = String(value);
+      }
+
+      return payload;
+    }, {})
+  });
+
+  logger.info('Push notification send completed.', {
+    userId,
+    successCount: result.successCount,
+    failureCount: result.failureCount
+  });
 };
 
 const bodyComponent = (values) => ({
@@ -401,6 +460,36 @@ exports.sendBookingRequestWhatsApp = onDocumentCreated(
     }
 
     await sendNewBookingMessage(event.params.bookingId, booking);
+  }
+);
+
+exports.sendAppPushNotification = onDocumentCreated(
+  {
+    ...pushFunctionOptions,
+    document: 'notifications/{notificationId}'
+  },
+  async (event) => {
+    const notification = event.data?.data();
+
+    if (!notification?.userId) {
+      logger.warn('Push notification skipped: missing user id.', {
+        notificationId: event.params.notificationId
+      });
+      return;
+    }
+
+    await sendPushToUser({
+      userId: notification.userId,
+      title: notification.title,
+      body: notification.body,
+      data: {
+        notificationId: event.params.notificationId,
+        type: notification.type || '',
+        bookingId: notification.bookingId || '',
+        conversationId: notification.conversationId || '',
+        url: getNotificationUrl(notification)
+      }
+    });
   }
 );
 

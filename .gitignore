@@ -4,6 +4,7 @@ dev-dist
 .vite
 .firebase
 .vscode
+.idea
 .vercel
 .DS_Store
 .env
@@ -12,9 +13,12 @@ npm-debug.log*
 firebase-debug.log
 firebase-debug.*.log
 vite-dev*.log
+icons
 android/.gradle
+android/.idea
 android/app/build
 android/build
+android/gradle/gradle-daemon-jvm.properties
 ios/App/build
 ios/App/Pods
 ios/App/Podfile.lock
