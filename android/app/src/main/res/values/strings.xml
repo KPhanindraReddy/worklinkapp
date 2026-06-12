@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Slivz</string>
+    <string name="title_activity_main">Slivz</string>
+    <string name="package_name">com.slivz.app</string>
+    <string name="custom_url_scheme">com.slivz.app</string>
+</resources>

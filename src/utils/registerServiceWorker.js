@@ -1,7 +1,14 @@
+import { isCapacitorNative } from './capacitor';
+
 const isProductionBuild = import.meta.env.PROD;
 
 export const registerServiceWorker = () => {
-  if (!isProductionBuild || typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+  if (
+    !isProductionBuild ||
+    isCapacitorNative() ||
+    typeof window === 'undefined' ||
+    !('serviceWorker' in navigator)
+  ) {
     return;
   }
 
