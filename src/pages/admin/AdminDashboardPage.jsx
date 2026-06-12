@@ -40,9 +40,9 @@ import { formatCurrency, fromNow } from '../../utils/formatters';
 import { getLocationLabel } from '../../utils/location';
 import { availabilityOptions, workCategories } from '../../utils/constants';
 
-const TableShell = ({ children }) => (
+const TableShell = ({ children, minWidth = 'min-w-full' }) => (
   <div className="overflow-x-auto rounded-[16px] border border-slate-200 bg-white">
-    <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+    <table className={`${minWidth} divide-y divide-slate-200 text-left text-sm`}>
       {children}
     </table>
   </div>
@@ -1031,7 +1031,7 @@ const AdminDashboardPage = () => {
               </div>
             </Card>
 
-            <div className="grid gap-6 xl:grid-cols-2">
+            <div className="grid gap-6">
               <Card>
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
@@ -1065,7 +1065,7 @@ const AdminDashboardPage = () => {
                       <Skeleton className="h-32 w-full" />
                     </>
                   ) : filteredLabours.length ? (
-                    <TableShell>
+                    <TableShell minWidth="min-w-[1120px]">
                       <thead className="bg-slate-50">
                         <tr>
                           <Th>Name</Th>
@@ -1207,7 +1207,7 @@ const AdminDashboardPage = () => {
                       <Skeleton className="h-32 w-full" />
                     </>
                   ) : filteredClients.length ? (
-                    <TableShell>
+                    <TableShell minWidth="min-w-[920px]">
                       <thead className="bg-slate-50">
                         <tr>
                           <Th>Name</Th>
