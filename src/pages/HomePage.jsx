@@ -61,11 +61,11 @@ const HomePage = () => {
     return geolocation.requestLocation({ force: true });
   };
 
-  if (currentUser) {
-    if (loading) {
-      return null;
-    }
+  if (loading) {
+    return null;
+  }
 
+  if (currentUser) {
     return <Navigate to={resolvePostAuthPath({ profile: userProfile })} replace />;
   }
 

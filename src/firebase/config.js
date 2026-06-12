@@ -1,7 +1,26 @@
-import { getAuth } from 'firebase/auth';
+import {
+  browserLocalPersistence,
+  getAuth,
+  indexedDBLocalPersistence,
+  initializeAuth
+} from 'firebase/auth';
 import { firebaseConfig, isFirebaseConfigured } from './env';
 import { app } from './app';
 
-export const auth = app ? getAuth(app) : null;
+const createAuth = () => {
+  if (!app) {
+    return null;
+  }
+
+  try {
+    return initializeAuth(app, {
+      persistence: [indexedDBLocalPersistence, browserLocalPersistence]
+    });
+  } catch (error) {
+    return getAuth(app);
+  }
+};
+
+export const auth = createAuth();
 
 export { app, firebaseConfig, isFirebaseConfigured };
