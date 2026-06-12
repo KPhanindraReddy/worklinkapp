@@ -41,20 +41,20 @@ const resolveAppRoute = (data = {}) => {
   const route = String(data.route || '').trim();
 
   if (route.startsWith('/')) {
-    return route;
+    return '/';
   }
 
   const targetUrl = String(data.url || '').trim();
 
   if (!targetUrl) {
-    return '';
+    return '/';
   }
 
   try {
-    const parsedUrl = new URL(targetUrl);
-    return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}` || '/notifications';
+    new URL(targetUrl);
+    return '/';
   } catch {
-    return targetUrl.startsWith('/') ? targetUrl : '';
+    return '/';
   }
 };
 

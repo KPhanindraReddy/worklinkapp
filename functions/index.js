@@ -169,17 +169,7 @@ const getBookingUrl = (booking, audience) => {
   return `${baseUrl}/client`;
 };
 
-const getNotificationRoute = (notification) => {
-  if (notification.type === 'chat' && notification.conversationId) {
-    return `/chat?conversation=${encodeURIComponent(notification.conversationId)}`;
-  }
-
-  if (notification.type === 'booking' && notification.bookingId) {
-    return '/recent-services';
-  }
-
-  return '/notifications';
-};
+const getNotificationRoute = () => '/';
 
 const getNotificationUrl = (notification) => {
   const baseUrl = appUrl.value().replace(/\/$/, '');
