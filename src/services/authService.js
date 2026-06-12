@@ -448,16 +448,27 @@ export const createOrUpdateUserProfile = async (user, formValues) => {
       },
       { merge: true }
     );
+
+    return {
+      ...baseProfile,
+      ...labourProfileFields,
+      location: labourProfileFields.currentLocation || baseProfile.location || ''
+    };
   }
 
   if (resolvedRole === 'client') {
     const existingClientSnapshot = await getDoc(clientRef);
     const existingClient = existingClientSnapshot.exists() ? existingClientSnapshot.data() : null;
+    const clientProfileFields = {
+      gender: getFormValue(formValues, 'gender', existingClient?.gender || ''),
+      age: getNumericFormValue(formValues, 'age', existingClient?.age ?? null, { emptyAsNull: true })
+    };
 
     await setDoc(
       clientRef,
       {
         ...baseProfile,
+        ...clientProfileFields,
         coordinates:
           normalizeCoordinates(formValues.coordinates) ||
           normalizeCoordinates(existingClient?.coordinates) ||
@@ -467,6 +478,13 @@ export const createOrUpdateUserProfile = async (user, formValues) => {
       },
       { merge: true }
     );
+
+    await setDoc(userRef, clientProfileFields, { merge: true });
+
+    return {
+      ...baseProfile,
+      ...clientProfileFields
+    };
   }
 
   return baseProfile;

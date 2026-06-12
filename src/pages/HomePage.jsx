@@ -80,14 +80,12 @@ const HomePage = () => {
               <MapPin size={14} />
               <span className="truncate">Local labour, simple booking</span>
             </div>
-            <h1 className="mt-4 max-w-3xl break-words font-display text-[2rem] font-bold leading-[1.08] text-slate-950 sm:text-4xl lg:text-5xl">
+            <h1 className="mt-4 max-w-3xl break-words text-center font-body text-[2rem] font-semibold leading-[1.08] text-slate-950 sm:text-4xl lg:text-5xl">
               Find trusted workers near you.
             </h1>
             <p className="mt-3 max-w-xl break-words text-sm leading-6 text-slate-600 sm:text-base">
               Service persons are available for instant time service near you.
             </p>
-
-            <p className="mt-3 text-sm font-semibold text-slate-950">Search service name from below services.</p>
             <LocationPermissionPrompt
               geolocation={geolocation}
               onRequest={handleRefreshLocation}
@@ -137,7 +135,6 @@ const HomePage = () => {
         <div className="page-shell">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-normal text-brand-700">Popular now</p>
               <h2 className="mt-1 text-xl font-bold text-slate-950">Nearby services</h2>
               <p className="mt-1 text-sm text-slate-500">Below services are provided. Tap to contact or register.</p>
             </div>

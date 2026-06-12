@@ -803,7 +803,6 @@ const ClientDashboardPage = () => {
   };
 
   const completedServices = bookings.filter((item) => item.status === 'completed').length;
-  const scheduledVisits = bookings.filter((item) => item.requestMode === 'scheduled').length;
   const clientName = userProfile?.fullName || currentUser?.displayName || 'Client';
   const clientAvatar = userProfile?.profilePhoto || buildProfileAvatarDataUrl(clientName || 'Client');
   const pendingRouteProgress = pendingBookings.length ? getRouteProgress(bookings, pendingBookings[0]) : null;
@@ -845,9 +844,8 @@ const ClientDashboardPage = () => {
             </div>
           </LightPanel>
 
-          <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+          <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
             <DashboardMetric label="Open requests" value={openBookings.length} tone="blue" />
-            <DashboardMetric label="Scheduling visits" value={scheduledVisits} />
             <DashboardMetric label="Completed" value={completedServices} tone="emerald" />
           </div>
 

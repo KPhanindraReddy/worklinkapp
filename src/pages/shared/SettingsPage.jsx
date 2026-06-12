@@ -34,9 +34,11 @@ import { createSupportTicket, listUserSupportTickets } from '../../services/supp
 import { availabilityOptions, languageOptions, workCategories } from '../../utils/constants';
 import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 import { getDisplayLocationText } from '../../utils/location';
+import { getIndianLocalPhoneNumber } from '../../utils/phone';
 import { buildProfileAvatarDataUrl } from '../../utils/profileAvatar';
 
 const toCommaText = (value) => (Array.isArray(value) ? value.join(', ') : value || '');
+const isGmailAddress = (value) => /^[^\s@]+@gmail\.com$/i.test(String(value || '').trim());
 
 const buildProfileForm = (profile, currentUser) => ({
   fullName: profile?.fullName || currentUser?.displayName || '',
@@ -196,23 +198,13 @@ const SettingsPage = () => {
     userProfile?.profilePhoto ||
     formValues.profilePhotoUrl ||
     buildProfileAvatarDataUrl(formValues.fullName || userProfile?.fullName || currentUser?.displayName || 'Profile');
-  const canSaveProfile = isLabour
-    ? Boolean(
-          formValues.fullName.trim() &&
-          (formValues.phoneNumber.trim() || formValues.email.trim()) &&
-          formValues.currentLocation.trim() &&
-          formValues.category &&
-          formValues.skills.trim()
-      )
-    : isClient
-      ? Boolean(
-          formValues.fullName.trim() &&
-            (formValues.phoneNumber.trim() || formValues.email.trim()) &&
-            (formValues.location.trim() || formValues.coordinates)
-        )
-      : Boolean(formValues.fullName.trim() && (formValues.phoneNumber.trim() || formValues.email.trim()));
   const isEditingPersonal = editingSection === 'personal';
   const isEditingWork = editingSection === 'work';
+  const canSaveProfile = isEditingWork
+    ? Boolean(formValues.category && formValues.skills.trim())
+    : Boolean(formValues.fullName.trim() && (formValues.phoneNumber.trim() || formValues.email.trim()));
+  const hasValidPhoneNumber = !formValues.phoneNumber.trim() || getIndianLocalPhoneNumber(formValues.phoneNumber).length === 10;
+  const hasValidEmail = !formValues.email.trim() || isGmailAddress(formValues.email);
   const personalFieldsDisabled = !isEditingPersonal || savingProfile;
   const workFieldsDisabled = !isEditingWork || savingProfile;
 
@@ -228,20 +220,30 @@ const SettingsPage = () => {
     }
 
     if (!canSaveProfile) {
-      if (isLabour) {
-        toast.error('Enter name, phone or email, service, skills, and current location before saving.');
-      } else if (isClient) {
-        toast.error('Enter name, phone or email, and location before saving.');
+      if (isEditingWork) {
+        toast.error('Enter service and skills before saving.');
+      } else if (isClient || isLabour) {
+        toast.error('Enter name and phone or email before saving.');
       } else {
         toast.error('Enter name and phone or email before saving.');
       }
       return;
     }
 
+    if (!hasValidPhoneNumber) {
+      toast.error('Enter a valid 10-digit phone number.');
+      return;
+    }
+
+    if (!hasValidEmail) {
+      toast.error('Enter a valid Gmail address.');
+      return;
+    }
+
     setSavingProfile(true);
 
     try {
-      await createOrUpdateUserProfile(currentUser, {
+      const savedProfile = await createOrUpdateUserProfile(currentUser, {
         ...formValues,
         role: userProfile.role,
         location: isClient ? formValues.location : formValues.currentLocation,
@@ -250,7 +252,7 @@ const SettingsPage = () => {
         about: isLabour ? formValues.about : '',
         previousWorkHistory: isLabour ? formValues.previousWorkHistory : ''
       });
-      if (isLabour) {
+      if (isLabour && formValues.category) {
         await submitCustomServiceRequest({
           name: formValues.category,
           labourId: currentUser.uid,
@@ -259,6 +261,11 @@ const SettingsPage = () => {
         });
       }
       toast.success('Profile updated successfully.');
+      setFormValues({
+        ...buildProfileForm({ ...userProfile, ...savedProfile }, currentUser),
+        ...(availabilityOverride ? { availability: availabilityOverride } : {})
+      });
+      await refreshProfile();
       setEditingSection('');
     } catch (error) {
       toast.error(getFirebaseErrorMessage(error));
@@ -391,7 +398,7 @@ const SettingsPage = () => {
                 />
                 <div className="min-w-0">
                   <h1 className="truncate text-[1.65rem] font-extrabold leading-tight tracking-normal sm:text-3xl">
-                    {formValues.fullName.trim() || 'Profile'}
+                    {formValues.fullName.trim() || 'Not filled'}
                   </h1>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-white/12 px-3 py-1 text-xs font-semibold text-white/80">
@@ -486,7 +493,7 @@ const SettingsPage = () => {
                 disabled={personalFieldsDisabled}
                 value={formValues.fullName}
                 onChange={(event) => updateFormValue('fullName', event.target.value)}
-                placeholder="Your full name"
+                placeholder=""
               />
               <PhoneInputField
                 label="Phone number"
@@ -500,7 +507,7 @@ const SettingsPage = () => {
                 disabled={personalFieldsDisabled || Boolean(userProfile?.email || currentUser?.email)}
                 value={formValues.email}
                 onChange={(event) => updateFormValue('email', event.target.value)}
-                placeholder="name@example.com"
+                placeholder=""
               />
               <div className="grid grid-cols-2 gap-3">
                 <SelectField
@@ -517,7 +524,7 @@ const SettingsPage = () => {
                   disabled={personalFieldsDisabled}
                   value={formValues.age}
                   onChange={(event) => updateFormValue('age', event.target.value)}
-                  placeholder="28"
+                  placeholder="Not set"
                 />
               </div>
             </div>
@@ -532,7 +539,7 @@ const SettingsPage = () => {
                   disabled={personalFieldsDisabled}
                   value={formValues.location}
                   onChange={(event) => updateFormValue('location', event.target.value)}
-                  placeholder="Gachibowli, Hyderabad"
+                  placeholder="Not set"
                 />
                 <ProfileLocationPanel
                   roleLabel="client"
@@ -555,7 +562,7 @@ const SettingsPage = () => {
                   disabled={personalFieldsDisabled}
                   value={formValues.currentLocation}
                   onChange={(event) => updateFormValue('currentLocation', event.target.value)}
-                  placeholder="Madhapur, Hyderabad"
+                  placeholder="Select or type service"
                 />
                 <ProfileLocationPanel
                   roleLabel="labour"
