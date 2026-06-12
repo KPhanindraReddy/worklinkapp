@@ -10,7 +10,8 @@ import {
   setDoc,
   startAfter,
   updateDoc,
-  where
+  where,
+  writeBatch
 } from 'firebase/firestore';
 import { isFirebaseConfigured } from '../firebase/env';
 import { db } from '../firebase/firestore';
@@ -19,6 +20,8 @@ import { workCategories } from '../utils/constants';
 
 const DIRECTORY_PAGE_SIZE = 18;
 const DIAGNOSTICS_LIMIT = 300;
+const NOTIFICATION_CLEANUP_LIMIT = 2000;
+const NOTIFICATION_CLEANUP_BATCH_SIZE = 450;
 const fallbackCategories = workCategories.map((category, index) => ({
   id: `category-${index + 1}`,
   name: category,
@@ -403,7 +406,8 @@ export const getAdminDiagnostics = async () => {
       failedNotifications: [],
       functionErrors: [],
       stuckBookings: [],
-      messageFailures: []
+      messageFailures: [],
+      repeatedCancellations: []
     };
   }
 
@@ -512,11 +516,63 @@ export const getAdminDiagnostics = async () => {
     .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt))
     .slice(0, 18);
 
+  const repeatedCancellations = Array.from(
+    bookings
+      .filter((booking) => ['cancelled', 'canceled', 'rejected'].includes(String(booking.status || '').toLowerCase()))
+      .reduce((map, booking) => {
+        [
+          {
+            id: booking.clientId || booking.userId,
+            role: 'client',
+            name: booking.clientName || 'Client'
+          },
+          {
+            id: booking.labourId,
+            role: 'labour',
+            name: booking.labourName || 'Labour'
+          }
+        ]
+          .filter((account) => account.id)
+          .forEach((account) => {
+            const key = `${account.role}-${account.id}`;
+            const current = map.get(key) || {
+              id: key,
+              userId: account.id,
+              role: account.role,
+              name: account.name,
+              count: 0,
+              latestAt: booking.updatedAt || booking.createdAt || null,
+              services: new Set()
+            };
+
+            current.count += 1;
+            current.name = account.name || current.name;
+            current.latestAt =
+              toMillis(booking.updatedAt || booking.createdAt) > toMillis(current.latestAt)
+                ? booking.updatedAt || booking.createdAt
+                : current.latestAt;
+            current.services.add(booking.serviceType || 'Service');
+            map.set(key, current);
+          });
+
+        return map;
+      }, new Map())
+      .values()
+  )
+    .filter((item) => item.count >= 3)
+    .map((item) => ({
+      ...item,
+      services: Array.from(item.services).slice(0, 3)
+    }))
+    .sort((a, b) => b.count - a.count || toMillis(b.latestAt) - toMillis(a.latestAt))
+    .slice(0, 18);
+
   return {
     failedNotifications,
     functionErrors,
     stuckBookings,
-    messageFailures
+    messageFailures,
+    repeatedCancellations
   };
 };
 
@@ -544,4 +600,62 @@ export const updateSupportTicketStatus = async (ticketId, status = 'open') => {
     status,
     updatedAt: serverTimestamp()
   });
+};
+
+export const cleanupOverflowNotifications = async ({ role = 'all', keepLatest = 10 } = {}) => {
+  if (!isFirebaseConfigured || !db) {
+    return {
+      deletedCount: 0,
+      affectedUsers: 0
+    };
+  }
+
+  const normalizedRole = ['client', 'labour'].includes(role) ? role : 'all';
+  let allowedUserIds = null;
+
+  if (normalizedRole !== 'all') {
+    const usersSnapshot = await getDocs(
+      query(collection(db, 'users'), where('role', '==', normalizedRole), limit(1000))
+    );
+    allowedUserIds = new Set(usersSnapshot.docs.map((item) => item.id));
+  }
+
+  const notificationsSnapshot = await getDocs(
+    query(collection(db, 'notifications'), orderBy('createdAt', 'desc'), limit(NOTIFICATION_CLEANUP_LIMIT))
+  );
+  const notificationsByUser = notificationsSnapshot.docs.reduce((map, item) => {
+    const data = item.data();
+    const userId = data.userId;
+
+    if (!userId || (allowedUserIds && !allowedUserIds.has(userId))) {
+      return map;
+    }
+
+    const current = map.get(userId) || [];
+    current.push({
+      ref: item.ref,
+      createdAt: data.createdAt
+    });
+    map.set(userId, current);
+    return map;
+  }, new Map());
+  const deleteRefs = Array.from(notificationsByUser.values()).flatMap((items) =>
+    [...items]
+      .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt))
+      .slice(Number(keepLatest) || 10)
+      .map((item) => item.ref)
+  );
+
+  for (let index = 0; index < deleteRefs.length; index += NOTIFICATION_CLEANUP_BATCH_SIZE) {
+    const batch = writeBatch(db);
+    deleteRefs.slice(index, index + NOTIFICATION_CLEANUP_BATCH_SIZE).forEach((reference) => {
+      batch.delete(reference);
+    });
+    await batch.commit();
+  }
+
+  return {
+    deletedCount: deleteRefs.length,
+    affectedUsers: Array.from(notificationsByUser.values()).filter((items) => items.length > keepLatest).length
+  };
 };

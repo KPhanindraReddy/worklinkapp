@@ -10,21 +10,22 @@ import {
   Search,
   ShieldCheck,
   ShieldAlert,
-  UserRound
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
+import { ProfileAvatar } from '../../components/common/ProfileAvatar';
 import { SelectField } from '../../components/common/SelectField';
 import { Skeleton } from '../../components/common/Skeleton';
 import { VerificationBadge } from '../../components/common/VerificationBadge';
 import { AppShell } from '../../components/layout/AppShell';
 import { BrandLogo } from '../../components/layout/BrandLogo';
-import { MetricsGrid } from '../../components/dashboard/MetricsGrid';
+import { useAuth } from '../../context/AuthContext';
 import {
+  cleanupOverflowNotifications,
   getAdminDiagnostics,
   getAdminOverview,
   listSupportTickets,
@@ -40,22 +41,22 @@ import { formatCurrency, fromNow } from '../../utils/formatters';
 import { getLocationLabel } from '../../utils/location';
 import { availabilityOptions, workCategories } from '../../utils/constants';
 
-const TableShell = ({ children, minWidth = 'min-w-full' }) => (
-  <div className="overflow-x-auto rounded-[16px] border border-slate-200 bg-white">
-    <table className={`${minWidth} divide-y divide-slate-200 text-left text-sm`}>
+const TableShell = ({ children, minWidth = 'min-w-full', className = '' }) => (
+  <div className={`overflow-auto bg-white ${className}`}>
+    <table className={`${minWidth} text-left text-sm`}>
       {children}
     </table>
   </div>
 );
 
 const Th = ({ children }) => (
-  <th className="whitespace-nowrap px-3 py-2 text-xs font-bold uppercase tracking-normal text-slate-500">
+  <th className="sticky top-0 z-10 whitespace-nowrap bg-slate-50 px-3 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500 first:rounded-l-none last:rounded-r-none">
     {children}
   </th>
 );
 
 const Td = ({ children, className = '', ...props }) => (
-  <td className={`min-w-0 px-3 py-3 align-top text-slate-700 ${className}`} {...props}>
+  <td className={`min-w-0 border-b border-slate-100 px-3 py-4 align-middle text-slate-700 ${className}`} {...props}>
     {children}
   </td>
 );
@@ -67,6 +68,144 @@ const RowActionMenu = ({ children }) => (
     </summary>
     <div className="absolute right-0 z-20 mt-2 grid min-w-36 gap-1 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
       {children}
+    </div>
+  </details>
+);
+
+const AdminCard = ({ children, className = '', ...props }) => (
+  <Card
+    {...props}
+    className={`rounded-xl border border-slate-200 bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ${className}`}
+  >
+    {children}
+  </Card>
+);
+
+const AdminSectionHeader = ({ title, description, badge }) => (
+  <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h2 className="text-xl font-bold text-slate-950">{title}</h2>
+      {description ? <p className="mt-2 text-sm text-slate-600">{description}</p> : null}
+    </div>
+    {badge}
+  </div>
+);
+
+const adminNavItems = [
+  { label: 'Overview', href: '#overview' },
+  { label: 'Activity', href: '#activity' },
+  { label: 'Labour', href: '#labour' },
+  { label: 'Clients', href: '#clients' },
+  { label: 'Bookings', href: '#bookings' },
+  { label: 'Risk flags', href: '#risk-flags' },
+  { label: 'Services', href: '#services' },
+  { label: 'Diagnostics', href: '#diagnostics' },
+  { label: 'Support', href: '#support' }
+];
+
+const AdminSidebar = () => (
+  <aside className="sticky top-0 hidden h-screen w-[218px] shrink-0 flex-col border-r border-slate-200 bg-white text-slate-950 lg:flex">
+    <div className="flex h-[86px] items-center border-b border-slate-200 px-6">
+      <div>
+        <BrandLogo to="/" className="[&_img]:rounded-lg [&_img]:shadow-none [&_span>span:first-child]:text-xl [&_span>span:first-child]:sm:text-xl" />
+        <p className="mt-1 pl-12 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+          Admin panel
+        </p>
+      </div>
+    </div>
+    <nav className="flex-1 py-7">
+      {adminNavItems.map((item) => (
+        <a
+          key={item.href}
+          href={item.href}
+          className="block min-h-12 border-l-4 border-transparent px-6 py-3 text-sm font-semibold text-slate-600 transition hover:border-brand-500 hover:bg-brand-50 hover:text-slate-950 focus:border-brand-500 focus:bg-brand-50 focus:text-slate-950"
+        >
+          {item.label}
+        </a>
+      ))}
+    </nav>
+    <div className="border-t border-slate-200 px-6 py-5 text-[11px] font-medium text-slate-500">
+      Signed in as admin
+    </div>
+  </aside>
+);
+
+const AdminMetricGrid = ({ items, loading = false }) => (
+  <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+    {items.map((item) => (
+      <AdminCard key={item.label} className="min-h-[136px] p-7">
+        <p className="text-[12px] font-bold uppercase tracking-[0.06em] text-slate-500">{item.label}</p>
+        {loading ? (
+          <Skeleton className="mt-4 h-9 w-24" />
+        ) : (
+          <h3 className="mt-2 text-4xl font-black leading-none text-slate-950">{item.value}</h3>
+        )}
+        {item.hint ? <p className="mt-3 text-sm text-slate-500">{item.hint}</p> : null}
+      </AdminCard>
+    ))}
+  </div>
+);
+
+const AdminProfileCard = ({ cleaningRole, email, name, onCleanNotifications, onLogout, photo, role }) => (
+  <details className="relative w-full sm:w-auto">
+    <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left shadow-sm transition hover:border-brand-200 hover:bg-brand-50 [&::-webkit-details-marker]:hidden">
+      <ProfileAvatar
+        src={photo}
+        name={name || 'Admin'}
+        className="h-9 w-9 rounded-full"
+        loading="eager"
+        decoding="sync"
+      />
+      <span className="min-w-0 flex-1">
+        <span className="block max-w-[150px] truncate text-sm font-bold text-slate-950">
+          {name || 'Admin profile'}
+        </span>
+        <span className="block truncate text-xs font-medium capitalize text-slate-500">
+          {role || 'admin'}
+        </span>
+      </span>
+      <span className="text-xs font-bold text-slate-400">Account</span>
+    </summary>
+
+    <div className="absolute right-0 z-30 mt-2 w-64 overflow-hidden rounded-xl border border-slate-200 bg-white p-2 shadow-soft">
+      <div className="border-b border-slate-100 px-3 py-3">
+        <p className="truncate text-sm font-bold text-slate-950">{name || 'Admin profile'}</p>
+        <p className="mt-1 truncate text-xs font-medium text-slate-500">{email || 'Admin account'}</p>
+      </div>
+      <Link
+        to="/settings"
+        className="mt-2 block rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-950"
+      >
+        Settings
+      </Link>
+      <div className="my-2 border-t border-slate-100 pt-2">
+        <p className="px-3 pb-1 text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">
+          Cleanup notifications
+        </p>
+        <button
+          type="button"
+          className="block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={Boolean(cleaningRole)}
+          onClick={() => onCleanNotifications?.('labour')}
+        >
+          {cleaningRole === 'labour' ? 'Cleaning labour...' : 'Clean labour notifications'}
+        </button>
+        <button
+          type="button"
+          className="block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={Boolean(cleaningRole)}
+          onClick={() => onCleanNotifications?.('client')}
+        >
+          {cleaningRole === 'client' ? 'Cleaning clients...' : 'Clean client notifications'}
+        </button>
+      </div>
+      <button
+        type="button"
+        className="block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-rose-600 hover:bg-rose-50"
+        onClick={onLogout}
+      >
+        Logout
+      </button>
     </div>
   </details>
 );
@@ -122,7 +261,50 @@ const getLabourQualityFlags = (labour) => {
   return flags;
 };
 
+const hasProfileLocation = (profile) =>
+  Boolean(
+    profile.currentLocation ||
+      profile.location ||
+      profile.workLocation ||
+      profile.coordinates ||
+      profile.locationCoordinates
+  );
+
+const buildProfileRiskRows = (profiles, role) =>
+  profiles.flatMap((profile) => {
+    const rows = [];
+    const name = profile.fullName || (role === 'labour' ? 'Labour' : 'Client');
+
+    if (!profile.phoneNumber) {
+      rows.push({
+        id: `${role}-${profile.id}-missing-phone`,
+        risk: 'Missing phone',
+        subject: name,
+        role,
+        detail: profile.email || 'Contact number not added',
+        tone: 'amber',
+        priority: 3
+      });
+    }
+
+    if (!hasProfileLocation(profile)) {
+      rows.push({
+        id: `${role}-${profile.id}-missing-location`,
+        risk: 'Missing location',
+        subject: name,
+        role,
+        detail: profile.phoneNumber || profile.email || 'Location not set',
+        tone: 'rose',
+        priority: 4
+      });
+    }
+
+    return rows;
+  });
+
 const AdminDashboardPage = () => {
+  const navigate = useNavigate();
+  const { currentUser, userProfile, logout } = useAuth();
   const [overview, setOverview] = useState({
     analytics: {},
     categories: [],
@@ -137,7 +319,8 @@ const AdminDashboardPage = () => {
     failedNotifications: [],
     functionErrors: [],
     stuckBookings: [],
-    messageFailures: []
+    messageFailures: [],
+    repeatedCancellations: []
   });
   const [diagnosticsLoading, setDiagnosticsLoading] = useState(true);
   const [labourDirectory, setLabourDirectory] = useState({
@@ -158,6 +341,7 @@ const AdminDashboardPage = () => {
   });
   const [editingProfile, setEditingProfile] = useState(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [cleaningNotificationsRole, setCleaningNotificationsRole] = useState('');
   const [tickets, setTickets] = useState([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
 
@@ -243,9 +427,9 @@ const AdminDashboardPage = () => {
 
   const metrics = useMemo(
     () => [
-      { label: 'Users', value: overview.analytics.userCount ?? 0, hint: 'Total users on the platform' },
-      { label: 'Labour accounts', value: overview.analytics.labourCount ?? 0, hint: 'Registered labour profiles' },
-      { label: 'Client accounts', value: overview.analytics.clientCount ?? 0, hint: 'Registered client profiles' },
+      { label: 'Total users', value: overview.analytics.userCount ?? 0, hint: 'on the platform' },
+      { label: 'Labour accounts', value: overview.analytics.labourCount ?? 0, hint: 'registered profiles' },
+      { label: 'Client accounts', value: overview.analytics.clientCount ?? 0, hint: 'registered profiles' },
       { label: 'Bookings', value: overview.analytics.activeBookings ?? 0, hint: 'Total booking records' },
       {
         label: 'Paid earnings',
@@ -405,6 +589,78 @@ const AdminDashboardPage = () => {
     const minutes = totalMinutes % 60;
     return hours ? `${hours}h ${minutes}m` : `${minutes}m`;
   };
+
+  const riskRows = useMemo(() => {
+    const profileRisks = [
+      ...buildProfileRiskRows(labourDirectory.items, 'labour'),
+      ...buildProfileRiskRows(clientDirectory.items, 'client')
+    ];
+    const repeatedCancellationRisks = (diagnostics.repeatedCancellations || []).map((item) => ({
+      id: `repeated-cancellations-${item.id}`,
+      risk: 'Repeated cancellations',
+      subject: item.name || 'Account',
+      role: item.role || 'account',
+      detail: `${item.count} cancelled/rejected bookings${item.services?.length ? ` - ${item.services.join(', ')}` : ''}`,
+      tone: 'amber',
+      priority: 5
+    }));
+    const stuckBookingRisks = (diagnostics.stuckBookings || []).map((item) => ({
+      id: `stuck-booking-${item.id}`,
+      risk: 'Stuck booking',
+      subject: item.serviceType || 'Service booking',
+      role: 'booking',
+      detail: `${item.status || 'unknown'} for ${formatStuckDuration(item.ageMs)} - ${item.labourName || 'Labour'} / ${item.clientName || 'Client'}`,
+      tone: 'rose',
+      priority: 6
+    }));
+    const notificationRisks = (diagnostics.failedNotifications || []).map((item) => ({
+      id: `failed-notification-${item.id}`,
+      risk: 'Failed notification',
+      subject: item.serviceType || 'Service booking',
+      role: 'message',
+      detail: item.lastErrorMessage || `${item.labourName || 'Labour'} / ${item.clientName || 'Client'}`,
+      tone: 'rose',
+      priority: 4
+    }));
+    const messageFailureRisks = (diagnostics.messageFailures || []).map((item) => ({
+      id: `message-failure-${item.id}`,
+      risk: 'Message failure',
+      subject: item.kind || 'Message',
+      role: 'message',
+      detail: item.to || item.errorMessage || 'Delivery failed',
+      tone: 'rose',
+      priority: 4
+    }));
+
+    return [
+      ...profileRisks,
+      ...repeatedCancellationRisks,
+      ...stuckBookingRisks,
+      ...notificationRisks,
+      ...messageFailureRisks
+    ]
+      .sort((a, b) => b.priority - a.priority || a.subject.localeCompare(b.subject))
+      .slice(0, 24);
+  }, [
+    clientDirectory.items,
+    diagnostics.failedNotifications,
+    diagnostics.messageFailures,
+    diagnostics.repeatedCancellations,
+    diagnostics.stuckBookings,
+    formatStuckDuration,
+    labourDirectory.items
+  ]);
+
+  const riskSummary = useMemo(
+    () => ({
+      missingPhone: riskRows.filter((item) => item.risk === 'Missing phone').length,
+      missingLocation: riskRows.filter((item) => item.risk === 'Missing location').length,
+      repeatedCancellations: diagnostics.repeatedCancellations?.length || 0,
+      stuckBookings: diagnostics.stuckBookings?.length || 0,
+      failedMessages: (diagnostics.failedNotifications?.length || 0) + (diagnostics.messageFailures?.length || 0)
+    }),
+    [diagnostics, riskRows]
+  );
   const firebaseProjectId = firebaseConfig.projectId || 'Slivz-labour';
   const functionsLogsUrl = `https://console.cloud.google.com/functions/list?project=${encodeURIComponent(
     firebaseProjectId
@@ -485,43 +741,77 @@ const AdminDashboardPage = () => {
       setSavingEdit(false);
     }
   };
+  const handleAdminLogout = async () => {
+    navigate('/auth?role=client&mode=login', { replace: true });
+    await logout();
+  };
+  const handleNotificationCleanup = async (role) => {
+    const roleLabel = role === 'labour' ? 'labour' : 'client';
+    const confirmed = window.confirm(
+      `Clean ${roleLabel} notifications? This keeps the newest 10 notifications per profile and deletes older ones from the database.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setCleaningNotificationsRole(role);
+    try {
+      const result = await cleanupOverflowNotifications({ role, keepLatest: 10 });
+      toast.success(
+        result.deletedCount
+          ? `Deleted ${result.deletedCount} old ${roleLabel} notifications for ${result.affectedUsers} profiles.`
+          : `No ${roleLabel} profiles had more than 10 notifications.`
+      );
+    } catch (error) {
+      toast.error(getFirebaseErrorMessage(error));
+    } finally {
+      setCleaningNotificationsRole('');
+    }
+  };
+  const adminProfileName = userProfile?.fullName || currentUser?.displayName || 'Admin profile';
+  const adminProfileEmail = userProfile?.email || currentUser?.email || '';
+  const adminProfilePhoto = userProfile?.profilePhoto || currentUser?.photoURL || '';
 
   return (
-    <AppShell>
+    <AppShell hideNavbar hideFooter hideBottomDock contentClassName="bg-slate-50">
       <PageSEO title="Admin Dashboard" description="Manage Slivz users, verification, reports, analytics, and marketplace operations." />
 
-      <section className="section-space">
-        <div className="page-shell">
-          <div className="space-y-6">
-            <Card className="overflow-hidden rounded-[28px] sm:rounded-[36px]">
-              <div className="flex flex-wrap items-start justify-between gap-4 p-4 sm:p-6 md:p-8">
-                <div>
-                  <BrandLogo to="/" showTagline />
-                  <div className="flex flex-wrap gap-2">
-                    <Badge tone="blue">Admin</Badge>
-                    <Badge tone="slate">Operations</Badge>
+      <div className="flex min-h-screen bg-slate-50">
+        <AdminSidebar />
+        <main className="min-w-0 flex-1">
+          <div className="mx-auto w-full max-w-[924px] px-4 py-8 sm:px-6 lg:px-10 lg:py-12">
+            <div className="space-y-7">
+              <section id="overview" className="scroll-mt-8">
+                <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <h1 className="text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
+                      Marketplace overview
+                    </h1>
+                    <p className="mt-3 text-sm text-slate-600 sm:text-base">
+                      Live snapshot of platform health and activity.
+                    </p>
                   </div>
-                  <h1 className="mt-4 break-words font-display text-2xl font-bold text-slate-950 sm:text-3xl md:text-4xl">
-                    Marketplace overview
-                  </h1>
+                  <AdminProfileCard
+                    cleaningRole={cleaningNotificationsRole}
+                    email={adminProfileEmail}
+                    name={adminProfileName}
+                    onCleanNotifications={handleNotificationCleanup}
+                    onLogout={handleAdminLogout}
+                    photo={adminProfilePhoto}
+                    role={userProfile?.role || 'admin'}
+                  />
                 </div>
-                <Button as={Link} to="/settings" size="sm" className="w-full sm:w-auto">
-                  <UserRound size={16} />
-                  Open admin profile
-                </Button>
-              </div>
-            </Card>
 
-            <MetricsGrid items={metrics} loading={overviewLoading} />
+                <AdminMetricGrid items={metrics} loading={overviewLoading} />
+              </section>
 
-            <Card>
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Website analytics</h2>
-                  <p className="mt-1 text-sm text-slate-500">Simple count view for users, labour, clients, bookings, and earnings.</p>
-                </div>
-                <Badge tone="blue">Live summary</Badge>
-              </div>
+              <AdminCard>
+                <AdminSectionHeader
+                  title="Website analytics"
+                  description="Simple count view for users, labour, clients, bookings, and earnings."
+                  badge={<Badge tone="blue">Live summary</Badge>}
+                />
               <TableShell>
                 <thead className="bg-slate-50">
                   <tr>
@@ -544,17 +834,15 @@ const AdminDashboardPage = () => {
                   )}
                 </tbody>
               </TableShell>
-            </Card>
+              </AdminCard>
 
-            <Card>
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Recent activity</h2>
-                  <p className="mt-1 text-sm text-slate-500">Latest signup, booking, completed service, and support movement.</p>
-                </div>
-                <Badge tone="blue">{overview.recentActivity?.length || 0} updates</Badge>
-              </div>
-              <TableShell>
+              <AdminCard id="activity" className="scroll-mt-8">
+                <AdminSectionHeader
+                  title="Recent activity"
+                  description="Latest signups, bookings, completed services, and support movements."
+                  badge={<Badge tone="blue">{overview.recentActivity?.length || 0} updates</Badge>}
+                />
+              <TableShell className="max-h-[420px] rounded-xl border border-slate-100">
                 <thead className="bg-slate-50">
                   <tr>
                     <Th>Type</Th>
@@ -585,17 +873,15 @@ const AdminDashboardPage = () => {
                   )}
                 </tbody>
               </TableShell>
-            </Card>
+              </AdminCard>
 
-            <Card>
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Support tickets</h2>
-                  <p className="mt-1 text-sm text-slate-500">Tickets raised from client and labour profiles.</p>
-                </div>
-                <Badge tone="amber">{tickets.length} tickets</Badge>
-              </div>
-              <TableShell>
+              <AdminCard id="support" className="scroll-mt-8">
+                <AdminSectionHeader
+                  title="Support tickets"
+                  description="Tickets raised from client and labour profiles."
+                  badge={<Badge tone="amber">{tickets.length} tickets</Badge>}
+                />
+              <TableShell className="max-h-[460px] rounded-xl border border-slate-100">
                 <thead className="bg-slate-50">
                   <tr>
                     <Th>Ticket</Th>
@@ -621,7 +907,7 @@ const AdminDashboardPage = () => {
                         </Td>
                         <Td>
                           <p className="font-semibold text-slate-950">{ticket.fullName || 'User'}</p>
-                          <p className="text-xs font-medium text-slate-400">{ticket.role || 'account'}</p>
+                          <p className="text-xs font-medium text-slate-500">{ticket.role || 'account'}</p>
                         </Td>
                         <Td>
                           <p className="break-all">{ticket.phoneNumber || 'No phone'}</p>
@@ -649,11 +935,68 @@ const AdminDashboardPage = () => {
                   )}
                 </tbody>
               </TableShell>
-            </Card>
+              </AdminCard>
 
-            <div className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
-              <Card>
-                <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Pending labour verification</h2>
+              <AdminCard id="risk-flags" className="scroll-mt-8">
+                <AdminSectionHeader
+                  title="Risk flags"
+                  description="Accounts and bookings that need attention because details are missing or operational checks failed."
+                  badge={<Badge tone={riskRows.length ? 'amber' : 'emerald'}>{riskRows.length} active flags</Badge>}
+                />
+
+                <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                  {[
+                    ['Missing phone', riskSummary.missingPhone],
+                    ['Missing location', riskSummary.missingLocation],
+                    ['Repeated cancellations', riskSummary.repeatedCancellations],
+                    ['Stuck bookings', riskSummary.stuckBookings],
+                    ['Failed messages', riskSummary.failedMessages]
+                  ].map(([label, value]) => (
+                    <div key={label} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">{label}</p>
+                      <p className="mt-1 text-2xl font-black text-slate-950">{value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <TableShell minWidth="min-w-[860px]" className="max-h-[430px] rounded-xl border border-slate-100">
+                  <thead>
+                    <tr>
+                      <Th>Risk</Th>
+                      <Th>Subject</Th>
+                      <Th>Area</Th>
+                      <Th>Details</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(diagnosticsLoading || labourDirectory.loading || clientDirectory.loading) && !riskRows.length ? (
+                      <tr>
+                        <Td colSpan={4}><Skeleton className="h-8 w-full" /></Td>
+                      </tr>
+                    ) : riskRows.length ? (
+                      riskRows.map((item) => (
+                        <tr key={item.id}>
+                          <Td><Badge tone={item.tone}>{item.risk}</Badge></Td>
+                          <Td className="font-semibold text-slate-950">{item.subject}</Td>
+                          <Td className="capitalize">{item.role}</Td>
+                          <Td className="min-w-64">{item.detail}</Td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <Td colSpan={4} className="text-slate-600">No active risk flags found in loaded records.</Td>
+                      </tr>
+                    )}
+                  </tbody>
+                </TableShell>
+              </AdminCard>
+
+              <div className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
+              <AdminCard>
+                <AdminSectionHeader
+                  title="Pending labour verification"
+                  badge={<Badge tone="amber">{overview.pendingLabours.length} pending</Badge>}
+                />
                 <div className="mt-5 space-y-4">
                   {overviewLoading ? (
                     <>
@@ -662,14 +1005,14 @@ const AdminDashboardPage = () => {
                     </>
                   ) : overview.pendingLabours.length ? (
                     overview.pendingLabours.map((labour) => (
-                      <div key={labour.id} className="rounded-3xl bg-slate-50 p-5 dark:bg-slate-800/50">
+                      <div key={labour.id} className="rounded-xl border border-amber-200 bg-amber-50/60 p-5">
                         <div className="flex flex-wrap items-start justify-between gap-4">
                           <div>
-                            <h3 className="font-semibold text-slate-950 dark:text-white">{labour.fullName}</h3>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                            <h3 className="font-semibold text-slate-950">{labour.fullName}</h3>
+                            <p className="text-sm text-slate-600">
                               {labour.category} - {getLocationLabel(labour, { preferCurrent: true })}
                             </p>
-                            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                            <p className="mt-2 text-sm text-slate-700">
                               {labour.experienceYears} years experience - {labour.skills?.join(', ')}
                             </p>
                           </div>
@@ -679,31 +1022,27 @@ const AdminDashboardPage = () => {
                           <Button size="sm" className="w-full sm:w-auto" onClick={() => handleVerify(labour.id)}>
                             Approve ID
                           </Button>
-                          <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => handleBan(labour.id, 'labour')}>
+                          <Button size="sm" variant="outline" className="w-full border-rose-300 text-rose-600 hover:border-rose-400 hover:text-rose-700 sm:w-auto" onClick={() => handleBan(labour.id, 'labour')}>
                             Ban user
                           </Button>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                    <p className="text-sm text-slate-600">
                       No pending labour verifications right now.
                     </p>
                   )}
                 </div>
-              </Card>
+              </AdminCard>
 
-              <Card>
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Top searched services</h2>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                      Quick top 5 from client clicks and search interest.
-                    </p>
-                  </div>
-                  <Badge tone="blue">Top 5</Badge>
-                </div>
-                <TableShell>
+              <AdminCard id="services" className="scroll-mt-8">
+                <AdminSectionHeader
+                  title="Top searched services"
+                  description="Quick top 5 from client clicks and search interest."
+                  badge={<Badge tone="blue">Top 5</Badge>}
+                />
+                <TableShell className="max-h-[360px] rounded-xl border border-slate-100">
                   <thead className="bg-slate-50">
                     <tr>
                       <Th>Service</Th>
@@ -733,19 +1072,15 @@ const AdminDashboardPage = () => {
                     )}
                   </tbody>
                 </TableShell>
-              </Card>
+              </AdminCard>
 
-              <Card>
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Service people count</h2>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                      See how many labour people are registered for each service.
-                    </p>
-                  </div>
-                  <Badge tone="blue">{overview.categories.length} services</Badge>
-                </div>
-                <TableShell>
+              <AdminCard>
+                <AdminSectionHeader
+                  title="Service people count"
+                  description="See how many labour people are registered for each service."
+                  badge={<Badge tone="blue">{overview.categories.length} services</Badge>}
+                />
+                <TableShell className="max-h-[420px] rounded-xl border border-slate-100">
                   <thead className="bg-slate-50">
                     <tr>
                       <Th>Service</Th>
@@ -779,19 +1114,15 @@ const AdminDashboardPage = () => {
                   )}
                   </tbody>
                 </TableShell>
-              </Card>
+              </AdminCard>
 
-              <Card>
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-xl font-semibold text-slate-950 dark:text-white">New service names</h2>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                      Services typed by labour that are not in the default list.
-                    </p>
-                  </div>
-                  <Badge tone="amber">{overview.customServices.length} new</Badge>
-                </div>
-                <TableShell>
+              <AdminCard>
+                <AdminSectionHeader
+                  title="New service names"
+                  description="Services typed by labour that are not in the default list."
+                  badge={<Badge tone="amber">{overview.customServices.length} new</Badge>}
+                />
+                <TableShell className="max-h-[360px] rounded-xl border border-slate-100">
                   <thead className="bg-slate-50">
                     <tr>
                       <Th>Service</Th>
@@ -821,14 +1152,14 @@ const AdminDashboardPage = () => {
                     )}
                   </tbody>
                 </TableShell>
-              </Card>
+              </AdminCard>
             </div>
 
-            <Card>
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <AdminCard id="diagnostics" className="scroll-mt-8">
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Diagnostics</h2>
-                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  <h2 className="text-xl font-bold text-slate-950">Diagnostics</h2>
+                  <p className="mt-2 text-sm text-slate-600">
                     Track failed notifications, function errors, stuck bookings, and message delivery issues.
                   </p>
                 </div>
@@ -949,20 +1280,20 @@ const AdminDashboardPage = () => {
                   </div>
                 </div>
               </div>
-            </Card>
+            </AdminCard>
 
-            <Card>
+            <AdminCard id="bookings" className="scroll-mt-8">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-950 dark:text-white">No-labour demand by service</h2>
-                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  <h2 className="text-xl font-bold text-slate-950">No-labour demand by service</h2>
+                  <p className="mt-2 text-sm text-slate-600">
                     Services clients searched when no available labour was found.
                   </p>
                 </div>
                 <Badge tone="amber">{overview.demandByService?.length || 0} services</Badge>
               </div>
               <div className="mt-5">
-                <TableShell>
+                <TableShell className="max-h-[360px] rounded-xl border border-slate-100">
                   <thead className="bg-slate-50">
                     <tr>
                       <Th>Service</Th>
@@ -991,13 +1322,13 @@ const AdminDashboardPage = () => {
                   </tbody>
                 </TableShell>
               </div>
-            </Card>
+            </AdminCard>
 
-            <Card>
+            <AdminCard>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Requested addresses</h2>
-                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  <h2 className="text-xl font-bold text-slate-950">Requested addresses</h2>
+                  <p className="mt-2 text-sm text-slate-600">
                     Locations where clients searched but no labour was available.
                   </p>
                 </div>
@@ -1029,15 +1360,15 @@ const AdminDashboardPage = () => {
                   </p>
                 )}
               </div>
-            </Card>
+            </AdminCard>
 
             <div className="grid gap-6">
-              <Card>
+              <AdminCard id="labour" className="scroll-mt-8">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Labour directory</h2>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                      Review labour details, verify profiles, and keep moderation hidden inside admin.
+                    <h2 className="text-xl font-bold text-slate-950">Labour directory</h2>
+                    <p className="mt-2 text-sm text-slate-600">
+                      Review profiles, verify IDs, and manage labour accounts.
                     </p>
                   </div>
                   {labourDirectory.loading && !labourDirectory.items.length ? (
@@ -1065,7 +1396,7 @@ const AdminDashboardPage = () => {
                       <Skeleton className="h-32 w-full" />
                     </>
                   ) : filteredLabours.length ? (
-                    <TableShell minWidth="min-w-[1120px]">
+                    <TableShell minWidth="min-w-[1120px]" className="max-h-[520px] rounded-xl border border-slate-100">
                       <thead className="bg-slate-50">
                         <tr>
                           <Th>Name</Th>
@@ -1148,14 +1479,14 @@ const AdminDashboardPage = () => {
                       </tbody>
                     </TableShell>
                   ) : (
-                    <p className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500 dark:text-slate-400">
+                    <p className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
                       No labour matched this admin search.
                     </p>
                   )}
                 </div>
 
                 <div className="mt-5 grid gap-3 sm:flex sm:items-center sm:justify-between">
-                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
                     Paginated for scale
                   </p>
                   {labourDirectory.hasMore ? (
@@ -1172,14 +1503,14 @@ const AdminDashboardPage = () => {
                     </Button>
                   ) : null}
                 </div>
-              </Card>
+              </AdminCard>
 
-              <Card>
+              <AdminCard id="clients" className="scroll-mt-8">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Client directory</h2>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                      Review client contact details and account status without exposing admin routes publicly.
+                    <h2 className="text-xl font-bold text-slate-950">Client directory</h2>
+                    <p className="mt-2 text-sm text-slate-600">
+                      Review client contact details and account status.
                     </p>
                   </div>
                   {clientDirectory.loading && !clientDirectory.items.length ? (
@@ -1207,7 +1538,7 @@ const AdminDashboardPage = () => {
                       <Skeleton className="h-32 w-full" />
                     </>
                   ) : filteredClients.length ? (
-                    <TableShell minWidth="min-w-[920px]">
+                    <TableShell minWidth="min-w-[920px]" className="max-h-[520px] rounded-xl border border-slate-100">
                       <thead className="bg-slate-50">
                         <tr>
                           <Th>Name</Th>
@@ -1257,14 +1588,14 @@ const AdminDashboardPage = () => {
                       </tbody>
                     </TableShell>
                   ) : (
-                    <p className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500 dark:text-slate-400">
+                    <p className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
                       No client matched this admin search.
                     </p>
                   )}
                 </div>
 
                 <div className="mt-5 grid gap-3 sm:flex sm:items-center sm:justify-between">
-                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
                     Paginated for scale
                   </p>
                   {clientDirectory.hasMore ? (
@@ -1281,11 +1612,12 @@ const AdminDashboardPage = () => {
                     </Button>
                   ) : null}
                 </div>
-              </Card>
+              </AdminCard>
             </div>
           </div>
-        </div>
-      </section>
+          </div>
+        </main>
+      </div>
 
       {editingProfile ? (
         <div className="fixed inset-0 z-[60] grid place-items-end bg-slate-950/40 p-3 sm:place-items-center sm:p-5">
