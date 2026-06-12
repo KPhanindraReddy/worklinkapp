@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "853104675907",
+    "firebase_url": "https://worklink-labour-default-rtdb.firebaseio.com",
+    "project_id": "worklink-labour",
+    "storage_bucket": "worklink-labour.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:853104675907:android:02697d62a5bd30687f18f6",
+        "android_client_info": {
+          "package_name": "com.slivz.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "853104675907-0agp9q5cnst8unrtgrtovan7itmt5p22.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB82pjDz12zCLxnzl4lChvB9G5S72ilDmY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "853104675907-0agp9q5cnst8unrtgrtovan7itmt5p22.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
