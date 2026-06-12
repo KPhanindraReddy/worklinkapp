@@ -37,6 +37,36 @@ const persistPushToken = async ({ uid, token }) => {
   );
 };
 
+const resolveAppRoute = (data = {}) => {
+  const route = String(data.route || '').trim();
+
+  if (route.startsWith('/')) {
+    return route;
+  }
+
+  const targetUrl = String(data.url || '').trim();
+
+  if (!targetUrl) {
+    return '';
+  }
+
+  try {
+    const parsedUrl = new URL(targetUrl);
+    return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}` || '/notifications';
+  } catch {
+    return targetUrl.startsWith('/') ? targetUrl : '';
+  }
+};
+
+const navigateToAppRoute = (route) => {
+  if (!route || typeof window === 'undefined') {
+    return;
+  }
+
+  window.history.pushState({}, '', route);
+  window.dispatchEvent(new PopStateEvent('popstate'));
+};
+
 export const registerNativePushNotifications = async ({ uid } = {}) => {
   if (!uid || !isCapacitorNative()) {
     return null;
@@ -57,11 +87,7 @@ export const registerNativePushNotifications = async ({ uid } = {}) => {
   });
 
   const actionHandle = await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-    const targetUrl = action.notification?.data?.url;
-
-    if (targetUrl && typeof window !== 'undefined') {
-      window.location.assign(targetUrl);
-    }
+    navigateToAppRoute(resolveAppRoute(action.notification?.data));
   });
 
   const permissionStatus = await PushNotifications.requestPermissions();

@@ -169,18 +169,21 @@ const getBookingUrl = (booking, audience) => {
   return `${baseUrl}/client`;
 };
 
-const getNotificationUrl = (notification) => {
-  const baseUrl = appUrl.value().replace(/\/$/, '');
-
+const getNotificationRoute = (notification) => {
   if (notification.type === 'chat' && notification.conversationId) {
-    return `${baseUrl}/chat?conversation=${encodeURIComponent(notification.conversationId)}`;
+    return `/chat?conversation=${encodeURIComponent(notification.conversationId)}`;
   }
 
   if (notification.type === 'booking' && notification.bookingId) {
-    return `${baseUrl}/recent-services`;
+    return '/recent-services';
   }
 
-  return `${baseUrl}/notifications`;
+  return '/notifications';
+};
+
+const getNotificationUrl = (notification) => {
+  const baseUrl = appUrl.value().replace(/\/$/, '');
+  return `${baseUrl}${getNotificationRoute(notification)}`;
 };
 
 const getUserPushTokens = async (userId) => {
@@ -489,6 +492,7 @@ exports.sendAppPushNotification = onDocumentCreated(
         type: notification.type || '',
         bookingId: notification.bookingId || '',
         conversationId: notification.conversationId || '',
+        route: getNotificationRoute(notification),
         url: getNotificationUrl(notification)
       }
     });
