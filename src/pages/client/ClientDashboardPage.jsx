@@ -620,7 +620,6 @@ const ClientDashboardPage = () => {
         getFirstAvailableLabour(labours);
 
       if (!targetLabour) {
-        toast.error(`${selectedService} is not available within ${radiusKm} km.`);
         return;
       }
 
@@ -657,8 +656,6 @@ const ClientDashboardPage = () => {
         getFirstAvailableLabour(labours);
 
       if (!targetLabour) {
-        toast.error(`${selectedService} is not available within ${radiusKm} km. Try increasing distance.`);
-        await recordUnavailableDemand(selectedService);
         return;
       }
 
