@@ -50,6 +50,33 @@ const labourDashboardNavItems = [
   { label: 'Profile', href: '#labour-profile', icon: UserRound }
 ];
 
+const LABOUR_DASHBOARD_METRIC_CACHE_KEY_PREFIX = 'slivz.labourDashboard.metrics';
+
+const getLabourDashboardMetricCacheKey = (userId) =>
+  `${LABOUR_DASHBOARD_METRIC_CACHE_KEY_PREFIX}.${userId || 'guest'}`;
+
+const readCachedLabourDashboardMetrics = (userId) => {
+  if (typeof window === 'undefined' || !userId) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(window.sessionStorage.getItem(getLabourDashboardMetricCacheKey(userId)) || 'null');
+
+    if (
+      parsed &&
+      Number.isFinite(parsed.completedJobs) &&
+      Number.isFinite(parsed.pendingRequests)
+    ) {
+      return parsed;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+};
+
 const getDateKey = (value) => {
   const date = parseDateValue(value);
 
@@ -126,6 +153,9 @@ const LabourDashboardPage = () => {
   const [profile, setProfile] = useState(null);
   const [bookings, setBookings] = useState([]);
   const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [cachedMetrics, setCachedMetrics] = useState(() =>
+    readCachedLabourDashboardMetrics(currentUser?.uid)
+  );
   const [updatingAvailability, setUpdatingAvailability] = useState(false);
   const [otpValues, setOtpValues] = useState({});
   const [startingBookingId, setStartingBookingId] = useState('');
@@ -199,6 +229,11 @@ const LabourDashboardPage = () => {
     [bookings]
   );
   const completedJobs = paidBookings.length;
+  const pendingRequests = bookings.filter((item) => item.status === 'pending').length;
+
+  useEffect(() => {
+    setCachedMetrics(readCachedLabourDashboardMetrics(currentUser?.uid));
+  }, [currentUser?.uid]);
 
   useEffect(() => {
     if (
@@ -227,6 +262,30 @@ const LabourDashboardPage = () => {
 
     return undefined;
   }, [completedJobs, currentUser?.uid, profile, userProfile?.role]);
+
+  useEffect(() => {
+    if (dashboardLoading) {
+      return;
+    }
+
+    const nextMetrics = {
+      completedJobs,
+      pendingRequests
+    };
+
+    setCachedMetrics(nextMetrics);
+
+    try {
+      if (currentUser?.uid) {
+        window.sessionStorage.setItem(
+          getLabourDashboardMetricCacheKey(currentUser.uid),
+          JSON.stringify(nextMetrics)
+        );
+      }
+    } catch {
+      // Session storage can be unavailable in private or restricted browser modes.
+    }
+  }, [completedJobs, currentUser?.uid, dashboardLoading, pendingRequests]);
 
   useEffect(() => {
     if (!currentUser?.uid) {
@@ -587,15 +646,22 @@ const LabourDashboardPage = () => {
                 <Skeleton className="mt-4 h-20 w-full" />
               </Card>
 
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {['completed', 'pending', 'active', 'earnings'].map((item) => (
-                  <Card key={item}>
-                    <Skeleton className="h-4 w-28" />
-                    <Skeleton className="mt-3 h-8 w-20" />
-                    <Skeleton className="mt-3 h-4 w-36" />
-                  </Card>
-                ))}
-              </div>
+              {cachedMetrics ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <DashboardMetric label="Completed jobs" value={cachedMetrics.completedJobs} tone="emerald" />
+                  <DashboardMetric label="Pending" value={cachedMetrics.pendingRequests} tone="blue" />
+                </div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  {['completed', 'pending', 'active', 'earnings'].map((item) => (
+                    <Card key={item}>
+                      <Skeleton className="h-4 w-28" />
+                      <Skeleton className="mt-3 h-8 w-20" />
+                      <Skeleton className="mt-3 h-4 w-36" />
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -603,7 +669,6 @@ const LabourDashboardPage = () => {
     );
   }
 
-  const pendingRequests = bookings.filter((item) => item.status === 'pending').length;
   const todaySummary = financialSummary.find((item) => item.label === 'Today earned')?.value ?? formatCurrency(0);
   const paidSummary = financialSummary.find((item) => item.label === 'Paid earnings')?.value ?? formatCurrency(0);
   const totalSummary = financialSummary.find((item) => item.label === 'Total completed')?.value ?? formatCurrency(0);

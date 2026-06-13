@@ -116,6 +116,7 @@ export const ServiceRequestMap = ({
   showCenterMarker = true,
   showLabourPins = true,
   renderChildrenInSheet = true,
+  compactInfoSheet = false,
   initialZoom = 14,
   minZoom = 9,
   maxZoom = 17,
@@ -287,7 +288,7 @@ export const ServiceRequestMap = ({
           <RadioTower size={12} />
           {normalizedCenter ? 'GPS active' : 'GPS pending'}
         </Badge>
-        {interactiveMapUrl ? (
+        {interactiveMapUrl && !compactInfoSheet ? (
           <Badge tone="slate" className="bg-white/95">
             Movable map
           </Badge>
@@ -327,28 +328,42 @@ export const ServiceRequestMap = ({
       <div
         className={clsx(
           'absolute bottom-4 left-4 right-4 z-50 rounded-[24px] border border-slate-200 bg-white/95 p-4 shadow-soft backdrop-blur',
+          compactInfoSheet && 'rounded-xl p-2',
           sheetClassName
         )}
       >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-950">{title}</p>
-            <p className="mt-1 line-clamp-2 text-xs font-medium text-slate-600">
+        <div className={clsx('flex items-center justify-between', compactInfoSheet ? 'gap-2' : 'flex-wrap gap-3')}>
+          <div className={clsx('min-w-0', compactInfoSheet && 'flex flex-1 items-center gap-2')}>
+            {compactInfoSheet ? <MapPin size={14} className="flex-none text-brand-600" /> : null}
+            <div className="min-w-0">
+            <p className={clsx('truncate font-semibold text-slate-950', compactInfoSheet ? 'text-xs' : 'text-sm')}>{title}</p>
+            <p className={clsx('font-medium text-slate-600', compactInfoSheet ? 'truncate text-[10px]' : 'mt-1 line-clamp-2 text-xs')}>
               {subtitle || emptyLabel}
             </p>
-            {labours.length ? (
+            {!compactInfoSheet && labours.length ? (
               <p className="mt-1 text-xs font-semibold text-brand-700">
                 {labours.length} nearby workers in this service
               </p>
             ) : null}
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {directionsUrl ? (
-              <Button as="a" href={directionsUrl} target="_blank" rel="noreferrer" size="sm" variant="outline">
+              <Button
+                as="a"
+                href={directionsUrl}
+                target="_blank"
+                rel="noreferrer"
+                size="sm"
+                variant="outline"
+                className={compactInfoSheet ? 'h-8 min-h-8 w-8 rounded-lg p-0' : undefined}
+                aria-label="Open directions"
+                title="Open directions"
+              >
                 <Navigation size={15} />
-                Directions
+                {compactInfoSheet ? null : 'Directions'}
               </Button>
-            ) : (
+            ) : compactInfoSheet ? null : (
               <Badge tone="blue" className="gap-1">
                 <MapPin size={12} />
                 Live map

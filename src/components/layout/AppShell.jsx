@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect } from 'react';
 import clsx from 'clsx';
+import { useLocation } from 'react-router-dom';
 import { Footer } from './Footer';
 import { BottomDockNav } from './BottomDockNav';
 import { Navbar } from './Navbar';
@@ -68,6 +69,7 @@ export const AppShell = ({
   hideNavbar = false
 }) => {
   const { currentUser } = useAuth();
+  const location = useLocation();
   useVisualViewportHeight();
 
   return (
@@ -78,7 +80,7 @@ export const AppShell = ({
       <AppLiveLocationSync />
       <LazyRequestRoutingController />
       <div className={clsx('app-shell-content', !hideBottomDock && 'app-shell-content--dock', contentClassName)}>
-        <main>{children}</main>
+        <main key={location.pathname} className="app-page-swap">{children}</main>
         {hideFooter ? null : <Footer />}
       </div>
       {hideBottomDock ? null : <BottomDockNav />}

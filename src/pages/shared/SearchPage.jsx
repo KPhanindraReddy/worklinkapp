@@ -1,10 +1,9 @@
-import { LocateFixed, LoaderCircle, MapPin } from 'lucide-react';
+import { LocateFixed, LoaderCircle, MapPin, MoreHorizontal } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { LabourCard } from '../../components/cards/LabourCard';
 import { QuickBookingDialog } from '../../components/booking/QuickBookingDialog';
 import { AutocompleteSelect } from '../../components/common/AutocompleteSelect';
-import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { EmptyState } from '../../components/common/EmptyState';
@@ -22,6 +21,45 @@ import { resolvePostAuthPath } from '../../utils/authFlow';
 import { DEFAULT_LABOUR_RADIUS_KM, labourRadiusOptions, workCategories } from '../../utils/constants';
 import { getLocationLabel, normalizeCoordinates } from '../../utils/location';
 
+const featuredServices = ['Electrician', 'Plumbing', 'Cleaning', 'Lorry Loading', 'Carpenter'];
+
+const serviceTileEmojis = {
+  Construction: '🏗️',
+  Electrician: '⚡',
+  'AC repair': '❄️',
+  'CCTV installation': '📹',
+  Plumbing: '🔧',
+  Painting: '🎨',
+  Welding: '🧰',
+  Mason: '🧱',
+  Driver: '🚗',
+  Cleaner: '🧽',
+  Cleaning: '🧹',
+  Gardening: '🌿',
+  'Lorry Loading': '🚚',
+  Carpenter: '🔨',
+  Carpentry: '🪚',
+  Catering: '🍽️',
+  'Home Repair': '🏠',
+  'Bike Puncture': '🛞',
+  'Pest Control': '🧴',
+  'Car Wash': '🧼',
+  Tailoring: '🧵',
+  Laundry: '👕',
+  'Home Shifting': '📦',
+  'Security Guard': '🛡️',
+  'Furniture work': '🪑',
+  'Tiles work': '◻️',
+  'POP work': '🏛️',
+  'Interior work': '🛋️',
+  Mechanic: '🔩',
+  'Water tank cleaning': '🚰',
+  'RO repair': '💧',
+  'Appliance repair': '🔌',
+  'Internet/WiFi setup': '📶',
+  Others: '✨'
+};
+
 const SearchPage = () => {
   const [searchParams] = useSearchParams();
   const { currentUser, userProfile } = useAuth();
@@ -33,6 +71,7 @@ const SearchPage = () => {
   const [results, setResults] = useState([]);
   const [quickBookState, setQuickBookState] = useState(null);
   const [searching, setSearching] = useState(false);
+  const [showAllServices, setShowAllServices] = useState(false);
   const debouncedFilters = useDebounce(filters, 300);
   const geolocation = useGeolocation();
   const shouldRedirectRole = currentUser && userProfile?.role && userProfile.role !== 'client';
@@ -146,6 +185,10 @@ const SearchPage = () => {
     () => selectedService || quickBookState?.labour?.category || '',
     [quickBookState?.labour?.category, selectedService]
   );
+  const serviceTiles = useMemo(
+    () => (showAllServices ? workCategories : featuredServices).filter((service) => workCategories.includes(service)),
+    [showAllServices]
+  );
 
   const handleRefreshLocation = async () => {
     return geolocation.requestLocation({ force: true });
@@ -161,11 +204,13 @@ const SearchPage = () => {
   const handleServiceChange = (event) => {
     const service = event.target.value;
     setFilters({ category: service, query: service });
-    recordServiceInteraction({
-      serviceType: service,
-      type: 'search',
-      source: 'search_page'
-    });
+    if (service) {
+      recordServiceInteraction({
+        serviceType: service,
+        type: 'search',
+        source: 'search_page'
+      });
+    }
   };
 
   if (shouldRedirectRole) {
@@ -210,6 +255,50 @@ const SearchPage = () => {
               </Button>
             </div>
 
+            <div>
+              <div className="mb-3">
+                <h2 className="text-base font-bold text-slate-950 dark:text-white">Choose a service</h2>
+                <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">Search to see available workers near you</p>
+              </div>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+                {serviceTiles.map((service) => {
+                  const emoji = serviceTileEmojis[service] || '🛠️';
+                  const selected = selectedService === service;
+
+                  return (
+                    <button
+                      key={service}
+                      type="button"
+                      onClick={() => handleServiceChange({ target: { value: service } })}
+                      className={`flex min-h-[92px] flex-col items-center justify-center gap-2 rounded-2xl border bg-white px-2 py-3 text-center shadow-sm transition hover:border-brand-300 hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:bg-slate-950 ${
+                        selected ? 'border-brand-500 ring-2 ring-brand-100' : 'border-slate-200 dark:border-slate-800'
+                      }`}
+                    >
+                      <span className="grid h-10 w-10 place-items-center rounded-2xl bg-brand-50 text-lg dark:bg-brand-500/10">
+                        {emoji}
+                      </span>
+                      <span className="line-clamp-2 text-[11px] font-bold leading-tight text-slate-800 dark:text-slate-100">
+                        {service === 'Plumbing' ? 'Plumber' : service}
+                      </span>
+                    </button>
+                  );
+                })}
+
+                {!showAllServices ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllServices(true)}
+                    className="flex min-h-[92px] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-white px-2 py-3 text-center shadow-sm transition hover:border-brand-300 hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-800 dark:bg-slate-950"
+                  >
+                    <span className="grid h-10 w-10 place-items-center rounded-2xl bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+                      <MoreHorizontal size={20} />
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">More</span>
+                  </button>
+                ) : null}
+              </div>
+            </div>
+
             <div className="rounded-2xl bg-brand-50 p-3 text-sm font-medium text-brand-900 dark:bg-brand-500/10 dark:text-brand-100">
               <div className="flex items-center gap-2">
                 <MapPin size={16} />
@@ -234,22 +323,6 @@ const SearchPage = () => {
           </Card>
 
           <div className="mt-5 space-y-5 sm:mt-6">
-            <Card className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] p-4 sm:p-5">
-              <div>
-                <h1 className="text-xl font-semibold text-slate-950 dark:text-white">
-                  {selectedService ? `${selectedService} labour` : 'Choose a service'}
-                </h1>
-                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                  {selectedService
-                    ? `Available workers within ${radiusKm} km are shown below.`
-                    : 'Search a service to see available labour near you.'}
-                </p>
-              </div>
-              <Badge tone={availableResults.length ? 'emerald' : 'slate'}>
-                {searching ? 'Checking' : `${availableResults.length} available`}
-              </Badge>
-            </Card>
-
             {availableResults.length ? (
               <div className="grid gap-4 sm:grid-cols-2">
                 {availableResults.map((labour) => (
@@ -262,15 +335,13 @@ const SearchPage = () => {
                   />
                 ))}
               </div>
-            ) : (
+            ) : selectedService ? (
               <EmptyState
-                title={selectedService ? 'No available labour found' : 'Search a service'}
-                description={
-                  selectedService
-                    ? `${selectedService} is not available within ${radiusKm} km right now. Try another distance or update location.`
-                    : 'Type or choose a service, then the available labour will appear here.'
-                }
+                title="No available labour found"
+                description={`${selectedService} is not available within ${radiusKm} km right now. Try another distance or update location.`}
               />
+            ) : (
+              null
             )}
           </div>
         </div>

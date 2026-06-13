@@ -59,6 +59,7 @@ import { createRouteGroupId, getRouteGroupBookings } from '../../utils/requestRo
 
 const openRequestStatuses = ['pending', 'accepted', 'in_progress', 'awaiting_payment'];
 const ROUTE_WORKER_LIMIT = 10;
+const CLIENT_DASHBOARD_METRIC_CACHE_KEY_PREFIX = 'slivz.clientDashboard.metrics';
 const generateStartOtp = () => String(Math.floor(100000 + Math.random() * 900000));
 
 const getDateKey = (value) => {
@@ -105,6 +106,31 @@ const normalizeServiceName = (value) =>
     .replace(/\s+/g, ' ')
     .trim();
 
+const getClientDashboardMetricCacheKey = (userId) =>
+  `${CLIENT_DASHBOARD_METRIC_CACHE_KEY_PREFIX}.${userId || 'guest'}`;
+
+const readCachedDashboardMetrics = (userId) => {
+  if (typeof window === 'undefined' || !userId) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(window.sessionStorage.getItem(getClientDashboardMetricCacheKey(userId)) || 'null');
+
+    if (
+      parsed &&
+      Number.isFinite(parsed.openRequests) &&
+      Number.isFinite(parsed.completedServices)
+    ) {
+      return parsed;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+};
+
 const LightPanel = ({ id, className = '', children }) => (
   <section
     id={id}
@@ -114,7 +140,7 @@ const LightPanel = ({ id, className = '', children }) => (
   </section>
 );
 
-const DashboardMetric = ({ label, value, tone = 'slate' }) => {
+const DashboardMetric = ({ label, value, tone = 'slate', loading = false }) => {
   const toneClass = {
     emerald: 'text-emerald-600',
     blue: 'text-brand-600',
@@ -125,7 +151,11 @@ const DashboardMetric = ({ label, value, tone = 'slate' }) => {
   return (
     <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:px-3 sm:py-2.5">
       <p className="truncate text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400 sm:text-[10px]">{label}</p>
-      <p className={`mt-1 text-lg font-bold leading-none sm:text-xl ${toneClass}`}>{value}</p>
+      {loading ? (
+        <Skeleton className="mt-1 h-5 w-9 rounded-md sm:h-6" />
+      ) : (
+        <p className={`mt-1 text-lg font-bold leading-none sm:text-xl ${toneClass}`}>{value}</p>
+      )}
     </div>
   );
 };
@@ -196,6 +226,7 @@ const ClientDashboardPage = () => {
   const [laboursLoading, setLaboursLoading] = useState(false);
   const [bookings, setBookings] = useState([]);
   const [bookingsLoading, setBookingsLoading] = useState(true);
+  const [cachedMetrics, setCachedMetrics] = useState(() => readCachedDashboardMetrics(currentUser?.uid));
   const [selectedService, setSelectedService] = useState('');
   const [radiusKm, setRadiusKm] = useState(DEFAULT_LABOUR_RADIUS_KM);
   const [requestMode, setRequestMode] = useState('instant');
@@ -800,9 +831,43 @@ const ClientDashboardPage = () => {
   };
 
   const completedServices = bookings.filter((item) => item.status === 'completed').length;
+  const dashboardMetrics = {
+    openRequests: openBookings.length,
+    completedServices
+  };
+  const visibleDashboardMetrics = bookingsLoading && cachedMetrics ? cachedMetrics : dashboardMetrics;
+  const metricsLoading = bookingsLoading && !cachedMetrics;
   const clientName = userProfile?.fullName || currentUser?.displayName || 'Client';
   const clientAvatar = userProfile?.profilePhoto || buildProfileAvatarDataUrl(clientName || 'Client');
   const pendingRouteProgress = pendingBookings.length ? getRouteProgress(bookings, pendingBookings[0]) : null;
+
+  useEffect(() => {
+    setCachedMetrics(readCachedDashboardMetrics(currentUser?.uid));
+  }, [currentUser?.uid]);
+
+  useEffect(() => {
+    if (bookingsLoading) {
+      return;
+    }
+
+    const nextMetrics = {
+      openRequests: openBookings.length,
+      completedServices
+    };
+
+    setCachedMetrics(nextMetrics);
+
+    try {
+      if (currentUser?.uid) {
+        window.sessionStorage.setItem(
+          getClientDashboardMetricCacheKey(currentUser.uid),
+          JSON.stringify(nextMetrics)
+        );
+      }
+    } catch {
+      // Session storage can be unavailable in private or restricted browser modes.
+    }
+  }, [bookingsLoading, completedServices, currentUser?.uid, openBookings.length]);
 
   return (
     <AppShell hideFooter>
@@ -842,8 +907,8 @@ const ClientDashboardPage = () => {
           </LightPanel>
 
           <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
-            <DashboardMetric label="Open requests" value={openBookings.length} tone="blue" />
-            <DashboardMetric label="Completed" value={completedServices} tone="emerald" />
+            <DashboardMetric label="Open requests" value={visibleDashboardMetrics.openRequests} tone="blue" loading={metricsLoading} />
+            <DashboardMetric label="Completed" value={visibleDashboardMetrics.completedServices} tone="emerald" loading={metricsLoading} />
           </div>
 
           <LightPanel className="overflow-hidden p-0">
@@ -863,11 +928,13 @@ const ClientDashboardPage = () => {
               showRoutePreview={false}
               showLabourPins={false}
               renderChildrenInSheet={false}
+              compactInfoSheet
+              showZoomControls={false}
               initialZoom={12}
               minZoom={9}
               maxZoom={17}
-              className="min-h-[320px] rounded-[18px] border-0 shadow-none sm:min-h-[340px] lg:min-h-[360px] sm:rounded-[20px]"
-              sheetClassName="bottom-2 left-2 right-2 rounded-[14px] p-2.5 sm:rounded-[16px]"
+              className="h-[260px] !min-h-0 rounded-[18px] border-0 shadow-none sm:h-[285px] lg:h-[310px] sm:rounded-[20px]"
+              sheetClassName="bottom-2 left-2 right-2"
             >
               <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
                 <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_auto] sm:items-end">

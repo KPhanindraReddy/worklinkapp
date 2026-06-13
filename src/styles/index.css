@@ -158,6 +158,11 @@
     padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
   }
 
+  .app-page-swap {
+    animation: app-page-swap-in 180ms ease-out both;
+    will-change: opacity, transform;
+  }
+
   @media (min-width: 1024px) {
     .app-shell-content,
     .app-shell-content--dock {
@@ -171,6 +176,25 @@
 
   .mobile-safe-bottom {
     padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+
+  @keyframes app-page-swap-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .app-page-swap {
+      animation: none;
+      will-change: auto;
+    }
   }
 
   @media (max-width: 639px) {

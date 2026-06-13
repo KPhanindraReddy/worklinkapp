@@ -86,6 +86,34 @@ const metricBoxClasses = [
   'border-blue-300 text-blue-800',
   'border-emerald-300 text-emerald-800'
 ];
+const LABOUR_SERVICES_CACHE_KEY_PREFIX = 'slivz.labourServices.bookings';
+
+const getLabourServicesCacheKey = (userId) => `${LABOUR_SERVICES_CACHE_KEY_PREFIX}.${userId || 'guest'}`;
+
+const readCachedLabourServices = (userId) => {
+  if (typeof window === 'undefined' || !userId) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(window.sessionStorage.getItem(getLabourServicesCacheKey(userId)) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeCachedLabourServices = (userId, nextBookings) => {
+  if (typeof window === 'undefined' || !userId) {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(getLabourServicesCacheKey(userId), JSON.stringify(nextBookings));
+  } catch {
+    // Session storage can be unavailable in private or restricted browser modes.
+  }
+};
 
 const LabourServicesPage = () => {
   const { currentUser, userProfile } = useAuth();
@@ -104,11 +132,15 @@ const LabourServicesPage = () => {
       return undefined;
     }
 
+    const cachedBookings = readCachedLabourServices(currentUser.uid);
+    setBookings(cachedBookings);
+
     setLoading(true);
     return subscribeBookingsForUser(
       { userId: currentUser.uid, role: 'labour' },
       (nextBookings) => {
         setBookings(nextBookings);
+        writeCachedLabourServices(currentUser.uid, nextBookings);
         setLoading(false);
       },
       (error) => {
@@ -154,6 +186,7 @@ const LabourServicesPage = () => {
     ],
     [pendingBookings.length, scheduledBookings]
   );
+  const showLoadingPlaceholders = loading && bookings.length === 0;
 
   const profileName = userProfile?.fullName || currentUser?.displayName || 'Labour';
   const profilePhone = userProfile?.phoneNumber || currentUser?.phoneNumber || '';
@@ -318,7 +351,7 @@ const LabourServicesPage = () => {
                 className={`rounded-xl border-2 bg-white p-2 text-center shadow-sm sm:p-2.5 ${metricBoxClasses[index]}`}
               >
                 <p className="truncate text-[9px] font-black uppercase tracking-[0.06em] sm:text-[10px]">{item.label}</p>
-                {loading ? (
+                {showLoadingPlaceholders ? (
                   <Skeleton className="mx-auto mt-1.5 h-6 w-8 rounded-lg" />
                 ) : (
                   <p className="mt-1 font-display text-xl font-black leading-none sm:text-2xl">{item.value}</p>
@@ -339,7 +372,7 @@ const LabourServicesPage = () => {
               </div>
 
               <div className="mt-4 space-y-3">
-                {loading ? (
+                {showLoadingPlaceholders ? (
                   <>
                     <Skeleton className="h-28 w-full rounded-2xl" />
                     <Skeleton className="h-28 w-full rounded-2xl" />
@@ -438,7 +471,7 @@ const LabourServicesPage = () => {
               </div>
 
               <div className="mt-4 space-y-3">
-                {loading ? (
+                {showLoadingPlaceholders ? (
                   <>
                     <Skeleton className="h-32 w-full rounded-2xl" />
                     <Skeleton className="h-32 w-full rounded-2xl" />

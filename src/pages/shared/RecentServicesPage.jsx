@@ -1,11 +1,9 @@
-import { CalendarClock, History, MapPin, Star, WalletCards } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { CalendarClock, Clock3, MapPin, Star, WalletCards } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
-import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
-import { Card } from '../../components/common/Card';
 import { EmptyState } from '../../components/common/EmptyState';
 import { InputField } from '../../components/common/InputField';
 import { PageSEO } from '../../components/common/PageSEO';
@@ -24,22 +22,131 @@ import { getFirebaseErrorMessage } from '../../utils/firebaseErrors';
 
 const getBookingRowTone = (status) => {
   if (status === 'completed') {
-    return 'border-emerald-200 bg-emerald-50/80';
+    return 'border-emerald-200 bg-emerald-50/70';
   }
 
   if (['rejected', 'timed_out'].includes(status)) {
-    return 'border-rose-200 bg-rose-50/80';
+    return 'border-rose-200 bg-rose-50/70';
   }
 
   if (['cancelled', 'awaiting_payment', 'pending'].includes(status)) {
-    return 'border-amber-200 bg-amber-50/80';
+    return 'border-amber-200 bg-amber-50/70';
   }
 
   if (['accepted', 'in_progress'].includes(status)) {
-    return 'border-sky-200 bg-sky-50/80';
+    return 'border-sky-200 bg-sky-50/70';
   }
 
   return 'border-slate-200 bg-white';
+};
+
+const filterOptions = [
+  { label: 'All', value: 'all' },
+  { label: 'Pending', value: 'pending' },
+  { label: 'Done', value: 'done' }
+];
+
+const doneStatuses = ['completed'];
+const pendingStatuses = ['pending', 'accepted', 'in_progress', 'awaiting_payment'];
+
+const getStatusLabel = (status) => {
+  if (status === 'completed') {
+    return 'Done';
+  }
+
+  if (status === 'accepted') {
+    return 'Accepted';
+  }
+
+  if (status === 'in_progress') {
+    return 'Working';
+  }
+
+  if (status === 'awaiting_payment') {
+    return 'Payment';
+  }
+
+  if (status === 'rejected') {
+    return 'Rejected';
+  }
+
+  if (status === 'timed_out') {
+    return 'Timed out';
+  }
+
+  if (status === 'cancelled') {
+    return 'Cancelled';
+  }
+
+  return 'Pending';
+};
+
+const getStatusPillClass = (status) => {
+  if (status === 'completed') {
+    return 'bg-emerald-50 text-emerald-700';
+  }
+
+  if (['rejected', 'timed_out', 'cancelled'].includes(status)) {
+    return 'bg-rose-50 text-rose-700';
+  }
+
+  if (['accepted', 'in_progress'].includes(status)) {
+    return 'bg-sky-50 text-sky-700';
+  }
+
+  return 'bg-amber-50 text-amber-700';
+};
+
+const getInitial = (value) =>
+  String(value || 'S')
+    .trim()
+    .charAt(0)
+    .toUpperCase() || 'S';
+
+const getAvatarClass = (status) => {
+  if (status === 'completed') {
+    return 'bg-emerald-600';
+  }
+
+  if (['accepted', 'in_progress'].includes(status)) {
+    return 'bg-brand-600';
+  }
+
+  if (['rejected', 'timed_out', 'cancelled'].includes(status)) {
+    return 'bg-rose-600';
+  }
+
+  return 'bg-slate-900';
+};
+
+const RECENT_SERVICES_CACHE_KEY_PREFIX = 'slivz.recentServices.bookings';
+
+const getRecentServicesCacheKey = (userId, role) =>
+  `${RECENT_SERVICES_CACHE_KEY_PREFIX}.${role || 'user'}.${userId || 'guest'}`;
+
+const readCachedRecentServices = (userId, role) => {
+  if (typeof window === 'undefined' || !userId) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(window.sessionStorage.getItem(getRecentServicesCacheKey(userId, role)) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeCachedRecentServices = (userId, role, nextBookings) => {
+  if (typeof window === 'undefined' || !userId) {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(getRecentServicesCacheKey(userId, role), JSON.stringify(nextBookings));
+  } catch {
+    // Session storage can be unavailable in private or restricted browser modes.
+  }
 };
 
 const StarRatingPicker = ({ value, onChange, disabled = false }) => {
@@ -87,6 +194,7 @@ const RecentServicesPage = () => {
   const [paymentAmounts, setPaymentAmounts] = useState({});
   const [completingPaymentId, setCompletingPaymentId] = useState('');
   const [cancellingBookingId, setCancellingBookingId] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const role = userProfile?.role === 'labour' ? 'labour' : 'client';
   const subjectLabel = role === 'labour' ? 'Client' : 'Worker';
 
@@ -97,11 +205,15 @@ const RecentServicesPage = () => {
       return undefined;
     }
 
+    const cachedBookings = readCachedRecentServices(currentUser.uid, role);
+    setBookings(cachedBookings);
+
     setBookingsLoading(true);
     return subscribeBookingsForUser(
       { userId: currentUser.uid, role },
       (nextBookings) => {
         setBookings(nextBookings);
+        writeCachedRecentServices(currentUser.uid, role, nextBookings);
         setBookingsLoading(false);
       },
       (error) => {
@@ -110,6 +222,22 @@ const RecentServicesPage = () => {
       }
     );
   }, [currentUser?.uid, role]);
+  const showLoadingPlaceholders = bookingsLoading && bookings.length === 0;
+  const visibleBookings = useMemo(
+    () =>
+      bookings.filter((booking) => {
+        if (statusFilter === 'done') {
+          return doneStatuses.includes(booking.status);
+        }
+
+        if (statusFilter === 'pending') {
+          return pendingStatuses.includes(booking.status);
+        }
+
+        return true;
+      }),
+    [bookings, statusFilter]
+  );
 
   const updateReviewDraft = (bookingId, key, value) =>
     setReviewDrafts((prev) => ({
@@ -206,90 +334,99 @@ const RecentServicesPage = () => {
       />
 
       <section className="section-space">
-        <div className="page-shell space-y-5">
-          <Card className="rounded-[28px]">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-2xl bg-brand-100 text-brand-700">
-                  <History size={18} />
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-slate-950">Recent services</h1>
-                  <p className="text-[13px] text-slate-500">
-                    Track service requests and completed work.
-                  </p>
-                </div>
-              </div>
-              {bookingsLoading ? <Skeleton className="h-7 w-20" /> : <Badge tone="slate">{bookings.length} total</Badge>}
-            </div>
-          </Card>
+        <div className="page-shell max-w-[560px] space-y-3">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            {filterOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setStatusFilter(option.value)}
+                className={clsx(
+                  'h-9 min-w-20 rounded-full border px-4 text-xs font-extrabold transition',
+                  statusFilter === option.value
+                    ? 'border-slate-950 bg-slate-950 text-white shadow-sm'
+                    : 'border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:text-slate-700'
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
 
-          {bookingsLoading ? (
+          {showLoadingPlaceholders ? (
             <div className="space-y-3">
-              <Skeleton className="h-28 w-full" />
-              <Skeleton className="h-28 w-full" />
+              <Skeleton className="h-36 w-full rounded-2xl" />
+              <Skeleton className="h-36 w-full rounded-2xl" />
             </div>
-          ) : bookings.length ? (
-            <div className="space-y-2 sm:overflow-x-auto sm:rounded-2xl sm:border sm:border-slate-200 sm:bg-white">
-              <div className="hidden min-w-[680px] grid-cols-[1.1fr_1fr_0.85fr_0.85fr] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-500 sm:grid">
-                <span>Name</span>
-                <span>Service</span>
-                <span>Time</span>
-                <span>Money</span>
-              </div>
-              {bookings.map((booking) => (
-                <Card
+          ) : visibleBookings.length ? (
+            <div className="space-y-3">
+              {visibleBookings.map((booking) => {
+                const subjectName = role === 'labour' ? booking.clientName || 'Client' : booking.labourName || 'Worker';
+                const moneyLabel =
+                  booking.status === 'completed' && Number(booking.amount) > 0
+                    ? formatCurrency(booking.amount)
+                    : booking.status === 'awaiting_payment'
+                      ? 'Enter paid amount'
+                      : 'Charge pending';
+
+                return (
+                <article
                   key={booking.id}
                   className={clsx(
-                    'rounded-2xl p-3 shadow-sm sm:min-w-[680px] sm:rounded-none sm:border-x-0 sm:border-t-0 sm:p-4 sm:shadow-none sm:last:border-b-0',
+                    'rounded-2xl border bg-white p-3 shadow-sm',
                     getBookingRowTone(booking.status)
                   )}
                 >
-                  <div className="grid gap-2 sm:grid-cols-[1.1fr_1fr_0.85fr_0.85fr] sm:gap-3">
-                    <div className="min-w-0">
-                      <h2 className="truncate text-sm font-semibold text-slate-950">
-                        {role === 'labour' ? booking.clientName || 'Client' : booking.labourName || 'Worker'}
-                      </h2>
-                      <p className="mt-1 text-xs text-slate-500">{subjectLabel}</p>
+                  <div className="flex items-start gap-3">
+                    <div className={clsx('grid h-10 w-10 flex-none place-items-center rounded-xl text-sm font-black text-white', getAvatarClass(booking.status))}>
+                      {getInitial(subjectName)}
                     </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-800">{booking.serviceType}</p>
-                      <p className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-slate-500">
-                        <MapPin size={13} className="flex-none" />
-                        <span className="truncate">
-                          <LocationText
-                            location={booking.location}
-                            coordinates={booking.coordinates}
-                            fallback="Location shared after confirmation"
-                          />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <h2 className="truncate text-[15px] font-black leading-5 text-slate-950">{subjectName}</h2>
+                          <p className="mt-0.5 truncate text-[11px] font-semibold text-slate-400">
+                            {subjectLabel} · {booking.serviceType || 'Service'}
+                          </p>
+                        </div>
+                        <span className={clsx('flex-none rounded-full px-2.5 py-1 text-[10px] font-extrabold', getStatusPillClass(booking.status))}>
+                          {getStatusLabel(booking.status)}
                         </span>
-                      </p>
-                    </div>
-                    <div>
-                      <p className="inline-flex items-center gap-1.5 text-xs text-slate-500 sm:text-sm sm:text-slate-600">
-                        <CalendarClock size={14} />
-                        {formatDate(booking.appointmentAt)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-700 sm:text-sm">
-                        <WalletCards size={14} />
-                        {booking.status === 'completed' && Number(booking.amount) > 0
-                          ? formatCurrency(booking.amount)
-                          : booking.status === 'awaiting_payment'
-                            ? 'Enter paid amount'
-                            : 'Charge pending'}
-                      </p>
+                      </div>
                     </div>
                   </div>
 
+                  <div className="mt-3 border-t border-slate-200 pt-3">
+                    <p className="flex min-w-0 items-center gap-2 text-xs font-semibold text-slate-700">
+                      <MapPin size={13} className="flex-none text-slate-400" />
+                      <span className="truncate">
+                        <LocationText
+                          location={booking.location}
+                          coordinates={booking.coordinates}
+                          fallback="Location shared after confirmation"
+                        />
+                      </span>
+                    </p>
+                    <p className="mt-2 flex items-center gap-2 text-xs font-semibold text-slate-700">
+                      <CalendarClock size={13} className="flex-none text-slate-400" />
+                      {formatDate(booking.appointmentAt)}
+                    </p>
+                    <p className="mt-2 flex items-center gap-2 text-xs font-semibold text-slate-700">
+                      <Clock3 size={13} className="flex-none text-slate-400" />
+                      {booking.requestMode === 'instant' ? 'Instant request' : 'Scheduled request'}
+                    </p>
+                  </div>
+
+                  <div className="mt-3 border-t border-slate-200 pt-3">
+                    <p className="inline-flex min-w-0 items-center gap-1.5 truncate text-xs font-semibold text-slate-400">
+                      <WalletCards size={14} />
+                      {moneyLabel}
+                    </p>
+                  </div>
+
                   {role === 'client' && booking.status === 'awaiting_payment' ? (
-                    <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                      <p className="text-sm font-semibold text-amber-950">Complete this service</p>
-                      <p className="mt-1 text-xs font-medium leading-5 text-amber-900">
-                        Enter the amount you paid after the labour finished the work.
-                      </p>
-                      <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                    <div className="mt-3 rounded-2xl border border-amber-200 bg-white/80 p-3">
+                      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
                         <InputField
                           label="Amount paid"
                           type="number"
@@ -302,7 +439,7 @@ const RecentServicesPage = () => {
                         <Button
                           type="button"
                           size="sm"
-                          className="h-11 w-full bg-slate-950 text-white shadow-sm hover:bg-slate-800 sm:w-auto"
+                          className="h-10 w-full bg-slate-950 text-white shadow-sm hover:bg-slate-800 sm:w-auto"
                           disabled={completingPaymentId === booking.id}
                           onClick={() => handleCompleteClientPayment(booking)}
                         >
@@ -372,13 +509,14 @@ const RecentServicesPage = () => {
                       </div>
                     )
                   ) : null}
-                </Card>
-              ))}
+                </article>
+                );
+              })}
             </div>
           ) : (
             <EmptyState
-              title="No recent services yet"
-              description="Your latest service requests and completed work will appear here."
+              title={bookings.length ? 'No services in this filter' : 'No recent services yet'}
+              description={bookings.length ? 'Try another status filter.' : 'Your latest service requests and completed work will appear here.'}
               action={
                 role === 'client' ? (
                   <Button as={Link} to="/search" size="sm">
