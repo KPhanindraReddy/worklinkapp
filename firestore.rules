@@ -403,10 +403,11 @@ service cloud.firestore {
         request.auth.uid == resource.data.userId &&
         request.resource.data.userId == resource.data.userId &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
-      allow create: if signedIn() &&
-        request.resource.data.senderId == request.auth.uid &&
-        request.resource.data.bookingId is string &&
-        isBookingParticipant(request.resource.data.bookingId);
+      allow create: if isAdmin() ||
+        (signedIn() &&
+          request.resource.data.senderId == request.auth.uid &&
+          request.resource.data.bookingId is string &&
+          isBookingParticipant(request.resource.data.bookingId));
       allow delete: if isAdmin();
     }
 

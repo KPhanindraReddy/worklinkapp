@@ -1,10 +1,11 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
   AlertTriangle,
   CircleOff,
   ExternalLink,
   LoaderCircle,
+  Megaphone,
   MessageSquareWarning,
   Pencil,
   Search,
@@ -20,6 +21,7 @@ import { PageSEO } from '../../components/common/PageSEO';
 import { ProfileAvatar } from '../../components/common/ProfileAvatar';
 import { SelectField } from '../../components/common/SelectField';
 import { Skeleton } from '../../components/common/Skeleton';
+import { TextAreaField } from '../../components/common/TextAreaField';
 import { VerificationBadge } from '../../components/common/VerificationBadge';
 import { AppShell } from '../../components/layout/AppShell';
 import { BrandLogo } from '../../components/layout/BrandLogo';
@@ -30,6 +32,7 @@ import {
   getAdminOverview,
   listSupportTickets,
   listAdminProfiles,
+  sendAdminAnnouncement,
   updateAdminUserProfile,
   updateSupportTicketStatus,
   updateUserAccountStatus,
@@ -93,6 +96,7 @@ const AdminSectionHeader = ({ title, description, badge }) => (
 
 const adminNavItems = [
   { label: 'Overview', href: '#overview' },
+  { label: 'Announcements', href: '#announcements' },
   { label: 'Activity', href: '#activity' },
   { label: 'Labour', href: '#labour' },
   { label: 'Clients', href: '#clients' },
@@ -376,6 +380,14 @@ const AdminDashboardPage = () => {
   const [cleaningNotificationsRole, setCleaningNotificationsRole] = useState('');
   const [tickets, setTickets] = useState([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
+  const [announcement, setAnnouncement] = useState({
+    audience: 'all',
+    title: '',
+    body: '',
+    route: '/notifications'
+  });
+  const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
+  const announcementSendInFlightRef = useRef(false);
 
   const loadOverview = async () => {
     setOverviewLoading(true);
@@ -823,6 +835,34 @@ const AdminDashboardPage = () => {
       setCleaningNotificationsRole('');
     }
   };
+  const handleSendAnnouncement = async (event) => {
+    event.preventDefault();
+
+    if (announcementSendInFlightRef.current) {
+      return;
+    }
+
+    if (!announcement.title.trim() || !announcement.body.trim()) {
+      toast.error('Add an announcement title and message.');
+      return;
+    }
+
+    announcementSendInFlightRef.current = true;
+    setSendingAnnouncement(true);
+    try {
+      const result = await sendAdminAnnouncement({
+        adminId: currentUser?.uid,
+        ...announcement
+      });
+      toast.success(`Announcement sent to ${result.sentCount} account${result.sentCount === 1 ? '' : 's'}.`);
+      setAnnouncement((prev) => ({ ...prev, title: '', body: '' }));
+    } catch (error) {
+      toast.error(getFirebaseErrorMessage(error));
+    } finally {
+      announcementSendInFlightRef.current = false;
+      setSendingAnnouncement(false);
+    }
+  };
   const adminProfileName = userProfile?.fullName || currentUser?.displayName || 'Admin profile';
   const adminProfileEmail = userProfile?.email || currentUser?.email || '';
   const adminProfilePhoto = userProfile?.profilePhoto || currentUser?.photoURL || '';
@@ -859,6 +899,58 @@ const AdminDashboardPage = () => {
 
                 <AdminMetricGrid items={metrics} loading={overviewLoading} />
               </section>
+
+              <AdminCard id="announcements" className="scroll-mt-8">
+                <AdminSectionHeader
+                  title="Send announcement"
+                  description="Send offers and platform updates through the existing in-app and mobile notification flow."
+                  badge={<Badge tone="blue"><Megaphone size={13} /> Broadcast</Badge>}
+                />
+                <form className="grid gap-4" onSubmit={handleSendAnnouncement}>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <SelectField
+                      label="Audience"
+                      value={announcement.audience}
+                      options={[
+                        { label: 'Everyone', value: 'all' },
+                        { label: 'Clients only', value: 'client' },
+                        { label: 'Labour only', value: 'labour' }
+                      ]}
+                      onChange={(event) => setAnnouncement((prev) => ({ ...prev, audience: event.target.value }))}
+                    />
+                    <SelectField
+                      label="Open page"
+                      value={announcement.route}
+                      options={[
+                        { label: 'Notifications', value: '/notifications' },
+                        { label: 'Search services', value: '/search' },
+                        { label: 'Recent services', value: '/recent-services' }
+                      ]}
+                      onChange={(event) => setAnnouncement((prev) => ({ ...prev, route: event.target.value }))}
+                    />
+                  </div>
+                  <InputField
+                    label="Title"
+                    value={announcement.title}
+                    maxLength={80}
+                    placeholder="Weekend service offer"
+                    onChange={(event) => setAnnouncement((prev) => ({ ...prev, title: event.target.value }))}
+                  />
+                  <TextAreaField
+                    label="Message"
+                    value={announcement.body}
+                    maxLength={240}
+                    placeholder="Book today and receive a special service offer."
+                    onChange={(event) => setAnnouncement((prev) => ({ ...prev, body: event.target.value }))}
+                  />
+                  <div className="flex justify-end">
+                    <Button type="submit" disabled={sendingAnnouncement}>
+                      {sendingAnnouncement ? <LoaderCircle size={15} className="animate-spin" /> : <Megaphone size={15} />}
+                      {sendingAnnouncement ? 'Sending...' : 'Send announcement'}
+                    </Button>
+                  </div>
+                </form>
+              </AdminCard>
 
               <AdminCard>
                 <AdminSectionHeader

@@ -15,6 +15,11 @@ import {
 import { formatDate } from '../../utils/formatters';
 
 const getNotificationTarget = (notification) => {
+  if (notification.type === 'announcement') {
+    const route = String(notification.route || '').trim();
+    return route.startsWith('/') && !route.startsWith('//') ? route : '';
+  }
+
   if (notification.type === 'chat' && notification.conversationId) {
     return `/chat?conversation=${encodeURIComponent(notification.conversationId)}`;
   }

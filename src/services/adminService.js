@@ -23,6 +23,7 @@ const DIRECTORY_PAGE_SIZE = 18;
 const DIAGNOSTICS_LIMIT = 300;
 const NOTIFICATION_CLEANUP_LIMIT = 2000;
 const NOTIFICATION_CLEANUP_BATCH_SIZE = 450;
+const ANNOUNCEMENT_BATCH_SIZE = 400;
 const fallbackCategories = workCategories.map((category, index) => ({
   id: `category-${index + 1}`,
   name: category,
@@ -344,6 +345,71 @@ export const listAdminProfiles = async ({
     cursor: snapshot.docs.at(-1) ?? null,
     hasMore: snapshot.docs.length === pageSize
   };
+};
+
+export const sendAdminAnnouncement = async ({
+  adminId,
+  audience = 'all',
+  title,
+  body,
+  route = '/notifications'
+} = {}) => {
+  if (!isFirebaseConfigured || !db) {
+    return { sentCount: 0 };
+  }
+
+  const normalizedTitle = String(title || '').trim();
+  const normalizedBody = String(body || '').trim();
+  const normalizedRoute = String(route || '').trim();
+
+  if (!adminId || !normalizedTitle || !normalizedBody) {
+    throw new Error('Title and message are required before sending an announcement.');
+  }
+
+  const roles = audience === 'all' ? ['client', 'labour'] : [audience];
+  const snapshots = await Promise.all(
+    roles.map((role) => getDocs(collection(db, role === 'client' ? 'clients' : 'labours')))
+  );
+  const recipients = Array.from(
+    snapshots.reduce((map, snapshot, index) => {
+      const role = roles[index];
+
+      snapshot.docs.forEach((item) => {
+        const profile = item.data();
+        if (profile.accountStatus !== 'banned') {
+          map.set(item.id, { id: item.id, role });
+        }
+      });
+
+      return map;
+    }, new Map()).values()
+  );
+
+  for (let index = 0; index < recipients.length; index += ANNOUNCEMENT_BATCH_SIZE) {
+    const batch = writeBatch(db);
+
+    recipients.slice(index, index + ANNOUNCEMENT_BATCH_SIZE).forEach((recipient) => {
+      const notificationRef = doc(collection(db, 'notifications'));
+      batch.set(notificationRef, {
+        userId: recipient.id,
+        recipientRole: recipient.role,
+        senderId: adminId,
+        title: normalizedTitle,
+        body: normalizedBody,
+        type: 'announcement',
+        route:
+          normalizedRoute.startsWith('/') && !normalizedRoute.startsWith('//')
+            ? normalizedRoute
+            : '/notifications',
+        read: false,
+        createdAt: serverTimestamp()
+      });
+    });
+
+    await batch.commit();
+  }
+
+  return { sentCount: recipients.length };
 };
 
 export const verifyLabourAccount = async (labourId) => {

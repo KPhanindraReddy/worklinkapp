@@ -40,8 +40,8 @@ const persistPushToken = async ({ uid, token }) => {
 const resolveAppRoute = (data = {}) => {
   const route = String(data.route || '').trim();
 
-  if (route.startsWith('/')) {
-    return '/';
+  if (route.startsWith('/') && !route.startsWith('//')) {
+    return route;
   }
 
   const targetUrl = String(data.url || '').trim();

@@ -169,7 +169,10 @@ const getBookingUrl = (booking, audience) => {
   return `${baseUrl}/client`;
 };
 
-const getNotificationRoute = () => '/';
+const getNotificationRoute = (notification = {}) => {
+  const route = toText(notification.route);
+  return route.startsWith('/') && !route.startsWith('//') ? route : '/notifications';
+};
 
 const getNotificationUrl = (notification) => {
   const baseUrl = appUrl.value().replace(/\/$/, '');
